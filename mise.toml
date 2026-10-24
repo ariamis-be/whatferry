@@ -1,0 +1,7 @@
+[tools]
+python = "3.14"
+uv = "0.12.20"
+
+[env]
+# Use the mise-installed interpreter, never one uv downloads itself.
+UV_PYTHON_PREFERENCE = "only-system"

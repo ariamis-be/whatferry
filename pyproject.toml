@@ -1,0 +1,25 @@
+[project]
+name = "whatferry"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Edward Arghiroiu", email = "edward@ariamis.be" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "iphone-backup-decrypt>=0.11.2",
+    "wa-crypt-tools>=0.1.0",
+]
+
+[project.scripts]
+whatferry = "whatferry:main"
+
+[build-system]
+requires = ["uv_build>=0.12.20,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
