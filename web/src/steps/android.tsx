@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowRight, CircleCheck, Eye, EyeOff, FileUp, RefreshCw, TriangleAlert } from "lucide-react"
+import { ArrowRight, CircleCheck, Eye, EyeOff, FileUp, Info, RefreshCw, TriangleAlert } from "lucide-react"
 
 import { api, day, runJob, size, when, type AndroidEntry, type Candidate } from "@/api"
 import { Busy, Code, Disclosure, ErrorNotice, Instructions, PageHeader, Path, Section, StatGrid } from "@/components/bits"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,7 +11,38 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PhoneCopy } from "@/steps/phone"
 import type { StepProps } from "@/wizard"
+
+/** Where WhatsApp keeps its backups on the phone, by setup. */
+function BackupFolders() {
+  const rows: [string, string][] = [
+    ["One account", "Android/media/com.whatsapp/WhatsApp/Databases"],
+    ["Several accounts", "Android/media/com.whatsapp/WhatsApp/accounts/<number>/Databases"],
+    ["WhatsApp Business", "Android/media/com.whatsapp.w4b/WhatsApp Business/Databases"],
+    ["Android 10 or older", "WhatsApp/Databases"],
+  ]
+  return (
+    <Disclosure title="Where WhatsApp keeps backups on the phone">
+      <Table>
+        <TableBody>
+          {rows.map(([setup, folder]) => (
+            <TableRow key={setup}>
+              <TableCell className="text-sm">{setup}</TableCell>
+              <TableCell className="font-mono text-xs whitespace-normal wrap-anywhere">{folder}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <p className="pt-2 text-xs text-muted-foreground">
+        With several accounts, each <Code>accounts/&lt;number&gt;</Code> folder is one account: pick the one whose
+        msgstore.db.crypt15 is newest, just after you tapped Back up. Files ending .crypt14 and dated or “increment”
+        files can't be used.
+      </p>
+    </Disclosure>
+  )
+}
 
 function findCandidates(): Promise<Candidate[] | Error> {
   return api<{ files: Candidate[] }>("GET", "/api/android/candidates").then(
@@ -91,25 +122,85 @@ export function AndroidStep({ overview, refresh, go }: StepProps) {
         <Instructions
           items={[
             "Open WhatsApp → Settings → Chats → Chat backup → End-to-end encrypted backup → Turn on.",
-            "Choose “Use 64-digit encryption key instead”, then generate the key. Write it down: WhatsApp can't show it again.",
+            "Choose “Use 64-digit encryption key instead”, then generate the key. Write it down or take a screenshot: WhatsApp can't show it again.",
             "Back on Chat backup, tap Back up. This saves a file on the phone even if Google Drive backups are off.",
           ]}
         />
+        <Alert>
+          <Info />
+          <AlertTitle>More than one WhatsApp account on the phone?</AlertTitle>
+          <AlertDescription>
+            Each account has its own backup and its own key. Switch to the account you want to move (tap your profile
+            picture → switch account) before the steps above, and repeat them for each account you want.
+          </AlertDescription>
+        </Alert>
       </Section>
 
       <Section n={2} title="Bring the file to this computer">
-        <p className="text-sm leading-relaxed">
-          In the phone's Files app, open <Code>Android/media/com.whatsapp/WhatsApp/Databases</Code> and share{" "}
-          <Code>msgstore.db.crypt15</Code> (the one without a date) to this computer. LocalSend, Google Drive, or a USB
-          cable in file-transfer mode all work.
-        </p>
+        <p className="text-sm text-muted-foreground">Any of these works; pick whichever is easiest.</p>
+        <Tabs defaultValue="share">
+          <TabsList className="h-auto flex-wrap">
+            <TabsTrigger value="share">Share from the phone</TabsTrigger>
+            <TabsTrigger value="cable">USB file transfer</TabsTrigger>
+            <TabsTrigger value="adb">Copy with USB debugging</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="share" className="space-y-3 pt-3">
+            <Instructions
+              items={[
+                <>
+                  Open the phone's Files app (Files by Google, or My Files on Samsung) and go to{" "}
+                  <Code>Android/media/com.whatsapp/WhatsApp</Code>. Some file apps hide the <Code>Android</Code>{" "}
+                  folder; Files by Google shows it.
+                </>,
+                <>
+                  Open <Code>Databases</Code>, or with several accounts <Code>accounts</Code> → the account's number →{" "}
+                  <Code>Databases</Code>.
+                </>,
+                <>
+                  Long-press <Code>msgstore.db.crypt15</Code> (the one without a date) and tap Share.
+                </>,
+                "Send it to this computer, with whatever you have: LocalSend (free, phone and computer on the same Wi-Fi, nothing goes online), Quick Share (Windows), Google Drive, or email or a message to yourself.",
+                "Save it in Downloads, then click Search again below.",
+              ]}
+            />
+            <BackupFolders />
+          </TabsContent>
+
+          <TabsContent value="cable" className="space-y-3 pt-3">
+            <Instructions
+              items={[
+                "Plug the phone into this computer with a USB cable and unlock it.",
+                "On the phone, tap the “Charging this device via USB” notification and choose File transfer.",
+                overview.platform === "darwin"
+                  ? "A Mac can't open Android phones on its own: install OpenMTP (free, openmtp.ganeshrvel.com) and open the phone in it."
+                  : overview.platform === "win32"
+                    ? "Open File Explorer: the phone appears under This PC."
+                    : "Your file manager shows the phone in its sidebar.",
+                "Copy msgstore.db.crypt15 from the folder below into Downloads, then click Search again below.",
+              ]}
+            />
+            <BackupFolders />
+          </TabsContent>
+
+          <TabsContent value="adb" className="pt-3">
+            <PhoneCopy
+              platform={overview.platform}
+              folder={overview.phone_folder}
+              onCopied={(file) => {
+                setFiles((f) => [file, ...(f ?? []).filter((x) => x.path !== file.path)])
+                setPath(file.path)
+              }}
+            />
+          </TabsContent>
+        </Tabs>
       </Section>
 
       <Section n={3} title="Choose the file">
         {files === null ? (
-          <Busy>Looking in Downloads, Desktop and Documents…</Busy>
+          <Busy>Searching…</Busy>
         ) : files.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No WhatsApp backup found in Downloads, Desktop or Documents yet.</p>
+          <p className="text-sm text-muted-foreground">No WhatsApp backup found yet.</p>
         ) : (
           <RadioGroup value={path} onValueChange={setPath} aria-label="Backup file">
             {files.map((f) => (
@@ -137,7 +228,7 @@ export function AndroidStep({ overview, refresh, go }: StepProps) {
             <FileUp data-icon="inline-start" /> Choose a file…
           </Button>
           <Button variant="ghost" onClick={look}>
-            <RefreshCw data-icon="inline-start" /> Look again
+            <RefreshCw data-icon="inline-start" /> Search again
           </Button>
           <input
             ref={picker}
@@ -148,6 +239,16 @@ export function AndroidStep({ overview, refresh, go }: StepProps) {
             onChange={(e) => upload(e.target.files?.[0])}
           />
         </div>
+        <p className="text-xs text-muted-foreground">
+          Search again looks for WhatsApp backups in{" "}
+          {overview.candidate_folders.map((f, i) => (
+            <span key={f}>
+              {i > 0 && (i === overview.candidate_folders.length - 1 ? " and " : ", ")}
+              <Path className="text-xs">{f}</Path>
+            </span>
+          ))}
+          . Elsewhere? Use Choose a file.
+        </p>
       </Section>
 
       <Section n={4} title="Enter the key">

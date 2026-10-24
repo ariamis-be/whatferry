@@ -82,7 +82,38 @@ export interface Overview {
   how_to_back_up: string
   backup_roots: string[]
   home: string
+  candidate_folders: string[]
+  phone_folder: string
   state: State
+}
+
+export interface PhoneBackup {
+  path: string
+  name: string
+  size: number
+  modified: string
+  app: string
+  account: string | null
+  kind: string
+  usable: boolean
+  note: string | null
+  local_name: string
+}
+
+export interface Phone {
+  serial: string
+  state: string
+  model: string | null
+  ready: boolean
+  advice: string | null
+  backups?: PhoneBackup[]
+  error?: string
+}
+
+export interface PhoneStatus {
+  adb: string | null
+  devices: Phone[]
+  error?: string
 }
 
 export interface Candidate {

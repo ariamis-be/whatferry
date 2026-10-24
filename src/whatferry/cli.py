@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-from whatferry import android, ios, sqlite_summary, workdir
+from whatferry import adb, android, ios, sqlite_summary, workdir
 from whatferry.ios_backup import (Backup, BackupError, WrongPassphrase, backup_roots, device_info, find_backup,
                                   how_to_back_up, list_backups)
 
@@ -21,7 +21,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         return args.run(args)
-    except (android.DecryptError, BackupError, FileNotFoundError) as e:
+    except (android.DecryptError, BackupError, adb.AdbError, FileNotFoundError) as e:
         print(f"whatferry: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
@@ -40,6 +40,14 @@ def _parser() -> argparse.ArgumentParser:
     ai.add_argument("--key-file", type=Path,
                     help="file holding the 64-digit key, or a WhatsApp key file from a rooted phone")
     ai.set_defaults(run=_android_inspect)
+    ap = a.add_parser("phone", help="list phones connected with USB debugging, and their WhatsApp backups")
+    ap.set_defaults(run=_android_phone)
+    al = a.add_parser("pull", help="copy WhatsApp backups off a phone connected with USB debugging")
+    al.add_argument("path", nargs="?", help="a backup path from `whatferry android phone` (default: every "
+                                            "usable full backup, one per account)")
+    al.add_argument("--serial", help="which phone, when more than one is connected")
+    al.add_argument("--to", type=Path, help=f"folder to copy into (default: {adb.default_destination()})")
+    al.set_defaults(run=_android_pull)
 
     i = sides.add_parser("ios", help="the iPhone backup").add_subparsers(required=True, metavar="command")
     ib = i.add_parser("backups", help="list the iPhone backups on this computer")
@@ -82,6 +90,64 @@ def _android_inspect(args) -> int:
             print(f"    {server:<28} {n:>8}")
     print(f"  {len(report.message_types)} message types in use (counts in report.json)")
     _print_run(run)
+    return 0
+
+
+ADB_HELP = (
+    "adb isn't installed. Get Google's platform-tools: "
+    "https://developer.android.com/tools/releases/platform-tools "
+    "(or: brew install --cask android-platform-tools · winget install Google.PlatformTools · "
+    "sudo apt install adb). Or set WHATFERRY_ADB to its path.")
+
+
+def _adb_tool():
+    tool = adb.find_adb()
+    if tool is None:
+        raise adb.AdbError(ADB_HELP)
+    return tool
+
+
+def _android_phone(args) -> int:
+    tool = _adb_tool()
+    phones = adb.devices(tool)
+    if not phones:
+        print("No phone connected. Turn on USB debugging (see the README), plug the phone in, unlock it, "
+              "and tap Allow.")
+        return 0
+    for phone in phones:
+        print(f"{phone.model or 'Android phone'} ({phone.serial}): {'ready' if phone.ready else phone.advice}")
+        if not phone.ready:
+            continue
+        backups = adb.phone_backups(tool, phone.serial)
+        if not backups:
+            print("  No WhatsApp backup on this phone yet: make one in WhatsApp → Settings → Chats → Chat backup.")
+        for b in backups:
+            account = f", account {b.account}" if b.account else ""
+            print(f"  {'✓' if b.usable else '✗'} {b.name}  {_size(b.size)}  {b.modified}  ({b.app}{account})")
+            print(f"      {b.path}")
+            if b.note:
+                print(f"      {b.note}")
+    return 0
+
+
+def _android_pull(args) -> int:
+    tool = _adb_tool()
+    ready = [p for p in adb.devices(tool) if p.ready and (args.serial in (None, p.serial))]
+    if not ready:
+        raise adb.AdbError("no ready phone: run `whatferry android phone` to see why")
+    if len(ready) > 1 and not args.serial:
+        raise adb.AdbError("more than one phone: choose one with --serial")
+    serial = ready[0].serial
+    if args.path:
+        paths = [args.path]
+    else:
+        # One full backup per app and account: the undated msgstore file.
+        paths = [b.path for b in adb.phone_backups(tool, serial) if b.usable and b.name.startswith("msgstore.")]
+        if not paths:
+            raise adb.AdbError("no usable backup on the phone: run `whatferry android phone` for details")
+    for path in paths:
+        target = adb.pull(tool, serial, path, args.to)
+        print(f"Copied {path}\n    to {target}")
     return 0
 
 

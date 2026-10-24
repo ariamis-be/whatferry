@@ -15,7 +15,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-from whatferry import android, ios, ios_backup, sqlite_summary, workdir
+from whatferry import adb, android, ios, ios_backup, sqlite_summary, workdir
 from whatferry.ios_backup import Backup, BackupError
 
 STEPS = ("start", "android", "before", "account", "after", "done")
@@ -23,7 +23,9 @@ CHECKLIST = ("add-account", "register-number", "leave-empty", "new-backup")
 
 # Where people usually put the Android file once it reaches the computer.
 CANDIDATE_FOLDERS = ("Downloads", "Desktop", "Documents", "whatferry-android", ".")
-CANDIDATE_PATTERNS = ("msgstore*.db.crypt15", "msgstore*.db.crypt14", "msgstore*.db")
+# Copies from the phone are named after the app and account, such as
+# whatsapp-account-1001-msgstore.db.crypt15.
+CANDIDATE_PATTERNS = ("*msgstore*.db.crypt15", "*msgstore*.db.crypt14", "*msgstore*.db")
 
 MAX_LISTED_PATHS = 300
 
@@ -33,7 +35,7 @@ class StepError(Exception):
 
 
 # Errors whose message is meant for the person using the wizard.
-USER_ERRORS = (android.DecryptError, BackupError, StepError, OSError)
+USER_ERRORS = (android.DecryptError, BackupError, StepError, adb.AdbError, OSError)
 
 # Six or more digits in a row: a phone number or account ID inside a path.
 _LONG_NUMBER = re.compile(r"\d{6,}")
@@ -113,8 +115,25 @@ class Wizard:
             "how_to_back_up": ios_backup.how_to_back_up(),
             "backup_roots": [str(r) for r in ios_backup.backup_roots()],
             "home": str(self.home),
+            "candidate_folders": [str(Path.home() / f) if f != "." else str(Path.home())
+                                  for f in CANDIDATE_FOLDERS],
+            "phone_folder": str(adb.default_destination()),
             "state": self.state.get(),
         }
+
+    # Phone over USB
+
+    def phone(self) -> dict:
+        return adb.status()
+
+    def phone_pull(self, serial: str, path: str) -> dict:
+        tool = adb.find_adb()
+        if tool is None:
+            raise StepError("adb isn't installed")
+        target = adb.pull(tool, serial, path)
+        st = target.stat()
+        return {"path": str(target), "name": target.name, "size": st.st_size,
+                "modified": datetime.fromtimestamp(st.st_mtime).astimezone().isoformat(timespec="seconds")}
 
     # Android
 

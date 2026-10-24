@@ -66,15 +66,47 @@ Python. To change it, see [`web/README.md`](web/README.md).
 **Android.** In WhatsApp: Settings → Chats → Chat backup → End-to-end
 encrypted backup → turn on → *Use 64-digit encryption key instead*, and note
 the key. Then *Back up* (Google Drive may be set to *Never*; the local file
-is made either way). Get
-`Android/media/com.whatsapp/WhatsApp/Databases/msgstore.db.crypt15` onto the
-computer: share it from the phone's file manager (LocalSend, Google Drive),
-copy it over USB in file-transfer mode (Windows and Linux browse the phone
-directly; macOS needs OpenMTP), or `adb pull` it. Put the key in a file only
-you can read.
+is made either way). With more than one WhatsApp account on the phone, each
+account has its own backup and key: switch to the account first.
+
+The backup is `msgstore.db.crypt15` (the undated one) in:
+
+| Setup | Folder on the phone |
+|---|---|
+| One account | `Android/media/com.whatsapp/WhatsApp/Databases` |
+| Several accounts | `Android/media/com.whatsapp/WhatsApp/accounts/<number>/Databases` |
+| WhatsApp Business | `Android/media/com.whatsapp.w4b/WhatsApp Business/Databases` (or `…/accounts/<number>/Databases`) |
+| Android 10 or older | `WhatsApp/Databases` |
+
+`.crypt14`, dated and `increment` files can't be used: their key only exists
+on a rooted phone, or they are partial.
+
+Get it onto the computer any way you like:
+
+- **Share from the phone**: the Files app → that folder → long-press → Share,
+  to LocalSend, Quick Share (Windows), Google Drive, or email/a message to
+  yourself.
+- **USB file transfer**: plug in, choose *File transfer* on the phone;
+  Windows and Linux open the phone directly, macOS needs OpenMTP.
+- **USB debugging (adb)**: whatferry copies it itself.
+  1. Settings → About phone → tap *Build number* seven times (Samsung:
+     About phone → Software information → Build number).
+  2. Settings → System → Developer options → *USB debugging* on.
+  3. Plug in, unlock, tap *Allow* on "Allow USB debugging?".
+  4. `whatferry android phone` lists the phone's backups;
+     `whatferry android pull` copies every usable one (one per account) to
+     `~/whatferry-android/`. The wizard has the same as a button.
+
+  whatferry finds adb on `PATH`, in Android Studio's SDK, `ANDROID_HOME`, or
+  mise's android-sdk; `WHATFERRY_ADB` points it elsewhere. No adb yet:
+  `brew install --cask android-platform-tools`,
+  `winget install Google.PlatformTools`, `sudo apt install adb`, or Google's
+  platform-tools download. Turn USB debugging off again afterwards.
+
+Put the key in a file only you can read, then:
 
 ```sh
-whatferry android inspect msgstore.db.crypt15 --key-file key.txt
+whatferry android inspect ~/whatferry-android/whatsapp-account-1001-msgstore.db.crypt15 --key-file key.txt
 ```
 
 **iPhone, before.** Make an encrypted backup:

@@ -157,6 +157,15 @@ class Handler(BaseHTTPRequestHandler):
         job = wizard.jobs.start(lambda: wizard.android_inspect(body["path"], body.get("key")))
         self._send_json(HTTPStatus.ACCEPTED, {"job": job})
 
+    def _phone(self):
+        self._send_json(HTTPStatus.OK, self.server.wizard.phone())
+
+    def _phone_pull(self):
+        body = self._read_json()
+        wizard = self.server.wizard
+        job = wizard.jobs.start(lambda: wizard.phone_pull(body["serial"], body["path"]))
+        self._send_json(HTTPStatus.ACCEPTED, {"job": job})
+
     def _ios_backups(self):
         self._send_json(HTTPStatus.OK, self.server.wizard.ios_backups())
 
@@ -233,6 +242,8 @@ ROUTES = {
     ("GET", "/api/android/candidates"): Handler._android_candidates,
     ("POST", "/api/android/upload"): Handler._android_upload,
     ("POST", "/api/android/inspect"): Handler._android_inspect,
+    ("GET", "/api/android/phone"): Handler._phone,
+    ("POST", "/api/android/phone/pull"): Handler._phone_pull,
     ("GET", "/api/ios/backups"): Handler._ios_backups,
     ("POST", "/api/ios/inspect"): Handler._ios_inspect,
     ("POST", "/api/checklist"): Handler._checklist,
