@@ -45,51 +45,57 @@ html, body { margin: 0; }
 body {
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
 }
 
 code, .mono { font-family: var(--mono); font-size: 0.9em; overflow-wrap: anywhere; }
 
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-/* Layout */
+/* Layout: a header with the steps across the top, then one centred column. */
 
-.shell { display: grid; grid-template-columns: 270px 1fr; min-height: 100vh; }
-
-.rail {
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  padding: 24px 16px;
-  position: sticky; top: 0; height: 100vh;
-  display: flex; flex-direction: column; gap: 20px;
+.top {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 5;
 }
+/* Same width as .main, so the header's edges line up with the page's. */
+.top-inner, .stepper { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+.top-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 64px; }
 
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; padding: 0 8px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; }
 
-.rail-note { margin-top: auto; color: var(--muted); font-size: 0.85rem; padding: 0 8px; }
+.top-note { margin: 0; color: var(--muted); font-size: 0.85rem; }
 
-.main { padding: 40px 48px 80px; max-width: 860px; width: 100%; min-width: 0; }
+.main { max-width: 760px; margin: 0 auto; padding: 48px 24px 96px; min-width: 0; }
 .main:focus { outline: none; }
 
-/* Step list */
+.eyebrow {
+  margin: 0 0 10px; color: var(--accent); font-size: 0.8rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
 
-.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+/* Steps: one bar per step that fills in as you go, its name under it. */
+
+.stepper { padding-bottom: 16px; }
+
+.steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; }
+.steps li { flex: 1 1 0; min-width: 0; }
 
 .steps button {
-  width: 100%; display: flex; align-items: center; gap: 12px;
-  background: none; border: 0; border-radius: 8px; padding: 9px 8px;
-  color: var(--text); font: inherit; text-align: left; cursor: pointer; white-space: nowrap;
+  width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  background: none; border: 0; padding: 6px 0; cursor: pointer;
+  color: var(--muted); font: inherit; font-size: 0.85rem; text-align: left;
 }
-.steps button:hover { background: var(--surface-2); }
-.steps li[aria-current="step"] button { background: var(--accent-soft); font-weight: 600; }
+.steps button:hover { color: var(--text); }
 
-.step-badge {
-  flex: none; width: 26px; height: 26px; border-radius: 50%;
-  display: grid; place-items: center; font-size: 0.8rem; font-weight: 700;
-  border: 2px solid var(--border); color: var(--muted); background: var(--surface);
-}
-.steps li[aria-current="step"] .step-badge { border-color: var(--accent); color: var(--accent); }
-.steps li.done .step-badge { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.step-bar { height: 4px; border-radius: 2px; background: var(--border); }
+.steps li.done .step-bar { background: var(--accent); }
+.steps li[aria-current="step"] .step-bar { background: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+
+.step-label { display: flex; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step-num { font-weight: 700; font-variant-numeric: tabular-nums; }
+.steps li.done .step-num { color: var(--accent); }
+.steps li[aria-current="step"] button { color: var(--text); font-weight: 600; }
 
 /* Text */
 
@@ -208,17 +214,17 @@ label.btn:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
   clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
 }
 
-/* Narrow screens: steps become a row of numbers above the page. Last in the
-   file, so it overrides the rules above. */
+/* Narrow screens: only the current step keeps its name under the bars. Last
+   in the file, so it overrides the rules above. */
 @media (max-width: 820px) {
-  .shell { grid-template-columns: minmax(0, 1fr); }
-  .rail { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); padding: 12px 16px; gap: 10px; }
-  .rail-note { display: none; }
-  .steps { flex-direction: row; overflow-x: auto; gap: 4px; }
-  .steps button { width: auto; padding: 6px; }
+  .top-inner, .stepper { padding: 0 16px; }
+  .top-inner { height: 56px; }
+  .top-note { display: none; }
+  .steps { gap: 5px; }
   .steps .step-title { display: none; }
-  .steps li[aria-current="step"] .step-title { display: inline; padding-right: 6px; }
-  .main { padding: 24px 16px 64px; }
+  .steps li[aria-current="step"] { flex: 3 1 0; }
+  .steps li[aria-current="step"] .step-title { display: inline; }
+  .main { padding: 28px 16px 64px; }
   h1 { font-size: 1.5rem; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .actions .btn { flex: 1 1 auto; justify-content: center; }

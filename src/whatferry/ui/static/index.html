@@ -10,19 +10,21 @@
   <script src="/static/app.js" defer></script>
 </head>
 <body>
-  <div class="shell">
-    <aside class="rail" aria-label="Steps">
+  <header class="top">
+    <div class="top-inner">
       <div class="brand">
         <img src="/static/icon.svg" alt="" width="28" height="28">
         <span>whatferry</span>
       </div>
+      <p class="top-note">Stays on this computer · never writes to either phone</p>
+    </div>
+    <nav class="stepper" aria-label="Steps">
       <ol class="steps" id="steps"></ol>
-      <p class="rail-note">Everything stays on this computer. Nothing is written to either phone.</p>
-    </aside>
-    <main class="main" id="main" tabindex="-1">
-      <p class="loading">Loading…</p>
-    </main>
-  </div>
+    </nav>
+  </header>
+  <main class="main" id="main" tabindex="-1">
+    <p class="loading">Loading…</p>
+  </main>
   <noscript><p class="noscript">The wizard needs JavaScript. The command line works without it: <code>whatferry --help</code>.</p></noscript>
 </body>
 </html>

@@ -7,11 +7,11 @@
 const TOKEN = new URLSearchParams(location.search).get("t") || "";
 
 const STEPS = [
-  { id: "start", title: "Before you start" },
+  { id: "start", title: "Start" },
   { id: "android", title: "Android backup" },
   { id: "before", title: "iPhone backup" },
-  { id: "account", title: "Add the account" },
-  { id: "after", title: "Second iPhone backup" },
+  { id: "account", title: "Add account" },
+  { id: "after", title: "Second backup" },
   { id: "done", title: "Results" },
 ];
 
@@ -169,8 +169,10 @@ function renderRail() {
     { class: isDone(step.id) ? "done" : "", "aria-current": step.id === current ? "step" : null },
     // The label keeps the name when narrow screens hide the title.
     h("button", { onclick: () => go(step.id), "aria-label": isDone(step.id) ? `${step.title} (done)` : step.title },
-      h("span", { class: "step-badge", "aria-hidden": "true", text: isDone(step.id) ? "✓" : String(i + 1) }),
-      h("span", { class: "step-title", text: step.title })))));
+      h("span", { class: "step-bar", "aria-hidden": "true" }),
+      h("span", { class: "step-label", "aria-hidden": "true" },
+        h("span", { class: "step-num", text: isDone(step.id) ? "✓" : String(i + 1) }),
+        h("span", { class: "step-title", text: step.title }))))));
 }
 
 function render() {
@@ -178,7 +180,8 @@ function render() {
   const main = document.getElementById("main");
   const view = { start: viewStart, android: viewAndroid, before: () => viewBackup("before"), account: viewAccount,
     after: () => viewBackup("after"), done: viewDone }[current];
-  main.replaceChildren(...[].concat(view()));
+  const index = STEPS.findIndex((s) => s.id === current);
+  main.replaceChildren(h("p", { class: "eyebrow", text: `Step ${index + 1} of ${STEPS.length}` }), ...[].concat(view()));
 }
 
 async function go(step) {
