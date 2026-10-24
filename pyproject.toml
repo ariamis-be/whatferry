@@ -1,7 +1,7 @@
 [project]
 name = "whatferry"
 version = "0.1.0"
-description = "Add your description here"
+description = "Move WhatsApp chats from Android to an iPhone that is already set up"
 readme = "README.md"
 authors = [
     { name = "Edward Arghiroiu", email = "edward@ariamis.be" }

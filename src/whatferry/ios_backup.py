@@ -1,0 +1,138 @@
+"""Read a Finder (or idevicebackup2) iPhone backup, encrypted or not.
+
+A backup folder holds Manifest.plist (device info, and the keybag when
+encrypted), Manifest.db (one row per file: domain, relative path, flags and a
+metadata plist) and the files themselves, stored as <id[:2]>/<id>. Nothing
+here writes to a backup folder.
+"""
+
+import plistlib
+import sqlite3
+from contextlib import closing
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+
+from iphone_backup_decrypt import EncryptedBackup
+from iphone_backup_decrypt.exceptions import IncorrectPassphraseError
+from iphone_backup_decrypt.utils import FilePlist
+
+DEFAULT_ROOT = Path.home() / "Library" / "Application Support" / "MobileSync" / "Backup"
+
+# Every WhatsApp container: the app, its shared group, extensions, and the
+# Business app (net.whatsapp.WhatsAppSMB).
+WHATSAPP_DOMAINS = "%net.whatsapp.%"
+
+FILE, FOLDER, SYMLINK = 1, 2, 4
+
+
+class BackupError(Exception):
+    pass
+
+
+class WrongPassphrase(BackupError):
+    pass
+
+
+@dataclass(frozen=True)
+class Entry:
+    file_id: str
+    domain: str
+    path: str
+    flags: int
+    size: int
+    mtime: int | None
+    bplist: bytes
+
+    @property
+    def key(self) -> tuple[str, str]:
+        return self.domain, self.path
+
+
+@dataclass
+class DeviceInfo:
+    name: str | None
+    model: str | None
+    ios_version: str | None
+    backup_date: str | None
+    encrypted: bool
+
+
+def device_info(folder: Path) -> DeviceInfo:
+    info = _plist(folder / "Info.plist")
+    manifest = _plist(folder / "Manifest.plist")
+    lockdown = manifest.get("Lockdown", {})
+    date = info.get("Last Backup Date") or manifest.get("Date")
+    return DeviceInfo(
+        name=info.get("Device Name") or lockdown.get("DeviceName"),
+        model=info.get("Product Type") or lockdown.get("ProductType"),
+        ios_version=info.get("Product Version") or lockdown.get("ProductVersion"),
+        backup_date=date.isoformat(timespec="seconds") if isinstance(date, datetime) else None,
+        encrypted=bool(manifest.get("IsEncrypted")),
+    )
+
+
+def _plist(path: Path) -> dict:
+    try:
+        with path.open("rb") as f:
+            return plistlib.load(f)
+    except FileNotFoundError:
+        return {}
+
+
+def list_backups(root: Path = DEFAULT_ROOT) -> list[tuple[Path, DeviceInfo]]:
+    try:
+        folders = sorted(p for p in root.iterdir() if (p / "Manifest.db").exists())
+    except PermissionError:
+        raise BackupError(
+            f"macOS refused to list {root}. Give your terminal Full Disk Access "
+            "(System Settings → Privacy & Security → Full Disk Access) and try again.") from None
+    except FileNotFoundError:
+        return []
+    return [(p, device_info(p)) for p in folders]
+
+
+class Backup:
+    """One backup folder, read through its manifest."""
+
+    def __init__(self, folder: Path, passphrase: str | None = None):
+        if not (folder / "Manifest.db").exists():
+            raise BackupError(f"{folder} is not a backup folder (no Manifest.db)")
+        self.folder = folder
+        self.info = device_info(folder)
+        self.passphrase = passphrase if self.info.encrypted else None
+        self._encrypted: EncryptedBackup | None = None
+        if self.info.encrypted:
+            if passphrase is None:
+                raise BackupError("this backup is encrypted: a passphrase is needed")
+            self._encrypted = EncryptedBackup(backup_directory=str(folder), passphrase=passphrase)
+            try:
+                self._encrypted.test_decryption()
+            except IncorrectPassphraseError:
+                raise WrongPassphrase("the backup passphrase is wrong") from None
+
+    def entries(self, domain_like: str = WHATSAPP_DOMAINS) -> list[Entry]:
+        query = ("SELECT fileID, domain, relativePath, flags, file FROM Files "
+                 "WHERE domain LIKE ? ORDER BY domain, relativePath")
+        if self._encrypted:
+            with self._encrypted.manifest_db_cursor() as cur:
+                rows = cur.execute(query, (domain_like,)).fetchall()
+        else:
+            uri = f"file:{self.folder / 'Manifest.db'}?mode=ro&immutable=1"
+            with closing(sqlite3.connect(uri, uri=True)) as db:
+                rows = db.execute(query, (domain_like,)).fetchall()
+        entries = []
+        for file_id, domain, path, flags, bplist in rows:
+            meta = FilePlist(bplist)
+            entries.append(Entry(file_id, domain, path, flags, meta.filesize, meta.mtime, bplist))
+        return entries
+
+    def read(self, entry: Entry) -> bytes:
+        if entry.flags != FILE:
+            raise BackupError(f"{entry.domain}/{entry.path} is not a file")
+        if self._encrypted:
+            if entry.size == 0:
+                return b""
+            # By file ID, not by path: a path lookup goes through SQL LIKE.
+            return self._encrypted._decrypt_inner_file(file_id=entry.file_id, file_bplist=entry.bplist)
+        return (self.folder / entry.file_id[:2] / entry.file_id).read_bytes()
