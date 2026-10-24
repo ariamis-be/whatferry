@@ -111,7 +111,7 @@ export default function App() {
                       {LANGS.find((l) => l.id === lang)?.name}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="w-auto min-w-44 [&_[role=menuitemradio]]:whitespace-nowrap">
                     <DropdownMenuLabel>{t.header.language}</DropdownMenuLabel>
                     <DropdownMenuRadioGroup value={lang} onValueChange={(v) => i18n.setLang(v as Lang)}>
                       {LANGS.map((l) => (
@@ -128,7 +128,7 @@ export default function App() {
                       {theme === "light" ? <Sun /> : theme === "dark" ? <Moon /> : <Monitor />}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="w-auto min-w-44 [&_[role=menuitemradio]]:whitespace-nowrap">
                     <DropdownMenuLabel>{t.header.theme}</DropdownMenuLabel>
                     <DropdownMenuRadioGroup
                       value={theme}
