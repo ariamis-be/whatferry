@@ -15,7 +15,11 @@ from pathlib import Path
 class Table:
     name: str
     columns: list[str]
-    rows: int
+    # None when SQLite can't open the table here: a virtual table whose
+    # module only exists inside the app, such as WhatsApp's full-text search
+    # with its own wa_tokenizer.
+    rows: int | None
+    virtual: bool = False
 
 
 @dataclass
@@ -55,13 +59,22 @@ def open_read_only(path: Path) -> Iterator[sqlite3.Connection]:
 def summarise(path: Path) -> Summary:
     with open_read_only(path) as db:
         summary = Summary(user_version=db.execute("PRAGMA user_version").fetchone()[0])
-        names = [r[0] for r in db.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")]
-        for name in names:
+        tables = db.execute(
+            "SELECT name, coalesce(sql, '') FROM sqlite_master "
+            "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").fetchall()
+        for name, sql in tables:
+            virtual = sql.lstrip().upper().startswith("CREATE VIRTUAL TABLE")
             quoted = '"' + name.replace('"', '""') + '"'
-            columns = [r[1] for r in db.execute(f"PRAGMA table_info({quoted})")]
-            rows = db.execute(f"SELECT count(*) FROM {quoted}").fetchone()[0]
-            summary.tables.append(Table(name, columns, rows))
+            try:
+                columns = [r[1] for r in db.execute(f"PRAGMA table_info({quoted})")]
+                rows = db.execute(f"SELECT count(*) FROM {quoted}").fetchone()[0]
+            except sqlite3.OperationalError:
+                if not virtual:
+                    raise
+                # Its data still sits in ordinary shadow tables (name_content
+                # and so on), which are counted like any other.
+                columns, rows = [], None
+            summary.tables.append(Table(name, columns, rows, virtual))
     return summary
 
 
