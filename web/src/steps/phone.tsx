@@ -1,28 +1,38 @@
 import { useCallback, useEffect, useState } from "react"
 import { CircleCheck, Download, Smartphone, TriangleAlert, Usb } from "lucide-react"
 
-import { api, runJob, size, when, type Candidate, type PhoneBackup, type PhoneStatus } from "@/api"
-import { Busy, Code, Disclosure, ErrorNotice, Instructions, Path } from "@/components/bits"
+import { api, runJob, size, when, type Candidate, type Phone, type PhoneBackup, type PhoneStatus } from "@/api"
+import { Busy, Disclosure, ErrorNotice, Instructions, Path } from "@/components/bits"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-
-const INSTALL_ADB: Record<string, string[]> = {
-  darwin: ["With Homebrew: brew install --cask android-platform-tools", "Or download platform-tools from Google (link below) and unzip it."],
-  win32: ["In a terminal: winget install Google.PlatformTools", "Or download platform-tools from Google (link below) and unzip it."],
-  other: ["Debian or Ubuntu: sudo apt install adb · Fedora: sudo dnf install android-tools", "Or download platform-tools from Google (link below) and unzip it."],
-}
+import { useI18n, type Messages } from "@/i18n"
+import type { Platform } from "@/wizard"
 
 function fetchStatus(): Promise<PhoneStatus | Error> {
   return api<PhoneStatus>("GET", "/api/android/phone").catch((e: Error) => e)
 }
 
+// The server explains unusable files in English; the page says it in the
+// page's language, from the same facts.
+function note(b: PhoneBackup, t: Messages): string | null {
+  if (b.name.includes("increment")) return t.phone.notes.increment
+  if (b.kind === "crypt14" || b.kind === "crypt12") return t.phone.notes.rooted
+  if (b.kind === "other") return t.phone.notes.other
+  return null
+}
+
+function advice(p: Phone, t: Messages): string {
+  return t.phone.advice[p.state] ?? t.phone.otherState(p.state)
+}
+
 /** Copy a backup straight off a phone plugged in with USB debugging. */
 export function PhoneCopy({ platform, folder, onCopied }: {
-  platform: string
+  platform: Platform
   folder: string
   onCopied: (file: Candidate) => void
 }) {
+  const { t } = useI18n()
   const [status, setStatus] = useState<PhoneStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copying, setCopying] = useState<string | null>(null)
@@ -63,28 +73,43 @@ export function PhoneCopy({ platform, folder, onCopied }: {
   const phones = status?.devices ?? []
   const ready = phones.filter((p) => p.ready)
 
+  const row = (serial: string, b: PhoneBackup) => (
+    <li key={b.path} className="flex flex-wrap items-start justify-between gap-3 rounded-md bg-muted/50 p-3">
+      <span className="grid min-w-0 gap-1">
+        <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
+          {b.name}
+          <Badge variant="outline">{t.phone.account(b.app, b.account)}</Badge>
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {size(b.size)} · {when(b.modified)}
+        </span>
+        <Path>{b.path}</Path>
+        {note(b, t) && <span className="text-xs text-muted-foreground">{note(b, t)}</span>}
+      </span>
+      {b.usable && (
+        <Button size="sm" disabled={copying !== null} onClick={() => copy(serial, b.path)}>
+          <Download data-icon="inline-start" />
+          {copying === b.path ? t.phone.copying : t.phone.copy}
+        </Button>
+      )}
+    </li>
+  )
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Plug the phone into this computer and whatferry copies the backup itself, straight into{" "}
-        <Code>{folder}</Code>. Needs USB debugging on the phone and adb on this computer; you can turn debugging off
-        again afterwards.
-      </p>
+      <p className="text-sm text-muted-foreground">{t.phone.intro(folder)}</p>
 
-      {status === null && !error && <Busy>Looking for adb and connected phones…</Busy>}
+      {status === null && !error && <Busy>{t.phone.looking}</Busy>}
       <ErrorNotice message={error ?? status?.error} />
 
       {status && !status.adb && (
         <Alert>
           <TriangleAlert />
-          <AlertTitle>adb isn't installed on this computer</AlertTitle>
+          <AlertTitle>{t.phone.noAdbTitle}</AlertTitle>
           <AlertDescription className="space-y-2">
-            <span className="block">adb is Google's free tool for talking to Android phones over USB.</span>
-            <Instructions items={INSTALL_ADB[platform] ?? INSTALL_ADB.other} />
-            <span className="block">
-              Google's download: <Code>developer.android.com/tools/releases/platform-tools</Code>. If adb is somewhere
-              whatferry doesn't look, start it with <Code>WHATFERRY_ADB=/path/to/adb</Code>.
-            </span>
+            <span className="block">{t.phone.noAdbIntro}</span>
+            <Instructions items={t.phone.install[platform]} />
+            <span className="block">{t.phone.download}</span>
           </AlertDescription>
         </Alert>
       )}
@@ -92,20 +117,10 @@ export function PhoneCopy({ platform, folder, onCopied }: {
       {status?.adb && ready.length === 0 && (
         <div className="space-y-3 rounded-lg border p-4">
           <h3 className="flex items-center gap-2 text-sm font-medium">
-            <Usb className="size-4" /> Turn on USB debugging
+            <Usb className="size-4" /> {t.phone.debugTitle}
           </h3>
-          <Instructions
-            items={[
-              "On the phone, open Settings → About phone and tap Build number seven times. Enter your PIN if asked; it says “You are now a developer”. (Samsung: Settings → About phone → Software information → Build number.)",
-              "Go back to Settings → System → Developer options and turn on USB debugging.",
-              "Plug the phone into this computer with a USB cable and unlock it.",
-              "Tap Allow on “Allow USB debugging?”. Ticking “Always allow from this computer” saves doing it again.",
-              "Click Find phone below.",
-            ]}
-          />
-          <p className="text-xs text-muted-foreground">
-            When you're done: Developer options → turn USB debugging off.
-          </p>
+          <Instructions items={t.phone.debug} />
+          <p className="text-xs text-muted-foreground">{t.phone.debugOff}</p>
         </div>
       )}
 
@@ -114,84 +129,49 @@ export function PhoneCopy({ platform, folder, onCopied }: {
         .map((p) => (
           <Alert key={p.serial}>
             <Smartphone />
-            <AlertTitle>{p.model ?? "Android phone"} isn't ready</AlertTitle>
-            <AlertDescription>{p.advice}</AlertDescription>
+            <AlertTitle>{t.phone.notReady(p.model ?? t.phone.phone)}</AlertTitle>
+            <AlertDescription>{advice(p, t)}</AlertDescription>
           </Alert>
         ))}
 
-      {ready.map((phone) => (
-        <div key={phone.serial} className="space-y-3 rounded-lg border p-4">
-          <h3 className="flex items-center gap-2 text-sm font-medium">
-            <Smartphone className="size-4" /> {phone.model ?? "Android phone"}
-            <Badge variant="secondary">Connected</Badge>
-          </h3>
-          <ErrorNotice message={phone.error} />
-          {(() => {
-            const backups = phone.backups ?? []
-            const usable = backups.filter((b) => b.usable)
-            const other = backups.filter((b) => !b.usable)
-            const row = (b: PhoneBackup) => (
-              <li key={b.path} className="flex flex-wrap items-start justify-between gap-3 rounded-md bg-muted/50 p-3">
-                <span className="grid min-w-0 gap-1">
-                  <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                    {b.name}
-                    <Badge variant="outline">
-                      {b.app}
-                      {b.account ? ` · account ${b.account}` : ""}
-                    </Badge>
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {size(b.size)} · {when(b.modified)}
-                  </span>
-                  <Path>{b.path}</Path>
-                  {b.note && <span className="text-xs text-muted-foreground">{b.note}</span>}
-                </span>
-                {b.usable && (
-                  <Button size="sm" disabled={copying !== null} onClick={() => copy(phone.serial, b.path)}>
-                    <Download data-icon="inline-start" />
-                    {copying === b.path ? "Copying…" : "Copy"}
-                  </Button>
-                )}
-              </li>
-            )
-            return (
-              <>
-                {backups.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No WhatsApp backup on this phone yet. Make one first (step 1), then click Find phone again.
-                  </p>
-                )}
-                {backups.length > 0 && usable.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No usable backup yet: turn on the 64-digit encrypted backup and tap Back up (step 1), then click
-                    Find phone again.
-                  </p>
-                )}
-                {usable.length > 0 && <ul className="space-y-2">{usable.map(row)}</ul>}
-                {other.length > 0 && (
-                  <Disclosure title={`${other.length} other ${other.length === 1 ? "file" : "files"} that can't be used`}>
-                    <ul className="space-y-2">{other.map(row)}</ul>
-                  </Disclosure>
-                )}
-              </>
-            )
-          })()}
-        </div>
-      ))}
+      {ready.map((phone) => {
+        const backups = phone.backups ?? []
+        const usable = backups.filter((b) => b.usable)
+        const other = backups.filter((b) => !b.usable)
+        return (
+          <div key={phone.serial} className="space-y-3 rounded-lg border p-4">
+            <h3 className="flex items-center gap-2 text-sm font-medium">
+              <Smartphone className="size-4" /> {phone.model ?? t.phone.phone}
+              <Badge variant="secondary">{t.phone.connected}</Badge>
+            </h3>
+            <ErrorNotice message={phone.error} />
+            {backups.length === 0 && <p className="text-sm text-muted-foreground">{t.phone.noBackups}</p>}
+            {backups.length > 0 && usable.length === 0 && (
+              <p className="text-sm text-muted-foreground">{t.phone.noUsable}</p>
+            )}
+            {usable.length > 0 && <ul className="space-y-2">{usable.map((b) => row(phone.serial, b))}</ul>}
+            {other.length > 0 && (
+              <Disclosure title={t.phone.otherFiles(other.length)}>
+                <ul className="space-y-2">{other.map((b) => row(phone.serial, b))}</ul>
+              </Disclosure>
+            )}
+          </div>
+        )
+      })}
 
       {copied && (
         <Alert>
           <CircleCheck />
-          <AlertTitle>Copied {copied.name}</AlertTitle>
+          <AlertTitle>{t.phone.copiedTitle(copied.name)}</AlertTitle>
           <AlertDescription>
-            It's chosen below, in step 3. <Path>{copied.path}</Path>
+            {t.phone.copiedBody} <Path>{copied.path}</Path>
           </AlertDescription>
         </Alert>
       )}
 
       {(status || error) && (
         <Button variant="outline" onClick={look}>
-          <Usb data-icon="inline-start" /> Find phone
+          <Usb data-icon="inline-start" /> {t.phone.findPhone}
         </Button>
       )}
     </div>

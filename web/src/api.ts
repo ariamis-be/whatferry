@@ -161,7 +161,13 @@ export async function runJob<T>(path: string, body: unknown): Promise<T> {
   }
 }
 
-export const num = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "?")
+// Dates and numbers follow the page's language, set by the language picker.
+let currentLocale: string | undefined
+export function setLocale(locale: string) {
+  currentLocale = locale
+}
+
+export const num = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString(currentLocale) : "?")
 
 export function size(bytes: number | null | undefined) {
   if (typeof bytes !== "number") return "?"
@@ -177,11 +183,11 @@ export function size(bytes: number | null | undefined) {
 export function when(iso: string | null | undefined) {
   if (!iso) return "?"
   const d = new Date(iso)
-  return isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+  return isNaN(d.getTime()) ? iso : d.toLocaleString(currentLocale, { dateStyle: "medium", timeStyle: "short" })
 }
 
 export function day(iso: string | null | undefined) {
   if (!iso) return "?"
   const d = new Date(iso)
-  return isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { dateStyle: "medium" })
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString(currentLocale, { dateStyle: "medium" })
 }

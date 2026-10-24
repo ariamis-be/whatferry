@@ -6,16 +6,20 @@ import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Spinner } from "@/components/ui/spinner"
 import { num, type Counts } from "@/api"
+import { useI18n } from "@/i18n"
 import { cn } from "@/lib/utils"
 
+export { Code, Path } from "@/components/code"
+
 export function StatGrid({ counts, className }: { counts: Counts; className?: string }) {
+  const { t } = useI18n()
   const items = Object.entries(counts).filter(([, n]) => n !== null && n !== undefined)
   return (
     <dl className={cn("grid grid-cols-2 gap-2 sm:grid-cols-4", className)}>
       {items.map(([label, n]) => (
         <div key={label} className="rounded-lg bg-muted/60 px-3 py-2.5">
           <dd className="text-xl font-semibold tabular-nums">{num(n)}</dd>
-          <dt className="text-xs text-muted-foreground">{label}</dt>
+          <dt className="text-xs text-muted-foreground">{t.counts[label] ?? label}</dt>
         </div>
       ))}
     </dl>
@@ -52,11 +56,12 @@ export function Instructions({ items }: { items: ReactNode[] }) {
 }
 
 export function ErrorNotice({ message }: { message: string | null | undefined }) {
+  const { t } = useI18n()
   if (!message) return null
   return (
     <Alert variant="destructive" role="alert">
       <CircleAlert />
-      <AlertTitle>That didn't work</AlertTitle>
+      <AlertTitle>{t.common.failed}</AlertTitle>
       <AlertDescription>{message}</AlertDescription>
     </Alert>
   )
@@ -69,16 +74,6 @@ export function Busy({ children }: { children: ReactNode }) {
       {children}
     </p>
   )
-}
-
-// wrap-anywhere breaks a long path only where it would overflow; break-all
-// would split short names like msgstore.db.crypt15 mid-word.
-export function Path({ children, className }: { children: ReactNode; className?: string }) {
-  return <code className={cn("font-mono text-xs wrap-anywhere text-muted-foreground", className)}>{children}</code>
-}
-
-export function Code({ children }: { children: ReactNode }) {
-  return <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em] wrap-anywhere">{children}</code>
 }
 
 /** A titled section that opens on click, for detail most people skip. */

@@ -2,29 +2,35 @@ import { useEffect, useState } from "react"
 import { Check, Copy, RotateCcw } from "lucide-react"
 
 import { api } from "@/api"
-import { Code, PageHeader, Section } from "@/components/bits"
+import { PageHeader, Section } from "@/components/bits"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { useI18n } from "@/i18n"
 import type { StepProps } from "@/wizard"
 
 export function ResultsStep({ overview, refresh, go }: StepProps) {
-  const [text, setText] = useState("Loading…")
+  const { t } = useI18n()
+  const [text, setText] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
+    let live = true
     api<{ text: string }>("GET", "/api/summary")
-      .then((s) => setText(s.text))
-      .catch((e: Error) => setText(e.message))
+      .then((s) => live && setText(s.text))
+      .catch((e: Error) => live && setText(e.message))
+    return () => {
+      live = false
+    }
   }, [])
 
   async function copy() {
-    await navigator.clipboard.writeText(text)
+    await navigator.clipboard.writeText(text ?? "")
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   async function startOver() {
-    if (!confirm("Forget all progress? Decrypted copies stay on disk until you delete them.")) return
+    if (!confirm(t.results.confirmReset)) return
     await api("POST", "/api/reset", {})
     await refresh()
     go("start")
@@ -32,35 +38,31 @@ export function ResultsStep({ overview, refresh, go }: StepProps) {
 
   return (
     <>
-      <PageHeader
-        title="Results"
-        lead="This summary holds counts, versions and file locations: no messages, names or phone numbers. Send it on so the transfer can be built for this exact setup."
-      />
+      <PageHeader title={t.results.title} lead={t.results.lead} />
 
       <div className="space-y-3">
-        <Textarea readOnly aria-label="Summary" value={text} className="min-h-96 font-mono text-xs leading-relaxed" />
-        <div className="flex items-center gap-3">
-          <Button size="lg" onClick={copy}>
-            {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
-            {copied ? "Copied" : "Copy summary"}
-          </Button>
-        </div>
+        {t.results.summaryLanguage && <p className="text-xs text-muted-foreground">{t.results.summaryLanguage}</p>}
+        <Textarea
+          readOnly
+          aria-label={t.results.summaryLabel}
+          value={text ?? t.common.loading}
+          lang="en"
+          className="min-h-96 font-mono text-xs leading-relaxed"
+        />
+        <Button onClick={copy} disabled={text === null}>
+          {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
+          {copied ? t.results.copied : t.results.copy}
+        </Button>
       </div>
 
-      <Section title="What happens next">
-        <p className="text-sm">
-          The step that writes the Android chats into the new account isn't built yet. These results are what it will
-          be built from.
-        </p>
+      <Section title={t.results.nextTitle}>
+        <p className="text-sm">{t.results.next}</p>
       </Section>
 
-      <Section title="Cleaning up">
-        <p className="text-sm">
-          Decrypted copies are in <Code>{overview.home}</Code>. Delete that folder whenever you like; the summary above
-          doesn't need it.
-        </p>
+      <Section title={t.results.cleanTitle}>
+        <p className="text-sm">{t.results.clean(overview.home)}</p>
         <Button variant="outline" onClick={startOver}>
-          <RotateCcw data-icon="inline-start" /> Start over
+          <RotateCcw data-icon="inline-start" /> {t.results.startOver}
         </Button>
       </Section>
     </>

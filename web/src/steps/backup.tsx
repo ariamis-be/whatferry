@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ArrowRight, CircleCheck, FolderSearch, Info, Lock, RefreshCw, TriangleAlert } from "lucide-react"
+import { CircleCheck, FolderSearch, Info, Lock, RefreshCw, TriangleAlert } from "lucide-react"
 
 import { api, day, num, runJob, size, when, type BackupListing, type Diff, type IosEntry } from "@/api"
 import { Busy, Disclosure, ErrorNotice, Instructions, PageHeader, Path, Section, StatGrid } from "@/components/bits"
@@ -12,30 +12,8 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { nextStep, type StepProps } from "@/wizard"
-
-const BACKUP_STEPS: Record<string, string[]> = {
-  darwin: [
-    "Connect the iPhone to this Mac with a cable and unlock it. Tap Trust if it asks.",
-    "Open Finder and select the iPhone in the sidebar.",
-    "Under Backups, choose “Back up all of the data on your iPhone to this Mac”.",
-    "Tick “Encrypt local backup” and choose a passphrase you will remember. You'll type it here in a moment.",
-    "Click Back Up Now and wait until it finishes.",
-  ],
-  win32: [
-    "Connect the iPhone to this PC with a cable and unlock it. Tap Trust if it asks.",
-    "Open the Apple Devices app (or iTunes) and select the iPhone.",
-    "Under Backups, choose “Back up all of the data on your iPhone to this computer”.",
-    "Tick “Encrypt local backup” and choose a passphrase you will remember. You'll type it here in a moment.",
-    "Click Back Up Now and wait until it finishes.",
-  ],
-  other: [
-    "Install libimobiledevice and connect the iPhone with a cable. Unlock it and tap Trust.",
-    "Turn on encryption once: idevicebackup2 encryption on",
-    "Make the backup: idevicebackup2 backup --full <folder>",
-    "Start the wizard with WHATFERRY_BACKUP_ROOT=<folder> so it can find the backup.",
-  ],
-}
+import { useI18n } from "@/i18n"
+import { platformOf, type StepProps } from "@/wizard"
 
 interface Listing {
   backups: BackupListing[]
@@ -47,6 +25,7 @@ function findBackups(): Promise<Listing> {
 }
 
 export function BackupStep({ overview, refresh, go, role }: StepProps & { role: "before" | "after" }) {
+  const { t } = useI18n()
   const first = role === "before"
   const state = overview.state
   const checked = state[role]
@@ -85,24 +64,19 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
   if (!first && !state.before) {
     return (
       <>
-        <PageHeader title="Second iPhone backup" lead="Check the first iPhone backup before this one." />
+        <PageHeader title={t.backup.title.after} lead={t.backup.needFirst} />
         <Button variant="outline" onClick={() => go("before")}>
-          Go to the first backup
+          {t.backup.goFirst}
         </Button>
       </>
     )
   }
 
   const chosen = listing?.backups.find((b) => b.folder === folder)
-  const steps = BACKUP_STEPS[overview.platform] ?? BACKUP_STEPS.other
 
   async function inspect() {
     if (!chosen) return
-    setBusy(
-      chosen.encrypted
-        ? "Unlocking the backup. This takes a minute or two: the slow part is the encryption doing its job."
-        : "Reading the backup…",
-    )
+    setBusy(chosen.encrypted ? t.backup.unlocking : t.backup.reading)
     setError(null)
     try {
       await runJob("/api/ios/inspect", { folder: chosen.folder, passphrase: chosen.encrypted ? passphrase : null, role })
@@ -116,41 +90,27 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
 
   return (
     <>
-      <PageHeader
-        title={first ? "iPhone backup" : "Second iPhone backup"}
-        lead={
-          first
-            ? "A backup shows how WhatsApp on the iPhone stores its data today. The wizard reads it; it never changes it."
-            : "With the second account added, a new backup shows which files the new account created. That's where the Android chats will go."
-        }
-      />
+      <PageHeader title={t.backup.title[role]} lead={t.backup.lead[role]} />
 
-      <Section n={1} title={first ? "Back up the iPhone" : "Back up the iPhone again"}>
-        <Instructions items={steps} />
-        {!first && (
-          <p className="text-sm text-muted-foreground">
-            Use the same passphrase as before. The new backup replaces the old one in the same folder; the wizard kept
-            what it needs from the first.
-          </p>
-        )}
+      <Section n={1} title={t.backup.makeTitle[role]}>
+        <Instructions items={t.backup.make[platformOf(overview)]} />
+        {!first && <p className="text-sm text-muted-foreground">{t.backup.samePassphrase}</p>}
       </Section>
 
-      <Section n={2} title="Choose the backup">
+      <Section n={2} title={t.backup.chooseTitle}>
         <ErrorNotice message={listing?.error} />
         {listing === null ? (
-          <Busy>Looking for backups…</Busy>
+          <Busy>{t.backup.looking}</Busy>
         ) : listing.backups.length === 0 ? (
           <Alert>
             <FolderSearch />
-            <AlertTitle>No backups found yet</AlertTitle>
+            <AlertTitle>{t.backup.noneTitle}</AlertTitle>
             <AlertDescription>
-              {overview.backup_roots.length
-                ? `Looked in ${overview.backup_roots.join(", ")}.`
-                : "This system has no standard backup folder: set WHATFERRY_BACKUP_ROOT."}
+              {overview.backup_roots.length ? t.backup.lookedIn(overview.backup_roots.join(", ")) : t.backup.noRoot}
             </AlertDescription>
           </Alert>
         ) : (
-          <RadioGroup value={folder} onValueChange={setFolder} aria-label="Backup">
+          <RadioGroup value={folder} onValueChange={setFolder} aria-label={t.backup.chooseTitle}>
             {listing.backups.map((b) => (
               <Label
                 key={b.folder}
@@ -160,17 +120,17 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
                 <RadioGroupItem value={b.folder} id={`${role}-${b.folder}`} className="mt-0.5" />
                 <span className="grid min-w-0 gap-1">
                   <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                    {b.name ?? "iPhone"}
+                    {b.name ?? t.backup.iphone}
                     {b.encrypted ? (
                       <Badge variant="secondary">
-                        <Lock data-icon="inline-start" /> Encrypted
+                        <Lock data-icon="inline-start" /> {t.backup.encrypted}
                       </Badge>
                     ) : (
-                      <Badge variant="outline">Not encrypted</Badge>
+                      <Badge variant="outline">{t.backup.notEncrypted}</Badge>
                     )}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {b.model ?? "?"} · iOS {b.ios_version ?? "?"} · backed up {when(b.backup_date)}
+                    {t.backup.deviceLine(b.model ?? "?", b.ios_version ?? "?", when(b.backup_date))}
                   </span>
                   <Path>{b.folder}</Path>
                 </span>
@@ -179,22 +139,19 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
           </RadioGroup>
         )}
         <Button variant="ghost" onClick={look}>
-          <RefreshCw data-icon="inline-start" /> Look again
+          <RefreshCw data-icon="inline-start" /> {t.common.searchAgain}
         </Button>
 
         {chosen && !chosen.encrypted && (
           <Alert>
             <TriangleAlert />
-            <AlertTitle>This backup isn't encrypted</AlertTitle>
-            <AlertDescription>
-              It's fine for checking, but the transfer will need an encrypted one: tick “Encrypt local backup” and back
-              up again.
-            </AlertDescription>
+            <AlertTitle>{t.backup.notEncryptedTitle}</AlertTitle>
+            <AlertDescription>{t.backup.notEncryptedBody}</AlertDescription>
           </Alert>
         )}
         {chosen?.encrypted && (
           <div className="grid gap-2">
-            <Label htmlFor={`pass-${role}`}>Backup passphrase</Label>
+            <Label htmlFor={`pass-${role}`}>{t.backup.passLabel}</Label>
             <Input
               id={`pass-${role}`}
               type="password"
@@ -202,33 +159,25 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">
-              The one you chose when you ticked “Encrypt local backup”. Used once, never saved.
-            </p>
+            <p className="text-xs text-muted-foreground">{t.backup.passHint}</p>
           </div>
         )}
       </Section>
 
-      <ErrorNotice message={error} />
-      {busy && <Busy>{busy}</Busy>}
-
-      <div className="flex flex-wrap gap-2">
-        <Button size="lg" variant={checked ? "outline" : "default"} disabled={!chosen || busy !== null} onClick={inspect}>
-          {checked ? "Check again" : first ? "Check this backup" : "Check and compare"}
+      <div className="space-y-4">
+        <ErrorNotice message={error} />
+        {busy && <Busy>{busy}</Busy>}
+        <Button variant={checked ? "outline" : "default"} disabled={!chosen || busy !== null} onClick={inspect}>
+          {checked ? t.backup.checkAgain : t.backup.check[role]}
         </Button>
-        {checked && (
-          <Button size="lg" onClick={() => go(nextStep(role))}>
-            Continue <ArrowRight data-icon="inline-end" />
-          </Button>
-        )}
+        {checked && <BackupResult entry={checked} first={first} />}
       </div>
-
-      {checked && <BackupResult entry={checked} first={first} />}
     </>
   )
 }
 
 function BackupResult({ entry, first }: { entry: IosEntry; first: boolean }) {
+  const { t } = useI18n()
   const r = entry.report
   const d = r.device
   const stores = r.databases.filter((db) => db.path.split("/").pop() === "ChatStorage.sqlite")
@@ -237,31 +186,29 @@ function BackupResult({ entry, first }: { entry: IosEntry; first: boolean }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CircleCheck className="size-4 text-primary" />
-          {d.name ?? "iPhone"}
-          <Badge variant="secondary">Checked</Badge>
+          {d.name ?? t.backup.iphone}
+          <Badge variant="secondary">{t.common.checked}</Badge>
         </CardTitle>
         <CardDescription>
-          {d.model ?? "?"} · iOS {d.ios_version ?? "?"} · backed up {when(d.backup_date)} · checked {when(entry.checked_at)}
+          {t.backup.resultLine(d.model ?? "?", d.ios_version ?? "?", when(d.backup_date), when(entry.checked_at))}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {Object.keys(r.domains).length === 0 && (
           <Alert>
             <TriangleAlert />
-            <AlertDescription>This backup has no WhatsApp data. Is WhatsApp installed on this iPhone?</AlertDescription>
+            <AlertDescription>{t.backup.noWhatsapp}</AlertDescription>
           </Alert>
         )}
         {entry.diff && <DiffView diff={entry.diff} />}
         {stores.map((store) => (
           <div key={store.path} className="space-y-3">
             <div>
-              <h3 className="text-sm font-medium">
-                Chats in <code className="font-mono text-xs">{store.path}</code>
-              </h3>
+              <h3 className="text-sm font-medium">{t.backup.chatsIn(store.path)}</h3>
               <p className="text-xs text-muted-foreground">
                 {store.first_message
-                  ? `Messages from ${day(store.first_message)} to ${day(store.last_message)}`
-                  : "No messages yet."}
+                  ? t.backup.messagesRange(day(store.first_message), day(store.last_message))
+                  : t.common.noMessages}
               </p>
             </div>
             <StatGrid counts={store.counts} />
@@ -270,42 +217,45 @@ function BackupResult({ entry, first }: { entry: IosEntry; first: boolean }) {
         {stores.length > 1 && (
           <Alert>
             <Info />
-            <AlertDescription>{stores.length} chat databases: probably one per account.</AlertDescription>
+            <AlertDescription>{t.backup.manyStores(stores.length)}</AlertDescription>
           </Alert>
         )}
-        <Disclosure title="WhatsApp's storage areas">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Area</TableHead>
-                  <TableHead className="text-right">Files</TableHead>
-                  <TableHead className="text-right">Size</TableHead>
+        <Disclosure title={t.backup.areasTitle}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t.backup.areasHead[0]}</TableHead>
+                <TableHead className="text-right">{t.backup.areasHead[1]}</TableHead>
+                <TableHead className="text-right">{t.backup.areasHead[2]}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Object.entries(r.domains).map(([domain, n]) => (
+                <TableRow key={domain}>
+                  <TableCell className="font-mono text-xs whitespace-normal break-all">{domain}</TableCell>
+                  <TableCell className="text-right tabular-nums">{num(n.files)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{size(n.bytes)}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(r.domains).map(([domain, n]) => (
-                  <TableRow key={domain}>
-                    <TableCell className="font-mono text-xs whitespace-normal break-all">{domain}</TableCell>
-                    <TableCell className="text-right tabular-nums">{num(n.files)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{size(n.bytes)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+              ))}
+            </TableBody>
+          </Table>
         </Disclosure>
-        {first && (
-          <p className="text-xs text-muted-foreground">Saved this backup's file list, to compare with the next backup.</p>
-        )}
+        {first && <p className="text-xs text-muted-foreground">{t.backup.savedList}</p>}
       </CardContent>
     </Card>
   )
 }
 
 function DiffView({ diff }: { diff: Diff }) {
+  const { t } = useI18n()
   const found = diff.new_chat_storages.length
+  const lists: [string, string[]][] = [
+    [t.backup.filesAdded, diff.added_paths],
+    [t.backup.filesChanged, diff.changed_paths],
+  ]
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-medium">What adding the account changed</h3>
+      <h3 className="text-sm font-medium">{t.backup.diffTitle}</h3>
       <StatGrid
         className="sm:grid-cols-3"
         counts={{ "files added": diff.added, "files changed": diff.changed, "files removed": diff.removed }}
@@ -313,35 +263,31 @@ function DiffView({ diff }: { diff: Diff }) {
       {found ? (
         <Alert>
           <CircleCheck />
-          <AlertTitle>
-            {found === 1 ? "Found the new account's chat database" : `Found ${found} new chat databases`}
-          </AlertTitle>
+          <AlertTitle>{found === 1 ? t.backup.foundOne : t.backup.foundMany(found)}</AlertTitle>
           <AlertDescription className="space-y-2">
             {diff.new_chat_storages.map((p) => (
               <Path key={p} className="block text-foreground">
                 {p}
               </Path>
             ))}
-            <span className="block">That's where the Android chats will go.</span>
+            <span className="block">{t.backup.whereGo}</span>
           </AlertDescription>
         </Alert>
       ) : (
         <Alert>
           <TriangleAlert />
-          <AlertTitle>No new chat database appeared</AlertTitle>
-          <AlertDescription>
-            The second account may share the existing one, or WhatsApp hadn't finished setting it up before the backup.
-            The full list of changes is below.
-          </AlertDescription>
+          <AlertTitle>{t.backup.noneNewTitle}</AlertTitle>
+          <AlertDescription>{t.backup.noneNewBody}</AlertDescription>
         </Alert>
       )}
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Where</TableHead>
-            <TableHead className="text-right">Added</TableHead>
-            <TableHead className="text-right">Changed</TableHead>
-            <TableHead className="text-right">Removed</TableHead>
+            {t.backup.diffHead.map((head, i) => (
+              <TableHead key={head} className={i ? "text-right" : undefined}>
+                {head}
+              </TableHead>
+            ))}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -355,14 +301,11 @@ function DiffView({ diff }: { diff: Diff }) {
           ))}
         </TableBody>
       </Table>
-      {[
-        ["Files added", diff.added_paths],
-        ["Files changed", diff.changed_paths],
-      ].map(([title, paths]) =>
-        (paths as string[]).length ? (
-          <Disclosure key={title as string} title={title as string}>
+      {lists.map(([title, paths]) =>
+        paths.length ? (
+          <Disclosure key={title} title={title}>
             <pre className="max-h-72 overflow-auto rounded-lg bg-muted p-3 font-mono text-xs wrap-anywhere whitespace-pre-wrap">
-              {(paths as string[]).join("\n")}
+              {paths.join("\n")}
             </pre>
           </Disclosure>
         ) : null,

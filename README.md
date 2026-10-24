@@ -57,6 +57,11 @@ random token in the link it opens, with the Host and Origin headers checked
 and a Content-Security-Policy that allows only its own script.
 `whatferry ui --no-browser` prints the link instead of opening it.
 
+The page is in English and Simplified Chinese (it starts in the browser's
+language; the header switches it), with light, dark or system theme (system
+by default). Both choices are kept in the browser. Messages from the server,
+and the summary to send on, stay in English.
+
 The page is React with shadcn/ui, built from `web/` into
 `src/whatferry/ui/static/` and committed, so running whatferry needs only
 Python. To change it, see [`web/README.md`](web/README.md).

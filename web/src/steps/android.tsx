@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowRight, CircleCheck, Eye, EyeOff, FileUp, Info, RefreshCw, TriangleAlert } from "lucide-react"
+import { Fragment, useCallback, useEffect, useRef, useState } from "react"
+import { CircleCheck, Eye, EyeOff, FileUp, Info, RefreshCw, TriangleAlert } from "lucide-react"
 
 import { api, day, runJob, size, when, type AndroidEntry, type Candidate } from "@/api"
-import { Busy, Code, Disclosure, ErrorNotice, Instructions, PageHeader, Path, Section, StatGrid } from "@/components/bits"
+import { Busy, Disclosure, ErrorNotice, Instructions, PageHeader, Path, Section, StatGrid } from "@/components/bits"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,34 +12,33 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useI18n } from "@/i18n"
 import { PhoneCopy } from "@/steps/phone"
-import type { StepProps } from "@/wizard"
+import { platformOf, type StepProps } from "@/wizard"
+
+const FOLDERS = [
+  "Android/media/com.whatsapp/WhatsApp/Databases",
+  "Android/media/com.whatsapp/WhatsApp/accounts/<number>/Databases",
+  "Android/media/com.whatsapp.w4b/WhatsApp Business/Databases",
+  "WhatsApp/Databases",
+]
 
 /** Where WhatsApp keeps its backups on the phone, by setup. */
 function BackupFolders() {
-  const rows: [string, string][] = [
-    ["One account", "Android/media/com.whatsapp/WhatsApp/Databases"],
-    ["Several accounts", "Android/media/com.whatsapp/WhatsApp/accounts/<number>/Databases"],
-    ["WhatsApp Business", "Android/media/com.whatsapp.w4b/WhatsApp Business/Databases"],
-    ["Android 10 or older", "WhatsApp/Databases"],
-  ]
+  const { t } = useI18n()
   return (
-    <Disclosure title="Where WhatsApp keeps backups on the phone">
+    <Disclosure title={t.android.foldersTitle}>
       <Table>
         <TableBody>
-          {rows.map(([setup, folder]) => (
-            <TableRow key={setup}>
-              <TableCell className="text-sm">{setup}</TableCell>
+          {FOLDERS.map((folder, i) => (
+            <TableRow key={folder}>
+              <TableCell className="text-sm">{t.android.folders[i]}</TableCell>
               <TableCell className="font-mono text-xs whitespace-normal wrap-anywhere">{folder}</TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      <p className="pt-2 text-xs text-muted-foreground">
-        With several accounts, each <Code>accounts/&lt;number&gt;</Code> folder is one account: pick the one whose
-        msgstore.db.crypt15 is newest, just after you tapped Back up. Files ending .crypt14 and dated or “increment”
-        files can't be used.
-      </p>
+      <p className="pt-2 text-xs text-muted-foreground">{t.android.foldersNote}</p>
     </Disclosure>
   )
 }
@@ -51,7 +50,8 @@ function findCandidates(): Promise<Candidate[] | Error> {
   )
 }
 
-export function AndroidStep({ overview, refresh, go }: StepProps) {
+export function AndroidStep({ overview, refresh }: StepProps) {
+  const { t } = useI18n()
   const checked = overview.state.android
   const [files, setFiles] = useState<Candidate[] | null>(null)
   const [path, setPath] = useState<string>("")
@@ -86,7 +86,7 @@ export function AndroidStep({ overview, refresh, go }: StepProps) {
 
   async function upload(file: File | undefined) {
     if (!file) return
-    setBusy(`Copying ${file.name}…`)
+    setBusy(t.android.copyingFile(file.name))
     setError(null)
     try {
       const saved = await api<{ path: string; name: string; size: number }>("POST", "/api/android/upload", file)
@@ -99,7 +99,7 @@ export function AndroidStep({ overview, refresh, go }: StepProps) {
   }
 
   async function inspect() {
-    setBusy("Decrypting and checking the backup…")
+    setBusy(t.android.decrypting)
     setError(null)
     try {
       await runJob("/api/android/inspect", { path, key })
@@ -111,81 +111,39 @@ export function AndroidStep({ overview, refresh, go }: StepProps) {
     setBusy(null)
   }
 
+  const folders = overview.candidate_folders
   return (
     <>
-      <PageHeader
-        title="Android backup"
-        lead="WhatsApp's encrypted backup, with a 64-digit key you write down, can be read here without rooting the phone."
-      />
+      <PageHeader title={t.android.title} lead={t.android.lead} />
 
-      <Section n={1} title="Make the backup on the Android phone">
-        <Instructions
-          items={[
-            "Open WhatsApp → Settings → Chats → Chat backup → End-to-end encrypted backup → Turn on.",
-            "Choose “Use 64-digit encryption key instead”, then generate the key. Write it down or take a screenshot: WhatsApp can't show it again.",
-            "Back on Chat backup, tap Back up. This saves a file on the phone even if Google Drive backups are off.",
-          ]}
-        />
+      <Section n={1} title={t.android.makeTitle}>
+        <Instructions items={t.android.make} />
         <Alert>
           <Info />
-          <AlertTitle>More than one WhatsApp account on the phone?</AlertTitle>
-          <AlertDescription>
-            Each account has its own backup and its own key. Switch to the account you want to move (tap your profile
-            picture → switch account) before the steps above, and repeat them for each account you want.
-          </AlertDescription>
+          <AlertTitle>{t.android.multiTitle}</AlertTitle>
+          <AlertDescription>{t.android.multiBody}</AlertDescription>
         </Alert>
       </Section>
 
-      <Section n={2} title="Bring the file to this computer">
-        <p className="text-sm text-muted-foreground">Any of these works; pick whichever is easiest.</p>
+      <Section n={2} title={t.android.bringTitle}>
+        <p className="text-sm text-muted-foreground">{t.android.bringLead}</p>
         <Tabs defaultValue="share">
           <TabsList className="h-auto flex-wrap">
-            <TabsTrigger value="share">Share from the phone</TabsTrigger>
-            <TabsTrigger value="cable">USB file transfer</TabsTrigger>
-            <TabsTrigger value="adb">Copy with USB debugging</TabsTrigger>
+            <TabsTrigger value="share">{t.android.tabs.share}</TabsTrigger>
+            <TabsTrigger value="cable">{t.android.tabs.cable}</TabsTrigger>
+            <TabsTrigger value="adb">{t.android.tabs.adb}</TabsTrigger>
           </TabsList>
-
           <TabsContent value="share" className="space-y-3 pt-3">
-            <Instructions
-              items={[
-                <>
-                  Open the phone's Files app (Files by Google, or My Files on Samsung) and go to{" "}
-                  <Code>Android/media/com.whatsapp/WhatsApp</Code>. Some file apps hide the <Code>Android</Code>{" "}
-                  folder; Files by Google shows it.
-                </>,
-                <>
-                  Open <Code>Databases</Code>, or with several accounts <Code>accounts</Code> → the account's number →{" "}
-                  <Code>Databases</Code>.
-                </>,
-                <>
-                  Long-press <Code>msgstore.db.crypt15</Code> (the one without a date) and tap Share.
-                </>,
-                "Send it to this computer, with whatever you have: LocalSend (free, phone and computer on the same Wi-Fi, nothing goes online), Quick Share (Windows), Google Drive, or email or a message to yourself.",
-                "Save it in Downloads, then click Search again below.",
-              ]}
-            />
+            <Instructions items={t.android.share} />
             <BackupFolders />
           </TabsContent>
-
           <TabsContent value="cable" className="space-y-3 pt-3">
-            <Instructions
-              items={[
-                "Plug the phone into this computer with a USB cable and unlock it.",
-                "On the phone, tap the “Charging this device via USB” notification and choose File transfer.",
-                overview.platform === "darwin"
-                  ? "A Mac can't open Android phones on its own: install OpenMTP (free, openmtp.ganeshrvel.com) and open the phone in it."
-                  : overview.platform === "win32"
-                    ? "Open File Explorer: the phone appears under This PC."
-                    : "Your file manager shows the phone in its sidebar.",
-                "Copy msgstore.db.crypt15 from the folder below into Downloads, then click Search again below.",
-              ]}
-            />
+            <Instructions items={t.android.cable(platformOf(overview))} />
             <BackupFolders />
           </TabsContent>
-
           <TabsContent value="adb" className="pt-3">
             <PhoneCopy
-              platform={overview.platform}
+              platform={platformOf(overview)}
               folder={overview.phone_folder}
               onCopied={(file) => {
                 setFiles((f) => [file, ...(f ?? []).filter((x) => x.path !== file.path)])
@@ -196,13 +154,13 @@ export function AndroidStep({ overview, refresh, go }: StepProps) {
         </Tabs>
       </Section>
 
-      <Section n={3} title="Choose the file">
+      <Section n={3} title={t.android.chooseTitle}>
         {files === null ? (
-          <Busy>Searching…</Busy>
+          <Busy>{t.android.searching}</Busy>
         ) : files.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No WhatsApp backup found yet.</p>
+          <p className="text-sm text-muted-foreground">{t.android.noneFound}</p>
         ) : (
-          <RadioGroup value={path} onValueChange={setPath} aria-label="Backup file">
+          <RadioGroup value={path} onValueChange={setPath} aria-label={t.android.chooseTitle}>
             {files.map((f) => (
               <Label
                 key={f.path}
@@ -225,10 +183,10 @@ export function AndroidStep({ overview, refresh, go }: StepProps) {
         )}
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => picker.current?.click()}>
-            <FileUp data-icon="inline-start" /> Choose a file…
+            <FileUp data-icon="inline-start" /> {t.android.chooseFile}
           </Button>
           <Button variant="ghost" onClick={look}>
-            <RefreshCw data-icon="inline-start" /> Search again
+            <RefreshCw data-icon="inline-start" /> {t.common.searchAgain}
           </Button>
           <input
             ref={picker}
@@ -240,61 +198,58 @@ export function AndroidStep({ overview, refresh, go }: StepProps) {
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Search again looks for WhatsApp backups in{" "}
-          {overview.candidate_folders.map((f, i) => (
-            <span key={f}>
-              {i > 0 && (i === overview.candidate_folders.length - 1 ? " and " : ", ")}
-              <Path className="text-xs">{f}</Path>
-            </span>
-          ))}
-          . Elsewhere? Use Choose a file.
+          {t.android.searchHint(
+            folders.map((f, i) => (
+              <Fragment key={f}>
+                {i > 0 && (i === folders.length - 1 ? t.android.listAnd : t.android.listSep)}
+                <Path className="text-xs">{f}</Path>
+              </Fragment>
+            )),
+          )}
         </p>
       </Section>
 
-      <Section n={4} title="Enter the key">
+      <Section n={4} title={t.android.keyTitle}>
         <div className="grid gap-2">
-          <Label htmlFor="android-key">64-digit key</Label>
+          <Label htmlFor="android-key">{t.android.keyLabel}</Label>
           <div className="flex gap-2">
             <Input
               id="android-key"
               type={show ? "text" : "password"}
               autoComplete="off"
               spellCheck={false}
-              placeholder="64 characters, spaces are fine"
+              placeholder={t.android.keyPlaceholder}
               className="font-mono"
               value={key}
               onChange={(e) => setKey(e.target.value)}
             />
-            <Button variant="outline" size="icon" onClick={() => setShow((s) => !s)} aria-label={show ? "Hide key" : "Show key"}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShow((s) => !s)}
+              aria-label={show ? t.android.hideKey : t.android.showKey}
+            >
               {show ? <EyeOff /> : <Eye />}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Used once to decrypt, then forgotten. Not needed if you picked an already decrypted msgstore.db.
-          </p>
+          <p className="text-xs text-muted-foreground">{t.android.keyHint}</p>
         </div>
       </Section>
 
-      <ErrorNotice message={error} />
-      {busy && <Busy>{busy}</Busy>}
-
-      <div className="flex flex-wrap gap-2">
-        <Button size="lg" variant={checked ? "outline" : "default"} disabled={!path || busy !== null} onClick={inspect}>
-          {checked ? "Check again" : "Decrypt and check"}
+      <div className="space-y-4">
+        <ErrorNotice message={error} />
+        {busy && <Busy>{busy}</Busy>}
+        <Button variant={checked ? "outline" : "default"} disabled={!path || busy !== null} onClick={inspect}>
+          {checked ? t.android.checkAgain : t.android.decrypt}
         </Button>
-        {checked && (
-          <Button size="lg" onClick={() => go("before")}>
-            Continue <ArrowRight data-icon="inline-end" />
-          </Button>
-        )}
+        {checked && <AndroidResult entry={checked} />}
       </div>
-
-      {checked && <AndroidResult entry={checked} />}
     </>
   )
 }
 
 function AndroidResult({ entry }: { entry: AndroidEntry }) {
+  const { t } = useI18n()
   const r = entry.report
   const modern = r.layout.startsWith("modern")
   return (
@@ -303,45 +258,43 @@ function AndroidResult({ entry }: { entry: AndroidEntry }) {
         <CardTitle className="flex items-center gap-2">
           <CircleCheck className="size-4 text-primary" />
           {entry.source.split(/[\\/]/).pop()}
-          <Badge variant="secondary">Checked</Badge>
+          <Badge variant="secondary">{t.common.checked}</Badge>
         </CardTitle>
         <CardDescription>
-          WhatsApp {r.header?.app_version ?? "?"} · database version {r.user_version} · checked {when(entry.checked_at)}
+          {t.android.resultLine(r.header?.app_version ?? "?", r.user_version, when(entry.checked_at))}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {!modern && (
           <Alert>
             <TriangleAlert />
-            <AlertDescription>{r.layout}</AlertDescription>
+            <AlertDescription>{t.android.legacy}</AlertDescription>
           </Alert>
         )}
-        <p className="text-sm">
-          Messages from <strong>{day(r.first_message)}</strong> to <strong>{day(r.last_message)}</strong>.
-        </p>
+        <p className="text-sm">{t.common.messagesRange(day(r.first_message), day(r.last_message))}</p>
         <StatGrid counts={r.counts} />
         {Object.keys(r.jid_servers).length > 0 && (
-          <Disclosure title="Contact identifiers by type">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Server</TableHead>
-                    <TableHead className="text-right">Count</TableHead>
+          <Disclosure title={t.android.jidTitle}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t.android.jidHead[0]}</TableHead>
+                  <TableHead className="text-right">{t.android.jidHead[1]}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(r.jid_servers).map(([server, n]) => (
+                  <TableRow key={server}>
+                    <TableCell className="font-mono text-xs">{server}</TableCell>
+                    <TableCell className="text-right tabular-nums">{n.toLocaleString()}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(r.jid_servers).map(([server, n]) => (
-                    <TableRow key={server}>
-                      <TableCell className="font-mono text-xs">{server}</TableCell>
-                      <TableCell className="text-right tabular-nums">{n.toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                ))}
+              </TableBody>
+            </Table>
           </Disclosure>
         )}
         <p className="text-xs text-muted-foreground">
-          Decrypted copy: <Path>{entry.run}</Path>
+          {t.android.decryptedCopy} <Path>{entry.run}</Path>
         </p>
       </CardContent>
     </Card>

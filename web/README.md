@@ -9,6 +9,9 @@ mise exec -- pnpm install
 mise exec -- pnpm build    # type-check, then write ../src/whatferry/ui/static/
 ```
 
+Every word on the page lives in `src/i18n.tsx`. English sets the shape; the
+other languages are typed against it, so a missing string fails the build.
+
 Add shadcn components with `mise exec -- pnpm dlx shadcn@4.22.1 add <name>`.
 
 The server's Content-Security-Policy allows only the page's own script, style

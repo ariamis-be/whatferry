@@ -1,31 +1,21 @@
 import type { Overview } from "@/api"
 
-export const STEPS = [
-  { id: "start", title: "Start" },
-  { id: "android", title: "Android backup" },
-  { id: "before", title: "iPhone backup" },
-  { id: "account", title: "Add account" },
-  { id: "after", title: "Second backup" },
-  { id: "done", title: "Results" },
-] as const
+// Titles and texts live in i18n.tsx; these are the ids the server knows.
+export const STEPS = ["start", "android", "before", "account", "after", "done"] as const
 
-export type StepId = (typeof STEPS)[number]["id"]
+export type StepId = (typeof STEPS)[number]
 
-export const CHECKLIST = [
-  ["add-account", "On the iPhone, open WhatsApp → Settings and choose Add account (next to your name at the top)."],
-  ["register-number", "Register the Android phone's number and enter the code WhatsApp sends. WhatsApp on the Android phone signs out: that's expected, and your backup file is already safe on this computer."],
-  ["leave-empty", "If WhatsApp offers to restore chats for the new account, skip it. The new account should start empty."],
-  ["new-backup", "Make a new encrypted backup of the iPhone, the same way as before."],
-] as const
+export const CHECKLIST = ["add-account", "register-number", "leave-empty", "new-backup"] as const
 
-/** What every step gets: the server's view, a way to reload it, and navigation. */
+/** What every step gets: the server's view and a way to reload it. */
 export interface StepProps {
   overview: Overview
   refresh: () => Promise<void>
   go: (step: StepId) => void
 }
 
-export function nextStep(step: StepId): StepId {
-  const i = STEPS.findIndex((s) => s.id === step)
-  return STEPS[Math.min(i + 1, STEPS.length - 1)].id
+export type Platform = "darwin" | "win32" | "other"
+
+export function platformOf(overview: Overview): Platform {
+  return overview.platform === "darwin" || overview.platform === "win32" ? overview.platform : "other"
 }

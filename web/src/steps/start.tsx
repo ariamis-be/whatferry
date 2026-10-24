@@ -1,69 +1,51 @@
-import { ArrowRight, Cable, Clock, Lock, Smartphone } from "lucide-react"
+import { Cable, Clock, Lock, Smartphone } from "lucide-react"
 
-import { Code, Instructions, PageHeader, Section } from "@/components/bits"
-import { Button } from "@/components/ui/button"
+import { Instructions, PageHeader, Section } from "@/components/bits"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useI18n } from "@/i18n"
 import type { StepProps } from "@/wizard"
 
-const NEEDS = [
-  { icon: Smartphone, text: "The Android phone, with WhatsApp and the chats you want to move." },
-  { icon: Smartphone, text: "The iPhone, with WhatsApp already set up for its own number." },
-  { icon: Cable, text: "A cable to connect the iPhone to this computer." },
-  { icon: Clock, text: "About an hour, mostly waiting for backups. You can close this and come back: progress is saved." },
-]
+const ICONS = [Smartphone, Smartphone, Cable, Clock]
 
-export function StartStep({ overview, go }: StepProps) {
+export function StartStep({ overview }: StepProps) {
+  const { t } = useI18n()
   return (
     <>
-      <PageHeader
-        title="Move WhatsApp chats from Android to iPhone"
-        lead="This wizard checks both phones' backups so the transfer can be built for your exact setup. It only reads: nothing is written to either phone or to any backup."
-      />
+      <PageHeader title={t.start.title} lead={t.start.lead} />
 
-      <Section title="You'll need">
+      <Section title={t.start.needTitle}>
         <ul className="grid gap-2 sm:grid-cols-2">
-          {NEEDS.map(({ icon: Icon, text }) => (
-            <li key={text} className="flex gap-3 rounded-lg border p-3 text-sm">
-              <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              {text}
-            </li>
-          ))}
+          {t.start.needs.map((text, i) => {
+            const Icon = ICONS[i]
+            return (
+              <li key={i} className="flex gap-3 rounded-lg border p-3 text-sm">
+                <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                {text}
+              </li>
+            )
+          })}
         </ul>
       </Section>
 
-      <Section title="What happens">
-        <Instructions
-          items={[
-            "Make an encrypted WhatsApp backup on the Android phone and bring the file here.",
-            "Back up the iPhone, so the wizard can see how WhatsApp stores your current account.",
-            "Add the Android number to WhatsApp on the iPhone as a second account.",
-            "Back up the iPhone again. Comparing the two backups shows exactly where the new account's chats will go.",
-          ]}
-        />
+      <Section title={t.start.happensTitle}>
+        <Instructions items={t.start.happens} />
       </Section>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Lock className="size-4" /> What stays private
+            <Lock className="size-4" /> {t.start.privateTitle}
           </CardTitle>
-          <CardDescription>Nothing leaves this computer.</CardDescription>
+          <CardDescription>{t.start.privateLead}</CardDescription>
         </CardHeader>
         <CardContent>
           <ul className="list-disc space-y-1.5 pl-5 text-sm">
-            <li>The page only talks to whatferry on this computer. Nothing is uploaded anywhere.</li>
-            <li>Keys and passphrases are used once and never saved.</li>
-            <li>
-              Decrypted copies are kept in <Code>{overview.home}</Code>, readable only by you. Delete it when you're
-              done.
-            </li>
+            {t.start.private(overview.home).map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
           </ul>
         </CardContent>
       </Card>
-
-      <Button size="lg" onClick={() => go("android")}>
-        Start <ArrowRight data-icon="inline-end" />
-      </Button>
     </>
   )
 }
