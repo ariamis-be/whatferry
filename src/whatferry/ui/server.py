@@ -34,10 +34,12 @@ CONTENT_TYPES = {
     ".js": "text/javascript; charset=utf-8",
     ".css": "text/css; charset=utf-8",
     ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
 }
 SECURITY_HEADERS = {
     "Content-Security-Policy": ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
-                                "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"),
+                                "font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; "
+                                "frame-ancestors 'none'"),
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Cache-Control": "no-store",

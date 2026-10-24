@@ -19,3 +19,24 @@ jobs:
       - uses: jdx/mise-action@v2
       - run: mise exec -- uv sync --locked
       - run: mise exec -- uv run pytest -v
+
+  # The built page is committed; rebuilding it from web/ must change nothing.
+  page:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: mise exec -- pnpm install --frozen-lockfile
+        working-directory: web
+      - run: mise exec -- pnpm lint
+        working-directory: web
+      - run: mise exec -- pnpm build
+        working-directory: web
+      - name: Built page matches web/
+        run: |
+          status=$(git status --porcelain -- src/whatferry/ui/static)
+          if [ -n "$status" ]; then
+            echo "$status"
+            echo "::error::src/whatferry/ui/static is stale: run 'pnpm build' in web/ and commit it"
+            exit 1
+          fi

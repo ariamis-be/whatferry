@@ -1,5 +1,6 @@
 import http.client
 import json
+import re
 import threading
 import time
 from pathlib import Path
@@ -110,10 +111,26 @@ def test_static_serves_only_its_own_files(server, path):
     assert status == 404
 
 
-def test_static_files_have_their_types(server):
-    for name, kind in (("app.js", "text/javascript"), ("app.css", "text/css"), ("icon.svg", "image/svg+xml")):
+def test_page_assets_are_served_with_their_types(server):
+    """Every file the built page links to is served, with the right type."""
+    _, _, page = request(server, "GET", f"/?t={server.token}", token=False)
+    assets = re.findall(r'(?:src|href)="/static/([^"]+)"', page.decode())
+    assert any(a.endswith(".js") for a in assets) and any(a.endswith(".css") for a in assets)
+    static = Path(__file__).parent.parent / "src" / "whatferry" / "ui" / "static"
+    fonts = [p.name for p in static.glob("*.woff2")]
+    kinds = {".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".woff2": "font/woff2"}
+    for name in assets + fonts:
         status, headers, _ = request(server, "GET", f"/static/{name}")
-        assert status == 200 and headers["Content-Type"].startswith(kind)
+        assert status == 200, name
+        assert headers["Content-Type"].startswith(kinds[Path(name).suffix]), name
+
+
+def test_built_page_has_no_inline_script_or_style(server):
+    """The CSP forbids inline code; a build that emits some would break the page."""
+    _, _, page = request(server, "GET", f"/?t={server.token}", token=False)
+    html = page.decode()
+    assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", html)
+    assert "<style" not in html and " style=" not in html
 
 
 def test_json_endpoints_refuse_other_bodies(server):

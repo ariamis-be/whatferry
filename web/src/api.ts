@@ -1,0 +1,156 @@
+// Talks only to the local whatferry server that served this page, with the
+// token from the link `whatferry ui` opened.
+
+export const TOKEN = new URLSearchParams(location.search).get("t") ?? ""
+
+export type Counts = Record<string, number | null>
+
+export interface AndroidReport {
+  source: string
+  header: { app_version: string | null; number_ends_with: string | null } | null
+  user_version: number
+  layout: string
+  counts: Counts
+  jid_servers: Record<string, number>
+  message_types: Record<string, number>
+  first_message: string | null
+  last_message: string | null
+  tables: number
+}
+
+export interface AndroidEntry {
+  source: string
+  run: string
+  checked_at: string
+  report: AndroidReport
+}
+
+export interface Device {
+  name: string | null
+  model: string | null
+  ios_version: string | null
+  backup_date: string | null
+  encrypted: boolean
+}
+
+export interface Database {
+  domain: string
+  path: string
+  size: number
+  user_version: number
+  tables: number
+  counts: Counts
+  first_message: string | null
+  last_message: string | null
+}
+
+export interface IosReport {
+  device: Device
+  domains: Record<string, { files: number; bytes: number }>
+  databases: Database[]
+}
+
+export interface Diff {
+  added: number
+  removed: number
+  changed: number
+  by_folder: Record<string, { added?: number; changed?: number; removed?: number }>
+  added_paths: string[]
+  changed_paths: string[]
+  new_chat_storages: string[]
+}
+
+export interface IosEntry {
+  folder: string
+  run: string
+  checked_at: string
+  report: IosReport
+  snapshot?: string
+  diff?: Diff
+}
+
+export interface State {
+  step?: string
+  android?: AndroidEntry
+  before?: IosEntry
+  after?: IosEntry
+  checklist?: Record<string, boolean>
+}
+
+export interface Overview {
+  platform: string
+  how_to_back_up: string
+  backup_roots: string[]
+  home: string
+  state: State
+}
+
+export interface Candidate {
+  path: string
+  name: string
+  size: number
+  modified: string
+}
+
+export interface BackupListing extends Device {
+  folder: string
+  id: string
+}
+
+export async function api<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = { "X-Whatferry-Token": TOKEN }
+  let payload: BodyInit | undefined
+  if (body instanceof File) {
+    payload = body
+    headers["Content-Type"] = "application/octet-stream"
+    headers["X-Filename"] = encodeURIComponent(body.name)
+  } else if (body !== undefined) {
+    payload = JSON.stringify(body)
+    headers["Content-Type"] = "application/json"
+  }
+  const res = await fetch(path, { method, headers, body: payload })
+  let data: { error?: string } = {}
+  try {
+    data = await res.json()
+  } catch {
+    // not JSON
+  }
+  if (!res.ok) throw new Error(data.error ?? `request failed (${res.status})`)
+  return data as T
+}
+
+/** Start a background job and wait for it, polling. */
+export async function runJob<T>(path: string, body: unknown): Promise<T> {
+  const { job } = await api<{ job: string }>("POST", path, body)
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 600))
+    const status = await api<{ status: string; result?: T; error?: string }>("GET", `/api/jobs/${job}`)
+    if (status.status === "done") return status.result as T
+    if (status.status === "error") throw new Error(status.error)
+  }
+}
+
+export const num = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "?")
+
+export function size(bytes: number | null | undefined) {
+  if (typeof bytes !== "number") return "?"
+  const units = ["B", "KB", "MB", "GB", "TB"]
+  let i = 0
+  while (bytes >= 1024 && i < units.length - 1) {
+    bytes /= 1024
+    i++
+  }
+  return `${i ? bytes.toFixed(1) : bytes} ${units[i]}`
+}
+
+export function when(iso: string | null | undefined) {
+  if (!iso) return "?"
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+}
+
+export function day(iso: string | null | undefined) {
+  if (!iso) return "?"
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { dateStyle: "medium" })
+}

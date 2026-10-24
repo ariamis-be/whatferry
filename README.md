@@ -57,6 +57,10 @@ random token in the link it opens, with the Host and Origin headers checked
 and a Content-Security-Policy that allows only its own script.
 `whatferry ui --no-browser` prints the link instead of opening it.
 
+The page is React with shadcn/ui, built from `web/` into
+`src/whatferry/ui/static/` and committed, so running whatferry needs only
+Python. To change it, see [`web/README.md`](web/README.md).
+
 ## The same steps on the command line
 
 **Android.** In WhatsApp: Settings → Chats → Chat backup → End-to-end
