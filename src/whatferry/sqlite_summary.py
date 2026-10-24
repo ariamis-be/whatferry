@@ -5,6 +5,8 @@ CREATE statements: enough to plan a conversion, nothing anyone wrote.
 """
 
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -29,9 +31,25 @@ class Summary:
         return t.rows if t else None
 
 
-def open_read_only(path: Path) -> sqlite3.Connection:
-    # immutable=1 also stops SQLite creating -wal or -shm files beside it.
-    return sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True)
+def read_only_uri(path: Path) -> str:
+    """A SQLite URI that opens `path` read-only on any platform.
+
+    as_uri() gives file:///C:/... on Windows and percent-encodes characters
+    such as # ? % that would otherwise end the path early.
+    immutable=1 also stops SQLite creating -wal or -shm files beside it.
+    """
+    return Path(path).resolve().as_uri() + "?mode=ro&immutable=1"
+
+
+@contextmanager
+def open_read_only(path: Path) -> Iterator[sqlite3.Connection]:
+    # A bare `with sqlite3.connect()` only commits; closing matters on
+    # Windows, which refuses to delete or move a file that is still open.
+    db = sqlite3.connect(read_only_uri(path), uri=True)
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 def summarise(path: Path) -> Summary:

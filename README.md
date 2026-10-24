@@ -26,6 +26,9 @@ WhatsApp keeps each account, and what both databases look like today.
 
 ## Setup
 
+Runs on macOS, Windows and Linux with [mise](https://mise.jdx.dev), which
+installs the pinned Python and uv:
+
 ```sh
 mise install
 mise exec -- uv sync
@@ -39,28 +42,39 @@ The commands below write `whatferry` for `mise exec -- uv run whatferry`.
 **Android.** In WhatsApp: Settings → Chats → Chat backup → End-to-end
 encrypted backup → turn on → *Use 64-digit encryption key instead*, and note
 the key. Then *Back up* (Google Drive may be set to *Never*; the local file
-is made either way). Copy
-`Android/media/com.whatsapp/WhatsApp/Databases/msgstore.db.crypt15` to the
-Mac, and put the key in a file only you can read (`chmod 600`).
+is made either way). Get
+`Android/media/com.whatsapp/WhatsApp/Databases/msgstore.db.crypt15` onto the
+computer: share it from the phone's file manager (LocalSend, Google Drive),
+copy it over USB in file-transfer mode (Windows and Linux browse the phone
+directly; macOS needs OpenMTP), or `adb pull` it. Put the key in a file only
+you can read.
 
 ```sh
 whatferry android inspect msgstore.db.crypt15 --key-file key.txt
 ```
 
-**iPhone, before.** Finder → the iPhone → tick *Encrypt local backup* →
-*Back Up Now*. The terminal needs Full Disk Access to read the backups.
+**iPhone, before.** Make an encrypted backup:
+
+| System | How | Where it lands |
+|---|---|---|
+| macOS | Finder → the iPhone → tick *Encrypt local backup* → *Back Up Now*. The terminal needs Full Disk Access to read it. | `~/Library/Application Support/MobileSync/Backup/<id>` |
+| Windows | Apple Devices app (or iTunes) → the iPhone → tick *Encrypt local backup* → *Back Up Now* | `%USERPROFILE%\Apple\MobileSync\Backup\<id>`, or `%APPDATA%\Apple Computer\MobileSync\Backup\<id>` for iTunes from apple.com |
+| Linux | libimobiledevice: `idevicebackup2 encryption on` once, then `idevicebackup2 backup --full <folder>` | `<folder>/<id>`; set `WHATFERRY_BACKUP_ROOT=<folder>` |
+
+`WHATFERRY_BACKUP_ROOT` works on every system and replaces the defaults
+(several folders: join them with `:`, or `;` on Windows).
 
 ```sh
 whatferry ios backups
-cp -R ~/Library/Application\ Support/MobileSync/Backup/<id> ~/whatferry-before
 whatferry ios inspect <id>
 ```
 
-Copy the backup aside: Finder updates the same folder in place.
+Then copy the `<id>` folder somewhere else, for example `~/whatferry-before`:
+the next backup updates the same folder in place.
 
 **iPhone, after.** In WhatsApp: *Add account* with the Android number (this
 signs it out on Android; the copied `.crypt15` is unaffected). Back up again
-in Finder, then:
+the same way, then:
 
 ```sh
 whatferry ios diff ~/whatferry-before <id>
@@ -74,12 +88,16 @@ that is where the conversion will write.
 
 - Keys and passphrases come from a file, `WHATFERRY_ANDROID_KEY` /
   `WHATFERRY_BACKUP_PASSPHRASE`, or a hidden prompt; never the command line.
-- Decrypted copies go to `~/.local/share/whatferry/<time>-<kind>/`
-  (`WHATFERRY_HOME` to move it), folders `0700`, files `0600`.
+- Decrypted copies go to `<time>-<kind>/` folders under
+  `~/.local/share/whatferry` (macOS, Linux; `$XDG_DATA_HOME/whatferry` when
+  set) or `%LOCALAPPDATA%\whatferry` (Windows); `WHATFERRY_HOME` moves it.
+  On macOS and Linux folders are `0700` and files `0600`. Windows has no such
+  modes: there the user profile's own access list keeps the default location
+  private, so set `WHATFERRY_HOME` only to a folder inside your profile.
 - The terminal shows counts, table names and paths, never message text,
   names or numbers. `report.json` and the `*.schema.sql` files beside the
   decrypted copies hold the same: shape, not content.
-- Delete the run folders when done: `rm -rf ~/.local/share/whatferry`.
+- Delete the run folders when done.
 
 ## Development
 
@@ -91,5 +109,8 @@ The tests build a real `.crypt15` with wa-crypt-tools' own encryptor and an
 unencrypted Finder-format backup (Manifest.db, keyed-archiver file plists,
 hashed file names). Encrypted iPhone backups are read through
 iphone_backup_decrypt and are not covered by a fixture yet.
+`tests/test_platforms.py` covers what differs by system: backup and data
+folders, file names Windows refuses, `file:` URIs for paths holding `#`, `?`
+or `%`, and byte-exact writes. CI runs the suite on macOS, Windows and Linux.
 
 wa-crypt-tools is GPL-3.0, so whatferry is too, if it is ever distributed.

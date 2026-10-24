@@ -1,13 +1,17 @@
-"""Read a Finder (or idevicebackup2) iPhone backup, encrypted or not.
+"""Read an iPhone backup, encrypted or not.
 
-A backup folder holds Manifest.plist (device info, and the keybag when
+Finder (macOS), iTunes or the Apple Devices app (Windows) and idevicebackup2
+(Linux, or anywhere) all write the same format: a backup folder holds
+Manifest.plist (device info, and the keybag when
 encrypted), Manifest.db (one row per file: domain, relative path, flags and a
 metadata plist) and the files themselves, stored as <id[:2]>/<id>. Nothing
 here writes to a backup folder.
 """
 
+import os
 import plistlib
 import sqlite3
+import sys
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime
@@ -17,7 +21,7 @@ from iphone_backup_decrypt import EncryptedBackup
 from iphone_backup_decrypt.exceptions import IncorrectPassphraseError
 from iphone_backup_decrypt.utils import FilePlist
 
-DEFAULT_ROOT = Path.home() / "Library" / "Application Support" / "MobileSync" / "Backup"
+from whatferry.sqlite_summary import read_only_uri
 
 # Every WhatsApp container: the app, its shared group, extensions, and the
 # Business app (net.whatsapp.WhatsAppSMB).
@@ -80,16 +84,53 @@ def _plist(path: Path) -> dict:
         return {}
 
 
-def list_backups(root: Path = DEFAULT_ROOT) -> list[tuple[Path, DeviceInfo]]:
-    try:
-        folders = sorted(p for p in root.iterdir() if (p / "Manifest.db").exists())
-    except PermissionError:
-        raise BackupError(
-            f"macOS refused to list {root}. Give your terminal Full Disk Access "
-            "(System Settings → Privacy & Security → Full Disk Access) and try again.") from None
-    except FileNotFoundError:
-        return []
-    return [(p, device_info(p)) for p in folders]
+def backup_roots(platform: str = sys.platform, env=os.environ) -> list[Path]:
+    """The folders that hold one sub-folder per backup, most likely first.
+
+    WHATFERRY_BACKUP_ROOT (several joined with the platform's path separator)
+    replaces the defaults; Linux has none, since idevicebackup2 writes
+    wherever it is told.
+    """
+    if env.get("WHATFERRY_BACKUP_ROOT"):
+        return [Path(p).expanduser() for p in env["WHATFERRY_BACKUP_ROOT"].split(os.pathsep) if p]
+    if platform == "darwin":
+        return [Path.home() / "Library" / "Application Support" / "MobileSync" / "Backup"]
+    if platform == "win32":
+        profile = Path(env.get("USERPROFILE") or Path.home())
+        appdata = Path(env.get("APPDATA") or profile / "AppData" / "Roaming")
+        # The Apple Devices app and Microsoft Store iTunes use the first,
+        # iTunes from apple.com the second.
+        return [profile / "Apple" / "MobileSync" / "Backup",
+                appdata / "Apple Computer" / "MobileSync" / "Backup"]
+    return []
+
+
+def list_backups(roots: list[Path] | None = None) -> list[tuple[Path, DeviceInfo]]:
+    found = []
+    for root in backup_roots() if roots is None else roots:
+        try:
+            folders = sorted(p for p in root.iterdir() if (p / "Manifest.db").exists())
+        except PermissionError:
+            if sys.platform == "darwin":
+                raise BackupError(
+                    f"macOS refused to list {root}. Give your terminal Full Disk Access "
+                    "(System Settings → Privacy & Security → Full Disk Access) and try again.") from None
+            raise BackupError(f"permission denied listing {root}") from None
+        except (FileNotFoundError, NotADirectoryError):
+            continue
+        found += [(p, device_info(p)) for p in folders]
+    return found
+
+
+def find_backup(name: str, roots: list[Path] | None = None) -> Path:
+    """A backup folder from a path, or from the folder name a listing shows."""
+    folder = Path(name).expanduser()
+    if folder.is_dir():
+        return folder
+    for root in backup_roots() if roots is None else roots:
+        if (root / name).is_dir():
+            return root / name
+    raise BackupError(f"no backup folder {name!r}: give its full path, or see `whatferry ios backups`")
 
 
 class Backup:
@@ -118,8 +159,7 @@ class Backup:
             with self._encrypted.manifest_db_cursor() as cur:
                 rows = cur.execute(query, (domain_like,)).fetchall()
         else:
-            uri = f"file:{self.folder / 'Manifest.db'}?mode=ro&immutable=1"
-            with closing(sqlite3.connect(uri, uri=True)) as db:
+            with closing(sqlite3.connect(read_only_uri(self.folder / "Manifest.db"), uri=True)) as db:
                 rows = db.execute(query, (domain_like,)).fetchall()
         entries = []
         for file_id, domain, path, flags, bplist in rows:

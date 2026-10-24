@@ -1,5 +1,6 @@
 import os
 import stat
+import sys
 import zlib
 
 import pytest
@@ -101,6 +102,7 @@ def test_encrypted_backup_without_key_is_refused(msgstore, tmp_path):
         android.inspect(backup, None)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows has no Unix modes; the profile's ACL protects it")
 def test_run_folder_is_private(msgstore):
     _, run = android.inspect(msgstore, None)
     assert stat.S_IMODE(run.stat().st_mode) == 0o700

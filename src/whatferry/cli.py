@@ -13,7 +13,17 @@ import sys
 from pathlib import Path
 
 from whatferry import android, ios, sqlite_summary, workdir
-from whatferry.ios_backup import DEFAULT_ROOT, Backup, BackupError, WrongPassphrase, device_info, list_backups
+from whatferry.ios_backup import (Backup, BackupError, WrongPassphrase, backup_roots, device_info, find_backup,
+                                  list_backups)
+
+HOW_TO_BACK_UP = {
+    "darwin": "In Finder: select the iPhone, tick 'Encrypt local backup', then 'Back Up Now'.",
+    "win32": "In the Apple Devices app (or iTunes): select the iPhone, tick 'Encrypt local backup', "
+             "then 'Back Up Now'.",
+}
+HOW_TO_BACK_UP_ELSEWHERE = (
+    "With libimobiledevice: `idevicebackup2 encryption on` once, then `idevicebackup2 backup --full <folder>`; "
+    "set WHATFERRY_BACKUP_ROOT to that folder.")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,7 +51,7 @@ def _parser() -> argparse.ArgumentParser:
     ai.set_defaults(run=_android_inspect)
 
     i = sides.add_parser("ios", help="the iPhone backup").add_subparsers(required=True, metavar="command")
-    ib = i.add_parser("backups", help=f"list the backups Finder made in {DEFAULT_ROOT}")
+    ib = i.add_parser("backups", help="list the iPhone backups on this computer")
     ib.set_defaults(run=_ios_backups)
     ii = i.add_parser("inspect", help="map WhatsApp's files and databases in a backup")
     ii.add_argument("backup", help="backup folder, or its name as `whatferry ios backups` lists it")
@@ -83,10 +93,12 @@ def _android_key(args):
 
 
 def _ios_backups(args) -> int:
-    backups = list_backups()
+    roots = backup_roots()
+    backups = list_backups(roots)
     if not backups:
-        print(f"No backups in {DEFAULT_ROOT}. Make one in Finder: select the iPhone, "
-              "tick 'Encrypt local backup', then 'Back Up Now'.")
+        where = ", ".join(str(r) for r in roots) or "no default folder on this system"
+        print(f"No backups found ({where}).")
+        print(HOW_TO_BACK_UP.get(sys.platform, HOW_TO_BACK_UP_ELSEWHERE))
         return 0
     for folder, info in backups:
         lock = "encrypted" if info.encrypted else "NOT encrypted"
@@ -143,9 +155,7 @@ def _open_backup(name: str, passphrase: str | None = None) -> Backup:
     A passphrase that worked on an earlier backup is tried first: two backups
     of the same iPhone share one.
     """
-    folder = Path(name).expanduser()
-    if not folder.is_dir():
-        folder = DEFAULT_ROOT / name
+    folder = find_backup(name)
     if not device_info(folder).encrypted:
         return Backup(folder)
     passphrase = passphrase or os.environ.get("WHATFERRY_BACKUP_PASSPHRASE")

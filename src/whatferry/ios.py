@@ -101,7 +101,7 @@ def _extract_database(backup: Backup, entry: Entry, data: bytes, by_key: dict, r
     -wal file beside the database. Checkpointing the private copy makes it
     whole; the backup itself is never opened for writing.
     """
-    target = run / "files" / entry.domain / entry.path
+    target = run / "files" / workdir.safe_relative(entry.domain) / workdir.safe_relative(entry.path)
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     workdir.write_private(target, data)
     for suffix in SIDECARS:
