@@ -191,7 +191,7 @@ export default function App() {
           </div>
         </header>
 
-        <main id="main" tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-10 outline-none sm:px-6 sm:pt-14">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-3xl px-4 pt-10 pb-6 outline-none sm:px-6 sm:pt-14">
           {!TOKEN && <ErrorNotice message={t.common.openWithLink} />}
           {error && <ErrorNotice message={t.common.cantReach(error)} />}
           {TOKEN && !error && !props && (
@@ -213,8 +213,8 @@ export default function App() {
                 {current === "done" && <ResultsStep {...props} />}
               </div>
 
-              {/* Always last, always in the same place: back on the left, on on the right. */}
-              <footer className="sticky bottom-0 z-10 -mx-4 mt-auto flex items-center justify-between gap-3 border-t bg-background/85 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:-mx-6 sm:px-6">
+              {/* Right after the step, and stuck to the window bottom while a long step scrolls: back on the left, on on the right. */}
+              <footer className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-3 border-t bg-background/85 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:-mx-6 sm:px-6">
                 {back ? (
                   <Button variant="ghost" onClick={() => go(back)}>
                     <ArrowLeft data-icon="inline-start" /> {t.nav.back}
