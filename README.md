@@ -37,7 +37,27 @@ mise exec -- uv run whatferry --help
 
 The commands below write `whatferry` for `mise exec -- uv run whatferry`.
 
-## Discovery, step by step
+## The wizard
+
+```sh
+whatferry ui
+```
+
+opens a step-by-step page in your browser that does everything below:
+finds the Android backup in Downloads (or takes it from a file picker),
+decrypts it with the key you type, lists the iPhone backups on this
+computer, checks the first one and keeps its file list, walks through adding
+the second account, then compares the second backup with the first and points
+at the new account's chat database. The last step is a summary to copy and
+send on: counts, versions and file locations, with phone numbers masked.
+
+Progress is saved, so the page can be closed while a backup runs; keys and
+passphrases are never saved. The page is served on 127.0.0.1 only, behind a
+random token in the link it opens, with the Host and Origin headers checked
+and a Content-Security-Policy that allows only its own script.
+`whatferry ui --no-browser` prints the link instead of opening it.
+
+## The same steps on the command line
 
 **Android.** In WhatsApp: Settings → Chats → Chat backup → End-to-end
 encrypted backup → turn on → *Use 64-digit encryption key instead*, and note

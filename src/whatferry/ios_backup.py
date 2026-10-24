@@ -21,6 +21,7 @@ from iphone_backup_decrypt import EncryptedBackup
 from iphone_backup_decrypt.exceptions import IncorrectPassphraseError
 from iphone_backup_decrypt.utils import FilePlist
 
+from whatferry import workdir
 from whatferry.sqlite_summary import read_only_uri
 
 # Every WhatsApp container: the app, its shared group, extensions, and the
@@ -82,6 +83,39 @@ def _plist(path: Path) -> dict:
             return plistlib.load(f)
     except FileNotFoundError:
         return {}
+
+
+HOW_TO_BACK_UP = {
+    "darwin": "In Finder: select the iPhone, tick 'Encrypt local backup', then 'Back Up Now'.",
+    "win32": "In the Apple Devices app (or iTunes): select the iPhone, tick 'Encrypt local backup', "
+             "then 'Back Up Now'.",
+}
+HOW_TO_BACK_UP_ELSEWHERE = (
+    "With libimobiledevice: `idevicebackup2 encryption on` once, then `idevicebackup2 backup --full <folder>`; "
+    "set WHATFERRY_BACKUP_ROOT to that folder.")
+
+
+def how_to_back_up(platform: str = sys.platform) -> str:
+    return HOW_TO_BACK_UP.get(platform, HOW_TO_BACK_UP_ELSEWHERE)
+
+
+# What a later diff needs from a backup: the file list and, when encrypted,
+# the keybag that unlocks it. The files themselves are not copied.
+SNAPSHOT_FILES = ("Manifest.db", "Manifest.plist", "Info.plist")
+
+
+def snapshot_manifest(folder: Path, dest: Path) -> Path:
+    """Keep a backup's index, so it can be compared after the next backup.
+
+    Finder, iTunes and idevicebackup2 update the same folder in place, so the
+    "before" state is gone once the "after" backup is made. The index is a few
+    MB where the whole backup can be tens of GB.
+    """
+    dest.mkdir(parents=True, mode=0o700)
+    for name in SNAPSHOT_FILES:
+        if (folder / name).exists():
+            workdir.write_private(dest / name, (folder / name).read_bytes())
+    return dest
 
 
 def backup_roots(platform: str = sys.platform, env=os.environ) -> list[Path]:

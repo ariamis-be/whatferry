@@ -14,16 +14,7 @@ from pathlib import Path
 
 from whatferry import android, ios, sqlite_summary, workdir
 from whatferry.ios_backup import (Backup, BackupError, WrongPassphrase, backup_roots, device_info, find_backup,
-                                  list_backups)
-
-HOW_TO_BACK_UP = {
-    "darwin": "In Finder: select the iPhone, tick 'Encrypt local backup', then 'Back Up Now'.",
-    "win32": "In the Apple Devices app (or iTunes): select the iPhone, tick 'Encrypt local backup', "
-             "then 'Back Up Now'.",
-}
-HOW_TO_BACK_UP_ELSEWHERE = (
-    "With libimobiledevice: `idevicebackup2 encryption on` once, then `idevicebackup2 backup --full <folder>`; "
-    "set WHATFERRY_BACKUP_ROOT to that folder.")
+                                  how_to_back_up, list_backups)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,7 +32,7 @@ def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="whatferry", description=(
         "Move WhatsApp chats from Android to iPhone. This version only reads: "
         "it decrypts and describes backups, and never writes to a phone or a backup."))
-    sides = p.add_subparsers(required=True, metavar="side")
+    sides = p.add_subparsers(required=True, metavar="command")
 
     a = sides.add_parser("android", help="the Android backup").add_subparsers(required=True, metavar="command")
     ai = a.add_parser("inspect", help="decrypt msgstore.db.crypt15 and describe it")
@@ -60,7 +51,19 @@ def _parser() -> argparse.ArgumentParser:
     idf.add_argument("before", help="the earlier backup (folder or name)")
     idf.add_argument("after", help="the later backup (folder or name)")
     idf.set_defaults(run=_ios_diff)
+
+    u = sides.add_parser("ui", help="open the step-by-step wizard in your browser")
+    u.add_argument("--port", type=int, default=0, help="port on 127.0.0.1 (default: any free one)")
+    u.add_argument("--no-browser", action="store_true", help="print the link instead of opening it")
+    u.set_defaults(run=_ui)
     return p
+
+
+def _ui(args) -> int:
+    from whatferry.ui.server import serve
+
+    serve(port=args.port, open_browser=not args.no_browser)
+    return 0
 
 
 def _android_inspect(args) -> int:
@@ -98,7 +101,7 @@ def _ios_backups(args) -> int:
     if not backups:
         where = ", ".join(str(r) for r in roots) or "no default folder on this system"
         print(f"No backups found ({where}).")
-        print(HOW_TO_BACK_UP.get(sys.platform, HOW_TO_BACK_UP_ELSEWHERE))
+        print(how_to_back_up())
         return 0
     for folder, info in backups:
         lock = "encrypted" if info.encrypted else "NOT encrypted"

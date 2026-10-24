@@ -12,6 +12,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import BinaryIO
 
 # Without O_BINARY, Windows opens the descriptor in text mode and rewrites
 # every \n byte as \r\n, corrupting any database written through it.
@@ -52,11 +53,24 @@ def new_run(kind: str) -> Path:
     return run
 
 
+def open_private(path: Path) -> BinaryIO:
+    """A new file only the owner can read, open for binary writing.
+
+    Refuses to replace an existing file.
+    """
+    return os.fdopen(os.open(path, _WRITE_FLAGS, 0o600), "wb")
+
+
 def write_private(path: Path, data: bytes) -> None:
-    """Write a file only the owner can read, refusing to replace one."""
-    fd = os.open(path, _WRITE_FLAGS, 0o600)
-    with os.fdopen(fd, "wb") as f:
+    with open_private(path) as f:
         f.write(data)
+
+
+def replace_private(path: Path, data: bytes) -> None:
+    """Replace a file's contents in one step, through an owner-only temporary file."""
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{datetime.now().timestamp():.6f}.tmp")
+    write_private(tmp, data)
+    os.replace(tmp, path)
 
 
 def safe_relative(path: str) -> Path:

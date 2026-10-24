@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>whatferry</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="rail" aria-label="Steps">
+      <div class="brand">
+        <img src="/static/icon.svg" alt="" width="28" height="28">
+        <span>whatferry</span>
+      </div>
+      <ol class="steps" id="steps"></ol>
+      <p class="rail-note">Everything stays on this computer. Nothing is written to either phone.</p>
+    </aside>
+    <main class="main" id="main" tabindex="-1">
+      <p class="loading">Loading…</p>
+    </main>
+  </div>
+  <noscript><p class="noscript">The wizard needs JavaScript. The command line works without it: <code>whatferry --help</code>.</p></noscript>
+</body>
+</html>
