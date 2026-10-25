@@ -5,6 +5,8 @@ have; `diff` answers which files a change on the phone touched, such as
 adding a second account. Both are read-only towards the backup.
 """
 
+import io
+import plistlib
 import re
 import sqlite3
 from collections import Counter, defaultdict
@@ -21,7 +23,7 @@ APPLE_EPOCH = 978307200
 
 CHAT_STORAGE = "ChatStorage.sqlite"
 SHARED_DOMAIN = "AppDomainGroup-group.net.whatsapp.WhatsApp.shared"
-ACCOUNTS_METHOD = 2
+ACCOUNTS_METHOD = 3
 SIDECARS = ("-wal", "-shm")
 
 # ChatStorage tables the conversion will have to fill, by what they hold.
@@ -53,7 +55,7 @@ class Database:
 @dataclass
 class Account:
     """A WhatsApp account on the iPhone, by its last digits only (two of the ID, four of the number)."""
-    id_ends: str
+    id_ends: str | None
     number_ends: str | None
     country: str | None
     main: bool  # owns the ChatStorage.sqlite at the root of the shared folder
@@ -74,7 +76,8 @@ class Report:
     accounts: list[Account] = field(default_factory=list)
     account_folders: list[AccountFolder] = field(default_factory=list)
     # Bumped whenever account detection changes, so older saved checks can be
-    # told apart: 1 read the keyboard file (wrong), 2 does not.
+    # told apart: 1 read the keyboard file, 2 the push-name row (both wrong),
+    # 3 reads LastOwnJabberID.
     accounts_method: int = ACCOUNTS_METHOD
 
     def as_dict(self) -> dict:
@@ -116,58 +119,78 @@ def inspect(backup: Backup) -> tuple[Report, Path]:
         schema = target.with_name(target.name + ".schema.sql")
         workdir.write_private(schema, sqlite_summary.schema_sql(target).encode())
         report.databases.append(db)
-    report.accounts = _accounts(extracted)
+    report.accounts = _accounts(backup, by_key, extracted)
     report.account_folders = _account_folders(files)
     return report, run
 
 
-# The main account's WhatsApp ID ("LID", a privacy ID, not a phone number)
-# is the single row of ChatStorage's push-name table: the account's own
-# profile name. LID.sqlite pairs IDs with phone numbers. Neither is
-# documented, so both may be missing.
+# The account WhatsApp is signed in as: LastOwnJabberID in the app group's
+# shared preferences, "<number>@s.whatsapp.net". Its WhatsApp ID ("LID") and
+# country come from LID.sqlite, which pairs IDs with phone numbers.
 #
-# Not used: UITextInputContextIdentifiers.plist. Its ID_<lid>@lid keys
-# looked like one per account, but they are the keyboard language per chat:
-# checked on a real backup, one belonged to a contact with 2,185 messages.
+# Wrong, and no longer used (each checked against a real backup whose owner
+# knew the number):
+# - UITextInputContextIdentifiers.plist: its ID_<lid>@lid keys are the
+#   keyboard language per chat, not per account.
+# - ChatStorage's single ZWAPROFILEPUSHNAME row: a contact's profile name.
 # Further accounts are only visible as data/<id>/ folders (see
 # _account_folders), with no number to read.
+SHARED_PREFS = (SHARED_DOMAIN, "Library/Preferences/group.net.whatsapp.WhatsApp.shared.plist")
+OWN_JID = re.compile(r"^(\d{6,15})@s\.whatsapp\.net$")
 
 
-def _accounts(extracted: dict) -> list[Account]:
-    main = _main_account_id(extracted.get((SHARED_DOMAIN, CHAT_STORAGE)))
-    if not main:
+def _accounts(backup: Backup, by_key: dict, extracted: dict) -> list[Account]:
+    prefs = by_key.get(SHARED_PREFS)
+    if prefs is None:
         return []
-    number_ends, country = _numbers(extracted.get((SHARED_DOMAIN, "LID.sqlite")), [main]).get(main, (None, None))
-    return [Account(id_ends=main[-2:], number_ends=number_ends, country=country, main=True)]
+    own = OWN_JID.match(str((read_plist(backup.read(prefs)) or {}).get("LastOwnJabberID") or ""))
+    if not own:
+        return []
+    number = own.group(1)
+    lid, country = _lid_and_country(extracted.get((SHARED_DOMAIN, "LID.sqlite")), number)
+    return [Account(id_ends=lid[-2:] if lid else None, number_ends=number[-4:], country=country, main=True)]
 
 
-def _main_account_id(chat_storage: Path | None) -> str | None:
-    if not chat_storage:
-        return None
-    try:
-        with sqlite_summary.open_read_only(chat_storage) as db:
-            rows = db.execute("SELECT ZJID FROM ZWAPROFILEPUSHNAME WHERE ZJID LIKE '%@lid' LIMIT 2").fetchall()
-    except sqlite3.Error:
-        return None
-    return rows[0][0].split("@")[0] if len(rows) == 1 else None
-
-
-def _numbers(lid_db: Path | None, ids: list[str]) -> dict[str, tuple[str | None, str | None]]:
-    """Last two digits and country of each ID's phone number, where known."""
-    if not lid_db or not ids:
-        return {}
-    out = {}
+def _lid_and_country(lid_db: Path | None, number: str) -> tuple[str | None, str | None]:
+    if not lid_db:
+        return None, None
     try:
         with sqlite_summary.open_read_only(lid_db) as db:
-            for i in ids:
-                row = db.execute("SELECT ZPHONENUMBER, ZCOUNTRYCODE FROM ZWAZACCOUNT WHERE ZIDENTIFIER = ?",
-                                 (f"{i}@lid",)).fetchone()
-                if row and row[0]:
-                    digits = re.sub(r"\D", "", str(row[0]))
-                    out[i] = (digits[-4:] if len(digits) >= 4 else None, row[1])
+            row = db.execute("SELECT ZIDENTIFIER, ZCOUNTRYCODE FROM ZWAZACCOUNT WHERE ZPHONENUMBER LIKE ? LIMIT 1",
+                             (f"%{number}",)).fetchone()
     except sqlite3.Error:
-        return {}
-    return out
+        return None, None
+    if not row:
+        return None, None
+    lid = str(row[0] or "").split("@")[0]
+    return (lid or None), row[1]
+
+
+class _LenientBinaryPlist(plistlib._BinaryPlistParser):
+    """A binary plist reader that gives None for values Python can't hold.
+
+    WhatsApp's shared preferences carry a date beyond Python's datetime range,
+    which makes plistlib reject the whole file.
+    """
+
+    def _read_object(self, ref):
+        try:
+            return super()._read_object(ref)
+        except (OverflowError, ValueError):
+            return None
+
+
+def read_plist(data: bytes):
+    try:
+        return plistlib.loads(data)
+    except (plistlib.InvalidFileException, ValueError, OverflowError):
+        pass
+    if data.startswith(b"bplist00"):
+        try:
+            return _LenientBinaryPlist(dict_type=dict).parse(io.BytesIO(data))
+        except Exception:  # noqa: BLE001 - an unreadable plist just means "not found"
+            return None
+    return None
 
 
 def _account_folders(files: list[Entry]) -> list[AccountFolder]:

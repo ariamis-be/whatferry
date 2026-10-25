@@ -2,6 +2,8 @@
 
 import plistlib
 import sqlite3
+import struct
+from datetime import datetime
 from contextlib import closing
 
 import pytest
@@ -14,7 +16,9 @@ from whatferry.ios_backup import Backup
 from whatferry.ui.wizard import destination_hint, summary_text
 
 MAIN_ID, SECOND_ID = "267817232396200", "263779778617311"
+OWN_NUMBER, CONTACT_NUMBER = "40700001234", "32470000188"
 FOLDER = "data/0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
+PREFS = "Library/Preferences/group.net.whatsapp.WhatsApp.shared.plist"
 
 
 def lid_db(path, rows):
@@ -26,23 +30,34 @@ def lid_db(path, rows):
     return path.read_bytes()
 
 
+def shared_prefs(own_jid):
+    """WhatsApp's shared preferences, with a date Python's plistlib can't hold,
+    as the real file has: plistlib.loads rejects the whole file."""
+    marker = datetime(2001, 1, 1, 0, 0, 7)
+    data = plistlib.dumps({"LastOwnJabberID": own_jid, "SomeExpiry": marker}, fmt=plistlib.FMT_BINARY)
+    data = data.replace(b"\x33" + struct.pack(">d", 7.0), b"\x33" + struct.pack(">d", 1e20))
+    with pytest.raises(plistlib.InvalidFileException):
+        plistlib.loads(data)
+    return data
+
+
 def two_account_iphone(tmp_path, root):
-    """Like the real one: main account on …02, a data/<id> folder for what may
-    be a second account, and a keyboard entry for a contact (…88) that is not
-    an account at all."""
+    """Like the real one: signed in as …1234, a data/<id> folder for what may be
+    a second account, and two traps that once passed for accounts: a keyboard
+    entry and a profile-name row, both a contact's (…0188)."""
     fake = FakeBackup(root / "UDID")
-    store, _ = chat_storage(tmp_path / "ChatStorage.sqlite", messages=4)
+    chat_storage(tmp_path / "ChatStorage.sqlite", messages=4)
     with closing(sqlite3.connect(tmp_path / "ChatStorage.sqlite")) as db:
         db.execute("CREATE TABLE ZWAPROFILEPUSHNAME (Z_PK INTEGER PRIMARY KEY, ZJID VARCHAR, ZPUSHNAME VARCHAR)")
-        db.execute("INSERT INTO ZWAPROFILEPUSHNAME VALUES (1, ?, 'Me')", (f"{MAIN_ID}@lid",))
+        db.execute("INSERT INTO ZWAPROFILEPUSHNAME VALUES (1, ?, 'A contact')", (f"{SECOND_ID}@lid",))
         db.commit()
     fake.add(SHARED, "ChatStorage.sqlite", (tmp_path / "ChatStorage.sqlite").read_bytes())
     fake.add(SHARED, "LID.sqlite", lid_db(tmp_path / "LID.sqlite", [
-        (f"{MAIN_ID}@lid", "32470000102", None),
-        (f"{SECOND_ID}@lid", "32470000188", "BE"),
-        ("999999999999999@lid", "32470009999", "BE"),
+        (f"{MAIN_ID}@lid", OWN_NUMBER, "RO"),
+        (f"{SECOND_ID}@lid", CONTACT_NUMBER, "BE"),
     ]))
-    keyboard = {f"ID_{MAIN_ID}@lid": "en_GB", f"ID_{SECOND_ID}@lid": "en_GB", "SomethingElse": 1}
+    fake.add(SHARED, PREFS, shared_prefs(f"{OWN_NUMBER}@s.whatsapp.net"))
+    keyboard = {f"ID_{MAIN_ID}@lid": "en_GB", f"ID_{SECOND_ID}@lid": "en_GB"}
     fake.add(APP, "Library/Preferences/UITextInputContextIdentifiers.plist",
              plistlib.dumps(keyboard, fmt=plistlib.FMT_BINARY))
     fake.add(SHARED, f"{FOLDER}/ContactsV2.sqlite", b"not sqlite")
@@ -50,40 +65,55 @@ def two_account_iphone(tmp_path, root):
     return fake
 
 
-def test_main_account_found_by_its_last_two_digits(tmp_path):
+def test_signed_in_account_from_last_own_jabber_id(tmp_path):
     fake = two_account_iphone(tmp_path, tmp_path / "backups")
     report, _ = ios.inspect(Backup(fake.folder))
-    assert [(a.id_ends, a.number_ends, a.main) for a in report.accounts] == [("00", "0102", True)]
+    assert [(a.id_ends, a.number_ends, a.country, a.main) for a in report.accounts] == [("00", "1234", "RO", True)]
     assert [(f.folder, f.has_chat_database) for f in report.account_folders] == [(FOLDER, False)]
+    assert report.accounts_method == ios.ACCOUNTS_METHOD == 3
 
 
-def test_keyboard_context_ids_are_chats_not_accounts(tmp_path):
-    """The keyboard keeps a language per chat under ID_<lid>@lid: on a real
-    backup one such id was a contact's. It must not turn into an account."""
+def test_contacts_never_pass_for_accounts(tmp_path):
+    """Both a keyboard entry and the profile-name row belonged to contacts on a
+    real backup. Neither may turn into an account, and no long digits leak."""
     fake = two_account_iphone(tmp_path, tmp_path / "backups")
     report, _ = ios.inspect(Backup(fake.folder))
-    assert all(a.id_ends != SECOND_ID[-2:] for a in report.accounts)
-    assert all(not (a.number_ends or "").endswith("88") for a in report.accounts)
-    # Nothing longer than two digits of an id or number is kept.
+    assert all(not (a.number_ends or "").endswith("0188") for a in report.accounts)
     text = str(report.as_dict())
-    for secret in (MAIN_ID, SECOND_ID, "32470000102", "32470000188"):
+    for secret in (MAIN_ID, SECOND_ID, OWN_NUMBER, CONTACT_NUMBER):
         assert secret not in text
 
 
-def test_accounts_tolerate_a_bare_backup(tmp_path):
+def test_number_without_lid_database(tmp_path):
+    fake = FakeBackup(tmp_path / "UDID")
+    fake.add(SHARED, PREFS, shared_prefs(f"{OWN_NUMBER}@s.whatsapp.net"))
+    report, _ = ios.inspect(Backup(fake.folder))
+    assert [(a.id_ends, a.number_ends, a.country) for a in report.accounts] == [(None, "1234", None)]
+
+
+@pytest.mark.parametrize("prefs", [b"not a plist", None])
+def test_accounts_tolerate_a_bare_backup(tmp_path, prefs):
     fake = FakeBackup(tmp_path / "UDID")
     store, _ = chat_storage(tmp_path / "ChatStorage.sqlite", messages=1)
     fake.add(SHARED, "ChatStorage.sqlite", store)
-    fake.add(APP, "Library/Preferences/UITextInputContextIdentifiers.plist", b"not a plist")
+    if prefs is not None:
+        fake.add(SHARED, PREFS, prefs)
     report, _ = ios.inspect(Backup(fake.folder))
     assert report.accounts == [] and report.account_folders == []
+
+
+def test_lenient_plist_reader_keeps_what_it_can():
+    data = shared_prefs("123456789@s.whatsapp.net")
+    parsed = ios.read_plist(data)
+    assert parsed["LastOwnJabberID"] == "123456789@s.whatsapp.net" and parsed["SomeExpiry"] is None
+    assert ios.read_plist(b"garbage") is None
 
 
 def state(android_ends=None, accounts=(), stores=("ChatStorage.sqlite",), messages=10):
     databases = [{"path": p, "counts": {"messages": messages}} for p in stores]
     return {
         "android": {"report": {"header": {"number_ends_with": android_ends}}} if android_ends else None,
-        "before": {"report": {"accounts": list(accounts), "databases": databases, "accounts_method": 2}},
+        "before": {"report": {"accounts": list(accounts), "databases": databases, "accounts_method": 3}},
     }
 
 
@@ -122,7 +152,7 @@ def test_matching_number_suggests_the_existing_account_with_its_chats():
     assert second["match"]["id_ends"] == "11" and second["messages"] is None
 
 
-@pytest.mark.parametrize("method", [None, 1])
+@pytest.mark.parametrize("method", [None, 1, 2])
 def test_checks_from_older_account_detection_say_check_again(method):
     """None: saved before accounts were read; 1: the keyboard-file method,
     which mistook a chat for an account. Both must ask for a new check."""

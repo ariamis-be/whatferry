@@ -45,7 +45,7 @@ export interface Database {
 }
 
 export interface IphoneAccount {
-  id_ends: string
+  id_ends: string | null
   number_ends: string | null
   country: string | null
   main: boolean

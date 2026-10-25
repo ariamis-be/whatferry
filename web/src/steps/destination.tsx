@@ -97,7 +97,7 @@ export function DestinationChoice({ overview, refresh }: Pick<StepProps, "overvi
             <h3 className="text-sm font-medium">{t.destination.accountsTitle}</h3>
             <ul className="space-y-1 text-sm text-muted-foreground">
               {hint.accounts.map((a) => (
-                <li key={a.id_ends}>{t.destination.account(a.number_ends, a.country, a.main)}</li>
+                <li key={`${a.number_ends}-${a.id_ends}`}>{t.destination.account(a.number_ends, a.country, a.main)}</li>
               ))}
             </ul>
             {folders > 0 && <p className="text-xs text-muted-foreground">{t.destination.folders(folders)}</p>}

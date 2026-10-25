@@ -68,13 +68,15 @@ go, and suggests an answer:
   number; the second backup is then skipped, and the chats will be merged
   into that account's own.
 
-It reads the iPhone's main account from the backup (its own ID, the single
-row of ChatStorage's profile-name table, and that ID's number in
-LID.sqlite) and compares the number with the Android backup's on the last
-two digits, all the Android header keeps. Only those two digits are stored
-or shown. Further accounts only show as `data/<id>/` folders, whose number
-can't be read, so the wizard says there *may* be a second account.
-(The keyboard's `ID_<lid>@lid` entries are per chat, not per account.)
+It reads the number the iPhone's WhatsApp is signed in as
+(`LastOwnJabberID` in the app group's shared preferences, read with a
+lenient parser because the file holds a date Python can't) and compares its
+last digits with the Android backup's two, all the Android header keeps.
+Only the last four digits are stored or shown. Further accounts only show as
+`data/<id>/` folders, whose number can't be read, so the wizard says there
+*may* be a second account. Two sources that looked right were checked
+against a real phone and dropped: the keyboard's `ID_<lid>@lid` entries and
+ChatStorage's profile-name row both belong to contacts.
 
 The page is in English and Simplified Chinese (it starts in the browser's
 language; the header switches it), with light, dark or system theme (system
