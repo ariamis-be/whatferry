@@ -324,6 +324,9 @@ const en = {
       different: (ends: string, accounts: string) =>
         `The Android number ends in ${ends}; this iPhone's account numbers end in ${accounts}.`,
       unknown: "The Android backup doesn't record its number, so the wizard can't compare.",
+      stale: "This iPhone check was saved before whatferry could read the iPhone's accounts. Click Check again above to compare the numbers.",
+      iphoneUnknown: (ends: string) =>
+        `The Android number ends in ${ends}, but the iPhone's account numbers couldn't be read from this backup.`,
     },
     full: "This iPhone already has two WhatsApp accounts. WhatsApp may not allow a third: you may have to remove one first.",
     merge: (n: string) =>
@@ -686,6 +689,8 @@ const zh: Messages = {
       matches: (ends) => `这里有一个账号的号码以 ${ends} 结尾，与安卓备份的号码相同（只知道最后两位，请确认确实是同一个号码）。`,
       different: (ends, accounts) => `安卓的号码以 ${ends} 结尾；这部 iPhone 上账号的号码以 ${accounts} 结尾。`,
       unknown: "安卓备份没有记录它的号码，所以向导无法比较。",
+      stale: "这次 iPhone 检查是在 whatferry 能读取 iPhone 账号之前保存的。请点击上方的“重新检查”来比较号码。",
+      iphoneUnknown: (ends) => `安卓的号码以 ${ends} 结尾，但无法从这个备份中读取 iPhone 账号的号码。`,
     },
     full: "这部 iPhone 上已经有两个 WhatsApp 账号。WhatsApp 可能不允许第三个：你可能需要先移除一个。",
     merge: (n) => `那个账号在这部 iPhone 上已经有 ${n} 条消息。合并会保留两份记录，但这是最难做对的情况。`,

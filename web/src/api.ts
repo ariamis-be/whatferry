@@ -63,7 +63,8 @@ export type Destination = "setup" | "second" | "existing"
 
 export interface DestinationHint {
   suggested: Destination
-  reason: "no-whatsapp" | "number-matches" | "different-number" | "unknown-number"
+  reason: "no-whatsapp" | "number-matches" | "different-number" | "unknown-number" | "stale-check" | "iphone-numbers-unknown"
+  stale?: boolean
   android_ends: string | null
   accounts: IphoneAccount[]
   full: boolean

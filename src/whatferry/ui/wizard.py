@@ -255,7 +255,10 @@ def destination_hint(state: dict) -> dict | None:
     stores = [d for d in report["databases"] if Path(d["path"]).name == ios.CHAT_STORAGE]
     header = ((state.get("android") or {}).get("report") or {}).get("header") or {}
     ends = header.get("number_ends_with")
-    hint = {"android_ends": ends, "accounts": accounts, "full": len(accounts) >= 2}
+    # Checks saved before whatferry read accounts have no "accounts" at all:
+    # say so, rather than comparing against nothing.
+    stale = "accounts" not in report
+    hint = {"android_ends": ends, "accounts": accounts, "full": len(accounts) >= 2, "stale": stale}
     if not stores and not accounts:
         return hint | {"suggested": "setup", "reason": "no-whatsapp"}
     match = next((a for a in accounts if ends and a.get("number_ends") == ends), None)
@@ -263,7 +266,12 @@ def destination_hint(state: dict) -> dict | None:
         main = next((d for d in stores if d["path"] == ios.CHAT_STORAGE), None)
         messages = (main or {}).get("counts", {}).get("messages") if match.get("main") else None
         return hint | {"suggested": "existing", "reason": "number-matches", "match": match, "messages": messages}
-    return hint | {"suggested": "second", "reason": "different-number" if ends else "unknown-number"}
+    if stale:
+        return hint | {"suggested": "second", "reason": "stale-check"}
+    if not ends:
+        return hint | {"suggested": "second", "reason": "unknown-number"}
+    known = [a for a in accounts if a.get("number_ends")]
+    return hint | {"suggested": "second", "reason": "different-number" if known else "iphone-numbers-unknown"}
 
 
 def diff_summary(d: ios.Diff) -> dict:

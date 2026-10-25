@@ -107,6 +107,18 @@ def test_matching_number_suggests_the_existing_account_with_its_chats():
     assert second["match"]["id_ends"] == "11" and second["messages"] is None
 
 
+def test_check_from_before_account_detection_says_check_again():
+    s = state("78", ACCOUNTS)
+    del s["before"]["report"]["accounts"]
+    hint = destination_hint(s)
+    assert (hint["suggested"], hint["reason"], hint["stale"]) == ("second", "stale-check", True)
+
+
+def test_accounts_without_numbers_are_called_unknown():
+    hint = destination_hint(state("78", [{"id_ends": "00", "number_ends": None, "main": True}]))
+    assert hint["reason"] == "iphone-numbers-unknown" and not hint["stale"]
+
+
 def test_unknown_android_number_still_suggests_second():
     hint = destination_hint(state(None, ACCOUNTS))
     assert (hint["suggested"], hint["reason"]) == ("second", "unknown-number")

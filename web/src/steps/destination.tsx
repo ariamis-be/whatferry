@@ -18,7 +18,9 @@ function reason(hint: DestinationHint, t: Messages): string {
     case "no-whatsapp": return t.destination.reasons.noWhatsapp
     case "number-matches": return t.destination.reasons.matches(ends)
     case "different-number":
-      return t.destination.reasons.different(ends, hint.accounts.map((a) => a.number_ends ?? "?").join(", ") || "?")
+      return t.destination.reasons.different(ends, hint.accounts.map((a) => a.number_ends ?? "?").join(", "))
+    case "stale-check": return t.destination.reasons.stale
+    case "iphone-numbers-unknown": return t.destination.reasons.iphoneUnknown(ends)
     default: return t.destination.reasons.unknown
   }
 }
