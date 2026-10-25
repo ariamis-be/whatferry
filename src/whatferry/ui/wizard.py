@@ -261,14 +261,18 @@ def destination_hint(state: dict) -> dict | None:
     # A data/<id>/ folder is the only sign of a further account; its number
     # can't be read, so "full" only says there may already be two.
     folders = report.get("account_folders", [])
-    hint = {"android_ends": ends, "accounts": accounts, "full": len(accounts) + len(folders) >= 2, "stale": stale}
+    # The main chat database's message count: what a merge into the main
+    # account would merge with, whichever destination is picked by hand.
+    main = next((d for d in stores if d["path"] == ios.CHAT_STORAGE), None)
+    main_messages = (main or {}).get("counts", {}).get("messages")
+    hint = {"android_ends": ends, "accounts": accounts, "full": len(accounts) + len(folders) >= 2, "stale": stale,
+            "has_whatsapp": bool(stores or accounts), "main_messages": main_messages}
     if not stores and not accounts:
         return hint | {"suggested": "setup", "reason": "no-whatsapp"}
     # The iPhone gives the last four digits, the Android header only two.
     match = next((a for a in accounts if ends and (a.get("number_ends") or "").endswith(ends)), None)
     if match:
-        main = next((d for d in stores if d["path"] == ios.CHAT_STORAGE), None)
-        messages = (main or {}).get("counts", {}).get("messages") if match.get("main") else None
+        messages = main_messages if match.get("main") else None
         return hint | {"suggested": "existing", "reason": "number-matches", "match": match, "messages": messages}
     if stale:
         return hint | {"suggested": "second", "reason": "stale-check"}

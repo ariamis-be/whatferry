@@ -70,6 +70,8 @@ export interface DestinationHint {
   full: boolean
   match?: IphoneAccount
   messages?: number | null
+  main_messages?: number | null
+  has_whatsapp?: boolean
 }
 
 export interface Diff {

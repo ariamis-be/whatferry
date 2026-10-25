@@ -25,6 +25,39 @@ function reason(hint: DestinationHint, t: Messages): string {
   }
 }
 
+function numbers(hint: DestinationHint): string {
+  return hint.accounts.map((a) => a.number_ends ?? "?").join(", ") || "?"
+}
+
+/** Picking "existing" by hand, or when the numbers match: what it means here. */
+function ExistingWarnings({ hint }: { hint: DestinationHint }) {
+  const { t } = useI18n()
+  const matched = hint.reason === "number-matches"
+  // Without a match the chats would land in the main account, so a merge
+  // is with its messages.
+  const messages = matched ? hint.messages : hint.main_messages
+  return (
+    <>
+      {!matched && !hint.stale && (
+        <Alert variant="destructive">
+          <TriangleAlert />
+          <AlertDescription>
+            {hint.android_ends && hint.accounts.some((a) => a.number_ends)
+              ? t.destination.notMatching(hint.android_ends, numbers(hint))
+              : t.destination.cantConfirm}
+          </AlertDescription>
+        </Alert>
+      )}
+      {messages ? (
+        <Alert>
+          <GitMerge />
+          <AlertDescription>{t.destination.merge(num(messages))}</AlertDescription>
+        </Alert>
+      ) : null}
+    </>
+  )
+}
+
 /** Where the Android chats go on the iPhone; asked once the first backup is checked. */
 export function DestinationChoice({ overview, refresh }: Pick<StepProps, "overview" | "refresh">) {
   const { t } = useI18n()
@@ -98,12 +131,15 @@ export function DestinationChoice({ overview, refresh }: Pick<StepProps, "overvi
             <AlertDescription>{t.destination.full}</AlertDescription>
           </Alert>
         )}
-        {choice === "existing" && hint.messages ? (
-          <Alert>
-            <GitMerge />
-            <AlertDescription>{t.destination.merge(num(hint.messages))}</AlertDescription>
+        {choice === "existing" && <ExistingWarnings hint={hint} />}
+        {choice === "setup" && hint.has_whatsapp && !hint.stale && (
+          <Alert variant="destructive">
+            <TriangleAlert />
+            <AlertDescription>
+              {t.destination.replaceExisting(hint.accounts.some((a) => a.number_ends) ? numbers(hint) : null)}
+            </AlertDescription>
           </Alert>
-        ) : null}
+        )}
       </CardContent>
     </Card>
   )

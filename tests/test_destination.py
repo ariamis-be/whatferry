@@ -147,6 +147,16 @@ def test_accounts_without_numbers_are_called_unknown():
     assert hint["reason"] == "iphone-numbers-unknown" and not hint["stale"]
 
 
+def test_hint_always_carries_the_main_account_s_messages():
+    """Picking "existing" by hand must still warn about the merge, so the
+    main account's message count comes with every hint, not only a match."""
+    hint = destination_hint(state("78", ACCOUNTS[:1], messages=483343))
+    assert hint["suggested"] == "second"
+    assert hint["main_messages"] == 483343 and hint["has_whatsapp"]
+    empty = destination_hint(state("78", accounts=[], stores=[]))
+    assert empty["main_messages"] is None and not empty["has_whatsapp"]
+
+
 def test_unknown_android_number_still_suggests_second():
     hint = destination_hint(state(None, ACCOUNTS))
     assert (hint["suggested"], hint["reason"]) == ("second", "unknown-number")

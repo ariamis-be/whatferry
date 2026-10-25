@@ -331,6 +331,11 @@ const en = {
     full: "This iPhone may already have a second WhatsApp account: the backup has a folder for one. If so, WhatsApp may not allow a third, and you may have to remove one first.",
     merge: (n: string) =>
       `That account already has ${n} messages on this iPhone. Merging keeps both histories, but it's the hardest case to get right.`,
+    notMatching: (ends: string, numbers: string) =>
+      `No account here has a number ending in ${ends}. With this choice the Android chats go into an account with a different number (ending ${numbers}), and they will appear under that number.`,
+    cantConfirm: "The wizard can't confirm that an account here uses the Android number: check WhatsApp on the iPhone before choosing this.",
+    replaceExisting: (numbers: string | null) =>
+      `WhatsApp is already set up on this iPhone${numbers ? ` (number ending ${numbers})` : ""}. Setting it up again with the Android number would sign that account out; add a second account instead to keep it.`,
     accountsTitle: "WhatsApp accounts on this iPhone",
     account: (numberEnds: string | null, country: string | null, main: boolean) =>
       `Number ending ${numberEnds ?? "?"}${country ? ` (${country})` : ""}${main ? " · main chat database" : ""}`,
@@ -694,6 +699,11 @@ const zh: Messages = {
     },
     full: "这部 iPhone 上可能已经有第二个 WhatsApp 账号：备份中有一个它的文件夹。如果是这样，WhatsApp 可能不允许第三个，你可能需要先移除一个。",
     merge: (n) => `那个账号在这部 iPhone 上已经有 ${n} 条消息。合并会保留两份记录，但这是最难做对的情况。`,
+    notMatching: (ends, numbers) =>
+      `这里没有号码以 ${ends} 结尾的账号。选择这一项，安卓的聊天会放进一个号码不同的账号（以 ${numbers} 结尾），并显示在那个号码下。`,
+    cantConfirm: "向导无法确认这里有账号在使用安卓手机的号码：选择这一项之前，请先在 iPhone 上的 WhatsApp 中确认。",
+    replaceExisting: (numbers) =>
+      `这部 iPhone 上已经设置了 WhatsApp${numbers ? `（号码以 ${numbers} 结尾）` : ""}。用安卓手机的号码重新设置会让那个账号退出登录；如要保留它，请改为添加第二个账号。`,
     accountsTitle: "这部 iPhone 上的 WhatsApp 账号",
     account: (numberEnds, country, main) =>
       `号码以 ${numberEnds ?? "?"} 结尾${country ? `（${country}）` : ""}${main ? " · 主聊天数据库" : ""}`,
