@@ -21,14 +21,15 @@ import { BackupStep } from "@/steps/backup"
 import { ResultsStep } from "@/steps/results"
 import { StartStep } from "@/steps/start"
 import { applyTheme, followSystem, savedTheme, saveTheme, type Theme } from "@/theme"
-import { CHECKLIST, STEPS, type StepId } from "@/wizard"
+import { STEPS, type StepId } from "@/wizard"
 
 function isDone(id: StepId, s: State) {
   switch (id) {
     case "start": return Boolean(s.android || s.before)
     case "android": return Boolean(s.android)
     case "before": return Boolean(s.before)
-    case "account": return CHECKLIST.every((key) => s.checklist?.[key])
+    // Nothing to check on the phone itself; the second backup proves it.
+    case "account": return Boolean(s.after)
     case "after": return Boolean(s.after)
     default: return false
   }
@@ -208,7 +209,7 @@ export default function App() {
                 {current === "start" && <StartStep {...props} />}
                 {current === "android" && <AndroidStep {...props} />}
                 {current === "before" && <BackupStep {...props} role="before" />}
-                {current === "account" && <AccountStep {...props} />}
+                {current === "account" && <AccountStep />}
                 {current === "after" && <BackupStep {...props} role="after" />}
                 {current === "done" && <ResultsStep {...props} />}
               </div>
@@ -225,7 +226,7 @@ export default function App() {
                 {next && (
                   <Button
                     size="lg"
-                    variant={current === "start" || isDone(current, state) ? "default" : "outline"}
+                    variant={current === "start" || current === "account" || isDone(current, state) ? "default" : "outline"}
                     onClick={() => go(next)}
                   >
                     {current === "start" ? t.nav.start : t.nav.continue} <ArrowRight data-icon="inline-end" />

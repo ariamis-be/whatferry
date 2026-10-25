@@ -5,8 +5,6 @@ export const STEPS = ["start", "android", "before", "account", "after", "done"] 
 
 export type StepId = (typeof STEPS)[number]
 
-export const CHECKLIST = ["add-account", "register-number", "leave-empty", "new-backup"] as const
-
 /** What every step gets: the server's view and a way to reload it. */
 export interface StepProps {
   overview: Overview

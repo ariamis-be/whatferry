@@ -301,12 +301,12 @@ const en = {
   account: {
     title: "Add the Android number on the iPhone",
     lead: "WhatsApp sets up the second account itself: its own empty database, folders and keys. Later, only that new account is filled with the Android chats; your current account isn't touched.",
-    checklist: {
-      "add-account": "On the iPhone, open WhatsApp → Settings and choose Add account (next to your name at the top).",
-      "register-number": "Register the Android phone's number and enter the code WhatsApp sends. WhatsApp on the Android phone signs out: that's expected, and your backup file is already safe on this computer.",
-      "leave-empty": "If WhatsApp offers to restore chats for the new account, skip it. The new account should start empty.",
-      "new-backup": "Make a new encrypted backup of the iPhone, the same way as before.",
-    } as Record<string, string>,
+    addTitle: "Add the account on the iPhone",
+    steps: [
+      "On the iPhone, open WhatsApp → Settings and choose Add account (next to your name at the top).",
+      "Register the Android phone's number and enter the code WhatsApp sends. WhatsApp on the Android phone signs out: that's expected, and your backup file is already safe on this computer.",
+      "If WhatsApp offers to restore chats for the new account, skip it. The new account should start empty.",
+    ],
     keepAndroid: "Keep WhatsApp installed on the Android phone until the transfer is finished. If anything goes wrong you can sign back in there and your chats are still on it.",
   },
   results: {
@@ -610,12 +610,12 @@ const zh: Messages = {
   account: {
     title: "在 iPhone 上添加安卓手机的号码",
     lead: "WhatsApp 会自己设置第二个账号：它自己的空数据库、文件夹和密钥。之后只有这个新账号会被填入安卓的聊天，你现在的账号不会受到影响。",
-    checklist: {
-      "add-account": "在 iPhone 上打开 WhatsApp → 设置，选择“添加账号”（在顶部你的名字旁边）。",
-      "register-number": "注册安卓手机的号码，并输入 WhatsApp 发送的验证码。安卓手机上的 WhatsApp 会退出登录：这是正常的，你的备份文件已经安全地保存在这台电脑上。",
-      "leave-empty": "如果 WhatsApp 提出为新账号恢复聊天，请跳过。新账号应该从空白开始。",
-      "new-backup": "按照之前的方法，再为 iPhone 创建一次加密备份。",
-    },
+    addTitle: "在 iPhone 上添加账号",
+    steps: [
+      "在 iPhone 上打开 WhatsApp → 设置，选择“添加账号”（在顶部你的名字旁边）。",
+      "注册安卓手机的号码，并输入 WhatsApp 发送的验证码。安卓手机上的 WhatsApp 会退出登录：这是正常的，你的备份文件已经安全地保存在这台电脑上。",
+      "如果 WhatsApp 提出为新账号恢复聊天，请跳过。新账号应该从空白开始。",
+    ],
     keepAndroid: "在转移完成之前，请保留安卓手机上的 WhatsApp。万一出了问题，你还可以在那里重新登录，聊天仍然都在。",
   },
   results: {
