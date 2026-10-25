@@ -5,7 +5,6 @@ have; `diff` answers which files a change on the phone touched, such as
 adding a second account. Both are read-only towards the backup.
 """
 
-import plistlib
 import re
 import sqlite3
 from collections import Counter, defaultdict
@@ -21,7 +20,6 @@ from whatferry.ios_backup import FILE, Backup, DeviceInfo, Entry
 APPLE_EPOCH = 978307200
 
 CHAT_STORAGE = "ChatStorage.sqlite"
-APP_DOMAIN = "AppDomain-net.whatsapp.WhatsApp"
 SHARED_DOMAIN = "AppDomainGroup-group.net.whatsapp.WhatsApp.shared"
 SIDECARS = ("-wal", "-shm")
 
@@ -114,35 +112,29 @@ def inspect(backup: Backup) -> tuple[Report, Path]:
         schema = target.with_name(target.name + ".schema.sql")
         workdir.write_private(schema, sqlite_summary.schema_sql(target).encode())
         report.databases.append(db)
-    report.accounts = _accounts(backup, by_key, extracted)
+    report.accounts = _accounts(extracted)
     report.account_folders = _account_folders(files)
     return report, run
 
 
-# Each account's WhatsApp ID ("LID", a privacy ID, not a phone number). The
-# keyboard keeps a language per account under ID_<lid>@lid; the main
-# account's own ID is the single row of ChatStorage's push-name table; and
-# LID.sqlite pairs IDs with phone numbers. None of this is documented, so
-# every step tolerates it being missing.
-KEYBOARD_PLIST = (APP_DOMAIN, "Library/Preferences/UITextInputContextIdentifiers.plist")
-ACCOUNT_KEY = re.compile(r"^ID_(\d+)@lid$")
+# The main account's WhatsApp ID ("LID", a privacy ID, not a phone number)
+# is the single row of ChatStorage's push-name table: the account's own
+# profile name. LID.sqlite pairs IDs with phone numbers. Neither is
+# documented, so both may be missing.
+#
+# Not used: UITextInputContextIdentifiers.plist. Its ID_<lid>@lid keys
+# looked like one per account, but they are the keyboard language per chat:
+# checked on a real backup, one belonged to a contact with 2,185 messages.
+# Further accounts are only visible as data/<id>/ folders (see
+# _account_folders), with no number to read.
 
 
-def _accounts(backup: Backup, by_key: dict, extracted: dict) -> list[Account]:
-    ids: list[str] = []
-    keyboard = by_key.get(KEYBOARD_PLIST)
-    if keyboard:
-        try:
-            ids = sorted({m.group(1) for k in plistlib.loads(backup.read(keyboard))
-                          if (m := ACCOUNT_KEY.match(str(k)))})
-        except (plistlib.InvalidFileException, ValueError, AttributeError, TypeError):
-            ids = []
+def _accounts(extracted: dict) -> list[Account]:
     main = _main_account_id(extracted.get((SHARED_DOMAIN, CHAT_STORAGE)))
-    if main and main not in ids:
-        ids.append(main)
-    numbers = _numbers(extracted.get((SHARED_DOMAIN, "LID.sqlite")), ids)
-    return [Account(id_ends=i[-2:], number_ends=(numbers.get(i) or (None, None))[0],
-                    country=(numbers.get(i) or (None, None))[1], main=i == main) for i in ids]
+    if not main:
+        return []
+    number_ends, country = _numbers(extracted.get((SHARED_DOMAIN, "LID.sqlite")), [main]).get(main, (None, None))
+    return [Account(id_ends=main[-2:], number_ends=number_ends, country=country, main=True)]
 
 
 def _main_account_id(chat_storage: Path | None) -> str | None:

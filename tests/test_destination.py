@@ -27,7 +27,9 @@ def lid_db(path, rows):
 
 
 def two_account_iphone(tmp_path, root):
-    """Like the real one: main account on …02, second on …88 with its own folder."""
+    """Like the real one: main account on …02, a data/<id> folder for what may
+    be a second account, and a keyboard entry for a contact (…88) that is not
+    an account at all."""
     fake = FakeBackup(root / "UDID")
     store, _ = chat_storage(tmp_path / "ChatStorage.sqlite", messages=4)
     with closing(sqlite3.connect(tmp_path / "ChatStorage.sqlite")) as db:
@@ -48,14 +50,20 @@ def two_account_iphone(tmp_path, root):
     return fake
 
 
-def test_accounts_found_by_their_last_two_digits(tmp_path):
+def test_main_account_found_by_its_last_two_digits(tmp_path):
     fake = two_account_iphone(tmp_path, tmp_path / "backups")
     report, _ = ios.inspect(Backup(fake.folder))
-    accounts = {a.id_ends: a for a in report.accounts}
-    assert accounts["00"].number_ends == "02" and accounts["00"].main
-    assert accounts["11"].number_ends == "88" and accounts["11"].country == "BE" and not accounts["11"].main
-    assert len(report.accounts) == 2
+    assert [(a.id_ends, a.number_ends, a.main) for a in report.accounts] == [("00", "02", True)]
     assert [(f.folder, f.has_chat_database) for f in report.account_folders] == [(FOLDER, False)]
+
+
+def test_keyboard_context_ids_are_chats_not_accounts(tmp_path):
+    """The keyboard keeps a language per chat under ID_<lid>@lid: on a real
+    backup one such id was a contact's. It must not turn into an account."""
+    fake = two_account_iphone(tmp_path, tmp_path / "backups")
+    report, _ = ios.inspect(Backup(fake.folder))
+    assert all(a.id_ends != SECOND_ID[-2:] for a in report.accounts)
+    assert all(a.number_ends != "88" for a in report.accounts)
     # Nothing longer than two digits of an id or number is kept.
     text = str(report.as_dict())
     for secret in (MAIN_ID, SECOND_ID, "32470000102", "32470000188"):
@@ -97,6 +105,13 @@ def test_different_number_suggests_a_second_account_and_flags_a_full_phone():
     assert (hint["suggested"], hint["reason"], hint["full"]) == ("second", "different-number", True)
     one = destination_hint(state("78", ACCOUNTS[:1]))
     assert one["suggested"] == "second" and not one["full"]
+
+
+def test_an_extra_account_folder_means_there_may_already_be_two():
+    s = state("78", ACCOUNTS[:1])
+    assert not destination_hint(s)["full"]
+    s["before"]["report"]["account_folders"] = [{"folder": FOLDER, "has_chat_database": False}]
+    assert destination_hint(s)["full"]
 
 
 def test_matching_number_suggests_the_existing_account_with_its_chats():

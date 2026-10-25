@@ -258,7 +258,10 @@ def destination_hint(state: dict) -> dict | None:
     # Checks saved before whatferry read accounts have no "accounts" at all:
     # say so, rather than comparing against nothing.
     stale = "accounts" not in report
-    hint = {"android_ends": ends, "accounts": accounts, "full": len(accounts) >= 2, "stale": stale}
+    # A data/<id>/ folder is the only sign of a further account; its number
+    # can't be read, so "full" only says there may already be two.
+    folders = report.get("account_folders", [])
+    hint = {"android_ends": ends, "accounts": accounts, "full": len(accounts) + len(folders) >= 2, "stale": stale}
     if not stores and not accounts:
         return hint | {"suggested": "setup", "reason": "no-whatsapp"}
     match = next((a for a in accounts if ends and a.get("number_ends") == ends), None)

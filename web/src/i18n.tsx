@@ -328,14 +328,14 @@ const en = {
       iphoneUnknown: (ends: string) =>
         `The Android number ends in ${ends}, but the iPhone's account numbers couldn't be read from this backup.`,
     },
-    full: "This iPhone already has two WhatsApp accounts. WhatsApp may not allow a third: you may have to remove one first.",
+    full: "This iPhone may already have a second WhatsApp account: the backup has a folder for one. If so, WhatsApp may not allow a third, and you may have to remove one first.",
     merge: (n: string) =>
       `That account already has ${n} messages on this iPhone. Merging keeps both histories, but it's the hardest case to get right.`,
     accountsTitle: "WhatsApp accounts on this iPhone",
     account: (numberEnds: string | null, country: string | null, main: boolean) =>
       `Number ending ${numberEnds ?? "?"}${country ? ` (${country})` : ""}${main ? " · main chat database" : ""}`,
     folders: (n: number) =>
-      `${n} more account ${n === 1 ? "folder" : "folders"} without a chat database in the backup.`,
+      `The backup also has ${n} ${n === 1 ? "folder" : "folders"} WhatsApp keeps for another account, possibly a second one; its number can't be read.`,
     chooseFirst: "Check the iPhone backup first; then choose where the chats go.",
   },
   account: {
@@ -692,12 +692,12 @@ const zh: Messages = {
       stale: "这次 iPhone 检查是在 whatferry 能读取 iPhone 账号之前保存的。请点击上方的“重新检查”来比较号码。",
       iphoneUnknown: (ends) => `安卓的号码以 ${ends} 结尾，但无法从这个备份中读取 iPhone 账号的号码。`,
     },
-    full: "这部 iPhone 上已经有两个 WhatsApp 账号。WhatsApp 可能不允许第三个：你可能需要先移除一个。",
+    full: "这部 iPhone 上可能已经有第二个 WhatsApp 账号：备份中有一个它的文件夹。如果是这样，WhatsApp 可能不允许第三个，你可能需要先移除一个。",
     merge: (n) => `那个账号在这部 iPhone 上已经有 ${n} 条消息。合并会保留两份记录，但这是最难做对的情况。`,
     accountsTitle: "这部 iPhone 上的 WhatsApp 账号",
     account: (numberEnds, country, main) =>
       `号码以 ${numberEnds ?? "?"} 结尾${country ? `（${country}）` : ""}${main ? " · 主聊天数据库" : ""}`,
-    folders: (n) => `备份中还有 ${n} 个没有聊天数据库的账号文件夹。`,
+    folders: (n) => `备份中还有 ${n} 个 WhatsApp 为其他账号保留的文件夹，可能是第二个账号；无法读取它的号码。`,
     chooseFirst: "请先检查 iPhone 备份，然后选择聊天放到哪里。",
   },
   account: {

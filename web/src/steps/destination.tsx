@@ -51,7 +51,7 @@ export function DestinationChoice({ overview, refresh }: Pick<StepProps, "overvi
     }
   }
 
-  const folders = overview.state.before?.report.account_folders?.filter((f) => !f.has_chat_database).length ?? 0
+  const folders = overview.state.before?.report.account_folders?.length ?? 0
   return (
     <Card>
       <CardHeader>

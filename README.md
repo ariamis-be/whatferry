@@ -68,10 +68,13 @@ go, and suggests an answer:
   number; the second backup is then skipped, and the chats will be merged
   into that account's own.
 
-It reads the iPhone's accounts from the backup (WhatsApp's per-account IDs,
-the main account's own ID in ChatStorage, and LID.sqlite's ID-to-number
-pairs) and compares their numbers with the Android backup's on the last two
-digits, all either side keeps. Only those two digits are stored or shown.
+It reads the iPhone's main account from the backup (its own ID, the single
+row of ChatStorage's profile-name table, and that ID's number in
+LID.sqlite) and compares the number with the Android backup's on the last
+two digits, all the Android header keeps. Only those two digits are stored
+or shown. Further accounts only show as `data/<id>/` folders, whose number
+can't be read, so the wizard says there *may* be a second account.
+(The keyboard's `ID_<lid>@lid` entries are per chat, not per account.)
 
 The page is in English and Simplified Chinese (it starts in the browser's
 language; the header switches it), with light, dark or system theme (system
