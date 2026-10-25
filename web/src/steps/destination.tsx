@@ -21,6 +21,7 @@ function reason(hint: DestinationHint, t: Messages): string {
       return t.destination.reasons.different(ends, hint.accounts.map((a) => a.number_ends ?? "?").join(", "))
     case "stale-check": return t.destination.reasons.stale
     case "iphone-numbers-unknown": return t.destination.reasons.iphoneUnknown(ends)
+    case "second-started": return t.destination.reasons.secondStarted(ends)
     default: return t.destination.reasons.unknown
   }
 }
@@ -32,12 +33,19 @@ function numbers(hint: DestinationHint): string {
 /** Picking "existing" by hand, or when the numbers match: what it means here. */
 function ExistingWarnings({ hint }: { hint: DestinationHint }) {
   const { t } = useI18n()
-  const matched = hint.reason === "number-matches"
+  const started = hint.reason === "second-started"
+  const matched = hint.reason === "number-matches" || started
   // Without a match the chats would land in the main account, so a merge
-  // is with its messages.
-  const messages = matched ? hint.messages : hint.main_messages
+  // is with its messages; a started second account has none to merge with.
+  const messages = started ? null : matched ? hint.messages : hint.main_messages
   return (
     <>
+      {started && (
+        <Alert>
+          <Info />
+          <AlertDescription>{t.destination.secondNoChats}</AlertDescription>
+        </Alert>
+      )}
       {!matched && !hint.stale && (
         <Alert variant="destructive">
           <TriangleAlert />
@@ -84,7 +92,9 @@ export function DestinationChoice({ overview, refresh }: Pick<StepProps, "overvi
     }
   }
 
-  const folders = overview.state.before?.report.account_folders?.length ?? 0
+  // Folders already tied to a known account are shown with it, not again.
+  const linked = new Set(hint.accounts.map((a) => a.folder))
+  const folders = overview.state.before?.report.account_folders?.filter((f) => !linked.has(f.folder)).length ?? 0
   return (
     <Card>
       <CardHeader>
@@ -97,7 +107,7 @@ export function DestinationChoice({ overview, refresh }: Pick<StepProps, "overvi
             <h3 className="text-sm font-medium">{t.destination.accountsTitle}</h3>
             <ul className="space-y-1 text-sm text-muted-foreground">
               {hint.accounts.map((a) => (
-                <li key={`${a.number_ends}-${a.id_ends}`}>{t.destination.account(a.number_ends, a.country, a.main)}</li>
+                <li key={`${a.number_ends}-${a.id_ends}`}>{t.destination.account(a.number_ends, a.country, a.main, a.has_chats ?? a.main)}</li>
               ))}
             </ul>
             {folders > 0 && <p className="text-xs text-muted-foreground">{t.destination.folders(folders)}</p>}

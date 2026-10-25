@@ -49,6 +49,8 @@ export interface IphoneAccount {
   number_ends: string | null
   country: string | null
   main: boolean
+  folder?: string | null
+  has_chats?: boolean
 }
 
 export interface IosReport {
@@ -63,7 +65,7 @@ export type Destination = "setup" | "second" | "existing"
 
 export interface DestinationHint {
   suggested: Destination
-  reason: "no-whatsapp" | "number-matches" | "different-number" | "unknown-number" | "stale-check" | "iphone-numbers-unknown"
+  reason: "no-whatsapp" | "number-matches" | "different-number" | "unknown-number" | "stale-check" | "iphone-numbers-unknown" | "second-started"
   stale?: boolean
   android_ends: string | null
   accounts: IphoneAccount[]

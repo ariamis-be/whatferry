@@ -16,7 +16,7 @@ from whatferry.ios_backup import Backup
 from whatferry.ui.wizard import destination_hint, summary_text
 
 MAIN_ID, SECOND_ID = "267817232396200", "263779778617311"
-OWN_NUMBER, CONTACT_NUMBER = "40700001234", "32470000188"
+OWN_NUMBER, CONTACT_NUMBER, SECOND_NUMBER = "40700001234", "32470000188", "32470005678"
 FOLDER = "data/0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
 PREFS = "Library/Preferences/group.net.whatsapp.WhatsApp.shared.plist"
 
@@ -30,11 +30,11 @@ def lid_db(path, rows):
     return path.read_bytes()
 
 
-def shared_prefs(own_jid):
+def shared_prefs(own_jid, **more):
     """WhatsApp's shared preferences, with a date Python's plistlib can't hold,
     as the real file has: plistlib.loads rejects the whole file."""
     marker = datetime(2001, 1, 1, 0, 0, 7)
-    data = plistlib.dumps({"LastOwnJabberID": own_jid, "SomeExpiry": marker}, fmt=plistlib.FMT_BINARY)
+    data = plistlib.dumps({"LastOwnJabberID": own_jid, "SomeExpiry": marker} | more, fmt=plistlib.FMT_BINARY)
     data = data.replace(b"\x33" + struct.pack(">d", 7.0), b"\x33" + struct.pack(">d", 1e20))
     with pytest.raises(plistlib.InvalidFileException):
         plistlib.loads(data)
@@ -56,7 +56,8 @@ def two_account_iphone(tmp_path, root):
         (f"{MAIN_ID}@lid", OWN_NUMBER, "RO"),
         (f"{SECOND_ID}@lid", CONTACT_NUMBER, "BE"),
     ]))
-    fake.add(SHARED, PREFS, shared_prefs(f"{OWN_NUMBER}@s.whatsapp.net"))
+    fake.add(SHARED, PREFS, shared_prefs(f"{OWN_NUMBER}@s.whatsapp.net",
+                                         LastOwnJabberID_0A1B2C3D=f"{SECOND_NUMBER}@s.whatsapp.net"))
     keyboard = {f"ID_{MAIN_ID}@lid": "en_GB", f"ID_{SECOND_ID}@lid": "en_GB"}
     fake.add(APP, "Library/Preferences/UITextInputContextIdentifiers.plist",
              plistlib.dumps(keyboard, fmt=plistlib.FMT_BINARY))
@@ -68,9 +69,13 @@ def two_account_iphone(tmp_path, root):
 def test_signed_in_account_from_last_own_jabber_id(tmp_path):
     fake = two_account_iphone(tmp_path, tmp_path / "backups")
     report, _ = ios.inspect(Backup(fake.folder))
-    assert [(a.id_ends, a.number_ends, a.country, a.main) for a in report.accounts] == [("00", "1234", "RO", True)]
+    assert [(a.number_ends, a.country, a.main, a.folder, a.has_chats) for a in report.accounts] == [
+        ("1234", "RO", True, None, True),
+        ("5678", None, False, FOLDER, False),
+    ]
+    assert report.accounts[0].id_ends == "00"
     assert [(f.folder, f.has_chat_database) for f in report.account_folders] == [(FOLDER, False)]
-    assert report.accounts_method == ios.ACCOUNTS_METHOD == 3
+    assert report.accounts_method == ios.ACCOUNTS_METHOD == 4
 
 
 def test_contacts_never_pass_for_accounts(tmp_path):
@@ -80,7 +85,7 @@ def test_contacts_never_pass_for_accounts(tmp_path):
     report, _ = ios.inspect(Backup(fake.folder))
     assert all(not (a.number_ends or "").endswith("0188") for a in report.accounts)
     text = str(report.as_dict())
-    for secret in (MAIN_ID, SECOND_ID, OWN_NUMBER, CONTACT_NUMBER):
+    for secret in (MAIN_ID, SECOND_ID, OWN_NUMBER, CONTACT_NUMBER, SECOND_NUMBER):
         assert secret not in text
 
 
@@ -113,7 +118,7 @@ def state(android_ends=None, accounts=(), stores=("ChatStorage.sqlite",), messag
     databases = [{"path": p, "counts": {"messages": messages}} for p in stores]
     return {
         "android": {"report": {"header": {"number_ends_with": android_ends}}} if android_ends else None,
-        "before": {"report": {"accounts": list(accounts), "databases": databases, "accounts_method": 3}},
+        "before": {"report": {"accounts": list(accounts), "databases": databases, "accounts_method": 4}},
     }
 
 
@@ -148,11 +153,11 @@ def test_matching_number_suggests_the_existing_account_with_its_chats():
     hint = destination_hint(state("02", ACCOUNTS, messages=483343))
     assert (hint["suggested"], hint["reason"]) == ("existing", "number-matches")
     assert hint["match"]["id_ends"] == "00" and hint["messages"] == 483343
-    second = destination_hint(state("88", ACCOUNTS))
+    second = destination_hint(state("88", [ACCOUNTS[0], ACCOUNTS[1] | {"has_chats": True}]))
     assert second["match"]["id_ends"] == "11" and second["messages"] is None
 
 
-@pytest.mark.parametrize("method", [None, 1, 2])
+@pytest.mark.parametrize("method", [None, 1, 2, 3])
 def test_checks_from_older_account_detection_say_check_again(method):
     """None: saved before accounts were read; 1: the keyboard-file method,
     which mistook a chat for an account. Both must ask for a new check."""
@@ -226,3 +231,29 @@ def test_summary_names_destination_and_accounts():
 @pytest.mark.parametrize("choice", ["setup", "second", "existing"])
 def test_every_choice_is_accepted(server, choice):  # noqa: F811
     assert request(server, "POST", "/api/destination", {"choice": choice})[0] == 200
+
+
+SECOND = {"id_ends": "44", "number_ends": "5678", "main": False, "folder": FOLDER, "has_chats": False}
+
+
+def test_android_number_started_as_second_account_suggests_finishing_it():
+    """Signing in stopped before the confirmation code: the account exists,
+    its chats don't yet, and the second backup must still find them."""
+    hint = destination_hint(state("78", [ACCOUNTS[0], SECOND]))
+    assert (hint["suggested"], hint["reason"]) == ("second", "second-started")
+    assert hint["match"]["number_ends"] == "5678"
+
+
+def test_android_number_as_a_finished_second_account_is_existing():
+    hint = destination_hint(state("78", [ACCOUNTS[0], SECOND | {"has_chats": True}]))
+    assert (hint["suggested"], hint["reason"]) == ("existing", "number-matches")
+    assert hint["messages"] is None
+
+
+def test_folder_tied_to_an_account_is_not_counted_twice():
+    s = state("99", [ACCOUNTS[0], SECOND])
+    s["before"]["report"]["account_folders"] = [{"folder": FOLDER, "has_chat_database": False}]
+    assert destination_hint(s)["full"]
+    s = state("99", ACCOUNTS[:1])
+    s["before"]["report"]["account_folders"] = [{"folder": FOLDER, "has_chat_database": False}]
+    assert destination_hint(s)["full"]

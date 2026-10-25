@@ -325,6 +325,8 @@ const en = {
         `The Android number ends in ${ends}; this iPhone's account numbers end in ${accounts}.`,
       unknown: "The Android backup doesn't record its number, so the wizard can't compare.",
       stale: "This iPhone check was saved with an older way of reading the iPhone's accounts, which could mistake a chat for an account. Click Check again above to compare the numbers.",
+      secondStarted: (ends: string) =>
+        `The Android number (ending ${ends}) is already set up here as a second account, but it has no chats yet: signing in probably stopped before the confirmation code. Finish signing in on the iPhone, then make the second backup.`,
       iphoneUnknown: (ends: string) =>
         `The Android number ends in ${ends}, but the iPhone's account numbers couldn't be read from this backup.`,
     },
@@ -337,8 +339,9 @@ const en = {
     replaceExisting: (numbers: string | null) =>
       `WhatsApp is already set up on this iPhone${numbers ? ` (number ending ${numbers})` : ""}. Setting it up again with the Android number would sign that account out; add a second account instead to keep it.`,
     accountsTitle: "WhatsApp accounts on this iPhone",
-    account: (numberEnds: string | null, country: string | null, main: boolean) =>
-      `Number ending ${numberEnds ?? "?"}${country ? ` (${country})` : ""}${main ? " · main chat database" : ""}`,
+    account: (numberEnds: string | null, country: string | null, main: boolean, hasChats: boolean) =>
+      `Number ending ${numberEnds ?? "?"}${country ? ` (${country})` : ""} · ${main ? "main account" : "second account"}${hasChats ? "" : " · no chats in this backup"}`,
+    secondNoChats: "That account's chats aren't in the iPhone backup: either it has none yet, or WhatsApp keeps a second account's chats out of backups. The transfer has to work around that, so it's the next thing to find out.",
     folders: (n: number) =>
       `The backup also has ${n} ${n === 1 ? "folder" : "folders"} WhatsApp keeps for another account, possibly a second one; its number can't be read.`,
     chooseFirst: "Check the iPhone backup first; then choose where the chats go.",
@@ -695,6 +698,8 @@ const zh: Messages = {
       different: (ends, accounts) => `安卓的号码以 ${ends} 结尾；这部 iPhone 上账号的号码以 ${accounts} 结尾。`,
       unknown: "安卓备份没有记录它的号码，所以向导无法比较。",
       stale: "这次 iPhone 检查使用的是较旧的账号读取方式，可能会把聊天误认为账号。请点击上方的“重新检查”来比较号码。",
+      secondStarted: (ends) =>
+        `安卓的号码（以 ${ends} 结尾）已经在这里被设置为第二个账号，但它还没有聊天：登录可能在输入验证码之前就停止了。请在 iPhone 上完成登录，然后进行第二次备份。`,
       iphoneUnknown: (ends) => `安卓的号码以 ${ends} 结尾，但无法从这个备份中读取 iPhone 账号的号码。`,
     },
     full: "这部 iPhone 上可能已经有第二个 WhatsApp 账号：备份中有一个它的文件夹。如果是这样，WhatsApp 可能不允许第三个，你可能需要先移除一个。",
@@ -705,8 +710,9 @@ const zh: Messages = {
     replaceExisting: (numbers) =>
       `这部 iPhone 上已经设置了 WhatsApp${numbers ? `（号码以 ${numbers} 结尾）` : ""}。用安卓手机的号码重新设置会让那个账号退出登录；如要保留它，请改为添加第二个账号。`,
     accountsTitle: "这部 iPhone 上的 WhatsApp 账号",
-    account: (numberEnds, country, main) =>
-      `号码以 ${numberEnds ?? "?"} 结尾${country ? `（${country}）` : ""}${main ? " · 主聊天数据库" : ""}`,
+    account: (numberEnds, country, main, hasChats) =>
+      `号码以 ${numberEnds ?? "?"} 结尾${country ? `（${country}）` : ""} · ${main ? "主账号" : "第二个账号"}${hasChats ? "" : " · 此备份中没有聊天"}`,
+    secondNoChats: "那个账号的聊天不在 iPhone 备份中：要么它还没有聊天，要么 WhatsApp 不把第二个账号的聊天放进备份。转移必须绕过这一点，所以这是接下来要弄清楚的事。",
     folders: (n) => `备份中还有 ${n} 个 WhatsApp 为其他账号保留的文件夹，可能是第二个账号；无法读取它的号码。`,
     chooseFirst: "请先检查 iPhone 备份，然后选择聊天放到哪里。",
   },

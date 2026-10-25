@@ -23,7 +23,7 @@ APPLE_EPOCH = 978307200
 
 CHAT_STORAGE = "ChatStorage.sqlite"
 SHARED_DOMAIN = "AppDomainGroup-group.net.whatsapp.WhatsApp.shared"
-ACCOUNTS_METHOD = 3
+ACCOUNTS_METHOD = 4
 SIDECARS = ("-wal", "-shm")
 
 # ChatStorage tables the conversion will have to fill, by what they hold.
@@ -59,6 +59,10 @@ class Account:
     number_ends: str | None
     country: str | None
     main: bool  # owns the ChatStorage.sqlite at the root of the shared folder
+    # A further account's own folder, data/<id>; None for the main account.
+    folder: str | None = None
+    # Whether this backup holds the account's ChatStorage.sqlite.
+    has_chats: bool = False
 
 
 @dataclass
@@ -77,7 +81,7 @@ class Report:
     account_folders: list[AccountFolder] = field(default_factory=list)
     # Bumped whenever account detection changes, so older saved checks can be
     # told apart: 1 read the keyboard file, 2 the push-name row (both wrong),
-    # 3 reads LastOwnJabberID.
+    # 3 read LastOwnJabberID (main account only), 4 also LastOwnJabberID_<folder>.
     accounts_method: int = ACCOUNTS_METHOD
 
     def as_dict(self) -> dict:
@@ -119,36 +123,51 @@ def inspect(backup: Backup) -> tuple[Report, Path]:
         schema = target.with_name(target.name + ".schema.sql")
         workdir.write_private(schema, sqlite_summary.schema_sql(target).encode())
         report.databases.append(db)
-    report.accounts = _accounts(backup, by_key, extracted)
     report.account_folders = _account_folders(files)
+    report.accounts = _accounts(backup, by_key, extracted, report.account_folders)
     return report, run
 
 
-# The account WhatsApp is signed in as: LastOwnJabberID in the app group's
-# shared preferences, "<number>@s.whatsapp.net". Its WhatsApp ID ("LID") and
-# country come from LID.sqlite, which pairs IDs with phone numbers.
+# Which numbers WhatsApp is signed in as, from the app group's shared
+# preferences: LastOwnJabberID for the main account, and
+# LastOwnJabberID_<first 8 characters of its data/<id> folder> for each
+# further one, all "<number>@s.whatsapp.net". Each account's WhatsApp ID
+# ("LID") and country come from LID.sqlite, which pairs IDs with numbers.
 #
 # Wrong, and no longer used (each checked against a real backup whose owner
-# knew the number):
+# knew the numbers):
 # - UITextInputContextIdentifiers.plist: its ID_<lid>@lid keys are the
 #   keyboard language per chat, not per account.
 # - ChatStorage's single ZWAPROFILEPUSHNAME row: a contact's profile name.
-# Further accounts are only visible as data/<id>/ folders (see
-# _account_folders), with no number to read.
 SHARED_PREFS = (SHARED_DOMAIN, "Library/Preferences/group.net.whatsapp.WhatsApp.shared.plist")
 OWN_JID = re.compile(r"^(\d{6,15})@s\.whatsapp\.net$")
+FURTHER_ACCOUNT_KEY = re.compile(r"^LastOwnJabberID_([0-9A-Fa-f]{8})$")
 
 
-def _accounts(backup: Backup, by_key: dict, extracted: dict) -> list[Account]:
-    prefs = by_key.get(SHARED_PREFS)
-    if prefs is None:
+def _accounts(backup: Backup, by_key: dict, extracted: dict, folders: list[AccountFolder]) -> list[Account]:
+    prefs_entry = by_key.get(SHARED_PREFS)
+    prefs = (read_plist(backup.read(prefs_entry)) if prefs_entry else None) or {}
+    if not isinstance(prefs, dict):
         return []
-    own = OWN_JID.match(str((read_plist(backup.read(prefs)) or {}).get("LastOwnJabberID") or ""))
-    if not own:
-        return []
-    number = own.group(1)
-    lid, country = _lid_and_country(extracted.get((SHARED_DOMAIN, "LID.sqlite")), number)
-    return [Account(id_ends=lid[-2:] if lid else None, number_ends=number[-4:], country=country, main=True)]
+    lid_db = extracted.get((SHARED_DOMAIN, "LID.sqlite"))
+
+    def account(jid, main: bool, folder: AccountFolder | None) -> Account | None:
+        own = OWN_JID.match(str(jid or ""))
+        if not own:
+            return None
+        number = own.group(1)
+        lid, country = _lid_and_country(lid_db, number)
+        return Account(id_ends=lid[-2:] if lid else None, number_ends=number[-4:], country=country, main=main,
+                       folder=folder.folder if folder else None,
+                       has_chats=folder.has_chat_database if folder else (SHARED_DOMAIN, CHAT_STORAGE) in extracted)
+
+    found = [account(prefs.get("LastOwnJabberID"), True, None)]
+    for key in sorted(k for k in prefs if isinstance(k, str)):
+        if m := FURTHER_ACCOUNT_KEY.match(key):
+            prefix = m.group(1).upper()
+            folder = next((f for f in folders if f.folder.upper().startswith(f"DATA/{prefix}")), None)
+            found.append(account(prefs[key], False, folder))
+    return [a for a in found if a]
 
 
 def _lid_and_country(lid_db: Path | None, number: str) -> tuple[str | None, str | None]:

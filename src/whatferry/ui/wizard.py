@@ -260,7 +260,9 @@ def destination_hint(state: dict) -> dict | None:
     stale = report.get("accounts_method") != ios.ACCOUNTS_METHOD
     # A data/<id>/ folder is the only sign of a further account; its number
     # can't be read, so "full" only says there may already be two.
-    folders = report.get("account_folders", [])
+    # Folders already tied to a known account don't count twice.
+    linked = {a.get("folder") for a in accounts}
+    folders = [f for f in report.get("account_folders", []) if f["folder"] not in linked]
     # The main chat database's message count: what a merge into the main
     # account would merge with, whichever destination is picked by hand.
     main = next((d for d in stores if d["path"] == ios.CHAT_STORAGE), None)
@@ -271,6 +273,12 @@ def destination_hint(state: dict) -> dict | None:
         return hint | {"suggested": "setup", "reason": "no-whatsapp"}
     # The iPhone gives the last four digits, the Android header only two.
     match = next((a for a in accounts if ends and (a.get("number_ends") or "").endswith(ends)), None)
+    if match and not match.get("main") and not match.get("has_chats"):
+        # The Android number was added as a second account, but WhatsApp has
+        # no chats for it yet: usually because signing in stopped before the
+        # confirmation code. Finishing it creates the database, and the
+        # second backup is what finds it, so this is the second-account path.
+        return hint | {"suggested": "second", "reason": "second-started", "match": match}
     if match:
         messages = main_messages if match.get("main") else None
         return hint | {"suggested": "existing", "reason": "number-matches", "match": match, "messages": messages}
