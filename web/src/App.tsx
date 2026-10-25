@@ -28,11 +28,17 @@ function isDone(id: StepId, s: State) {
     case "start": return Boolean(s.android || s.before)
     case "android": return Boolean(s.android)
     case "before": return Boolean(s.before)
-    // Nothing to check on the phone itself; the second backup proves it.
-    case "account": return Boolean(s.after)
+    // Nothing to check on the phone itself; the second backup proves it,
+    // unless the chats go to an account that already exists.
+    case "account": return s.destination === "existing" || Boolean(s.after)
     case "after": return Boolean(s.after)
     default: return false
   }
+}
+
+/** A step the chosen destination makes unnecessary. */
+function isSkipped(id: StepId, s: State) {
+  return id === "after" && s.destination === "existing"
 }
 
 export default function App() {
@@ -87,8 +93,8 @@ export default function App() {
   const state = overview?.state ?? {}
   const index = STEPS.indexOf(current)
   const props = overview ? { overview, refresh, go } : null
-  const back = index > 0 ? STEPS[index - 1] : null
-  const next = index < STEPS.length - 1 ? STEPS[index + 1] : null
+  const back = STEPS.slice(0, index).filter((s) => !isSkipped(s, state)).at(-1) ?? null
+  const next = STEPS.slice(index + 1).find((s) => !isSkipped(s, state)) ?? null
 
   return (
     <I18nContext.Provider value={i18n}>
@@ -156,14 +162,16 @@ export default function App() {
               <ol className="flex gap-1.5">
                 {STEPS.map((step, i) => {
                   const done = isDone(step, state)
+                  const skipped = isSkipped(step, state)
                   const active = step === current
+                  const label = t.stepLabel(i + 1, t.steps[step], done)
                   return (
                     <li key={step} className={cn("min-w-0 flex-1", active && "max-sm:flex-[3]")}>
                       <button
                         type="button"
                         onClick={() => go(step)}
                         aria-current={active ? "step" : undefined}
-                        aria-label={t.stepLabel(i + 1, t.steps[step], done)}
+                        aria-label={skipped ? `${label} (${t.stepSkipped})` : label}
                         className="group flex w-full flex-col gap-2 rounded-sm py-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                       >
                         <span
@@ -171,6 +179,7 @@ export default function App() {
                             "h-1 rounded-full bg-border transition-colors",
                             (done || active) && "bg-primary",
                             active && !done && "bg-primary/60",
+                            skipped && !active && "bg-transparent bg-[repeating-linear-gradient(90deg,var(--border)_0_4px,transparent_4px_8px)]",
                           )}
                         />
                         <span
@@ -178,6 +187,7 @@ export default function App() {
                           className={cn(
                             "flex items-center gap-1 truncate text-xs text-muted-foreground group-hover:text-foreground",
                             active && "font-medium text-foreground",
+                            skipped && !active && "line-through decoration-muted-foreground/60",
                           )}
                         >
                           {done ? <Check className="size-3 shrink-0" /> : <span className="tabular-nums">{i + 1}</span>}
@@ -209,7 +219,7 @@ export default function App() {
                 {current === "start" && <StartStep {...props} />}
                 {current === "android" && <AndroidStep {...props} />}
                 {current === "before" && <BackupStep {...props} role="before" />}
-                {current === "account" && <AccountStep />}
+                {current === "account" && <AccountStep overview={props.overview} go={go} />}
                 {current === "after" && <BackupStep {...props} role="after" />}
                 {current === "done" && <ResultsStep {...props} />}
               </div>
@@ -226,7 +236,7 @@ export default function App() {
                 {next && (
                   <Button
                     size="lg"
-                    variant={current === "start" || current === "account" || isDone(current, state) ? "default" : "outline"}
+                    variant={current === "start" || (current === "account" && state.destination) || isDone(current, state) || isSkipped(current, state) ? "default" : "outline"}
                     onClick={() => go(next)}
                   >
                     {current === "start" ? t.nav.start : t.nav.continue} <ArrowRight data-icon="inline-end" />

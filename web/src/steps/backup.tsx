@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useI18n } from "@/i18n"
+import { DestinationChoice } from "@/steps/destination"
 import { platformOf, type StepProps } from "@/wizard"
 
 interface Listing {
@@ -59,6 +60,15 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
   function look() {
     setListing(null)
     findBackups().then(show)
+  }
+
+  if (!first && state.destination === "existing") {
+    return (
+      <>
+        <PageHeader title={t.backup.title.after} lead={t.account.notNeeded} />
+        <p className="text-sm">{t.account.skipNote}</p>
+      </>
+    )
   }
 
   if (!first && !state.before) {
@@ -171,6 +181,7 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
           {checked ? t.backup.checkAgain : t.backup.check[role]}
         </Button>
         {checked && <BackupResult entry={checked} first={first} />}
+        {first && checked && <DestinationChoice overview={overview} refresh={refresh} />}
       </div>
     </>
   )

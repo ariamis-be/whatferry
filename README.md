@@ -57,6 +57,22 @@ random token in the link it opens, with the Host and Origin headers checked
 and a Content-Security-Policy that allows only its own script.
 `whatferry ui --no-browser` prints the link instead of opening it.
 
+After the first iPhone backup, the wizard asks where the Android chats should
+go, and suggests an answer:
+
+- **Set up WhatsApp** with the Android number, when the iPhone has no
+  WhatsApp yet;
+- **a second account**, when the iPhone's WhatsApp uses another number (the
+  usual case);
+- **the existing account**, when an account there already uses the Android
+  number; the second backup is then skipped, and the chats will be merged
+  into that account's own.
+
+It reads the iPhone's accounts from the backup (WhatsApp's per-account IDs,
+the main account's own ID in ChatStorage, and LID.sqlite's ID-to-number
+pairs) and compares their numbers with the Android backup's on the last two
+digits, all either side keeps. Only those two digits are stored or shown.
+
 The page is in English and Simplified Chinese (it starts in the browser's
 language; the header switches it), with light, dark or system theme (system
 by default). Both choices are kept in the browser. Messages from the server,

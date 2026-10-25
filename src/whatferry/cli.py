@@ -194,6 +194,13 @@ def _ios_inspect(args) -> int:
         if db.counts:
             print(f"      messages from {db.first_message or '?'} to {db.last_message or '?'}")
             _print_counts(db.counts, indent="      ")
+    for account in report.accounts:
+        country = f" ({account.country})" if account.country else ""
+        main = ", owns the main chat database" if account.main else ""
+        print(f"  WhatsApp account id …{account.id_ends}: number ending {account.number_ends or '?'}{country}{main}")
+    for folder in report.account_folders:
+        has = "with" if folder.has_chat_database else "without"
+        print(f"  account folder {folder.folder} {has} a chat database")
     stores = report.chat_storages
     if len(stores) > 1:
         print(f"  {len(stores)} ChatStorage databases: probably one per account (paths above).")

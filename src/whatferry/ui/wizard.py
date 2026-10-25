@@ -118,8 +118,14 @@ class Wizard:
             "candidate_folders": [str(Path.home() / f) if f != "." else str(Path.home())
                                   for f in CANDIDATE_FOLDERS],
             "phone_folder": str(adb.default_destination()),
-            "state": self.state.get(),
+            "state": (state := self.state.get()),
+            "destination_hint": destination_hint(state),
         }
+
+    def set_destination(self, choice: str) -> None:
+        if choice not in DESTINATIONS:
+            raise StepError(f"unknown destination {choice!r}")
+        self.state.update(destination=choice)
 
     # Phone over USB
 
@@ -221,10 +227,43 @@ class Wizard:
 
     def reset(self) -> None:
         """Forget progress; run folders and snapshots stay until deleted."""
-        self.state.update(android=None, before=None, after=None, checklist=None, step=None)
+        self.state.update(android=None, before=None, after=None, checklist=None, step=None, destination=None)
 
     def summary(self) -> str:
         return summary_text(self.state.get())
+
+
+# Where the Android chats go on the iPhone:
+#   setup     WhatsApp isn't set up there yet: set it up with the Android number
+#   second    add the Android number as a second account (the usual case)
+#   existing  an account already on the Android number takes them (a merge,
+#             when it has chats of its own)
+DESTINATIONS = ("setup", "second", "existing")
+
+
+def destination_hint(state: dict) -> dict | None:
+    """Which destination fits what the backups show, and why.
+
+    Numbers are compared on their last two digits only (all the Android
+    backup header keeps), so a match is likely, not certain.
+    """
+    before = state.get("before")
+    if not before:
+        return None
+    report = before["report"]
+    accounts = report.get("accounts", [])
+    stores = [d for d in report["databases"] if Path(d["path"]).name == ios.CHAT_STORAGE]
+    header = ((state.get("android") or {}).get("report") or {}).get("header") or {}
+    ends = header.get("number_ends_with")
+    hint = {"android_ends": ends, "accounts": accounts, "full": len(accounts) >= 2}
+    if not stores and not accounts:
+        return hint | {"suggested": "setup", "reason": "no-whatsapp"}
+    match = next((a for a in accounts if ends and a.get("number_ends") == ends), None)
+    if match:
+        main = next((d for d in stores if d["path"] == ios.CHAT_STORAGE), None)
+        messages = (main or {}).get("counts", {}).get("messages") if match.get("main") else None
+        return hint | {"suggested": "existing", "reason": "number-matches", "match": match, "messages": messages}
+    return hint | {"suggested": "second", "reason": "different-number" if ends else "unknown-number"}
 
 
 def diff_summary(d: ios.Diff) -> dict:
@@ -258,7 +297,7 @@ def summary_text(state: dict) -> str:
         lines += [f"  {k}: {v}" for k, v in r["counts"].items() if v is not None]
         lines += [f"  jid server {k}: {v}" for k, v in r.get("jid_servers", {}).items()]
         lines += [f"  message types: {len(r.get('message_types', {}))}", ""]
-    for role, title in (("before", "iPhone, before adding the account"), ("after", "iPhone, after")):
+    for role, title in (("before", "iPhone, first backup"), ("after", "iPhone, second backup")):
         entry = state.get(role)
         if not entry:
             continue
@@ -273,6 +312,13 @@ def summary_text(state: dict) -> str:
             lines += [f"    {k}: {v}" for k, v in db.get("counts", {}).items() if v is not None]
             if db.get("core_data_entities"):
                 lines.append(f"    entities: {len(db['core_data_entities'])}")
+        for account in r.get("accounts", []):
+            lines.append(f"  account id …{account['id_ends']}: number …{account.get('number_ends') or '?'}"
+                         f"{' (' + account['country'] + ')' if account.get('country') else ''}"
+                         f"{', main chat database' if account.get('main') else ''}")
+        for folder in r.get("account_folders", []):
+            lines.append(f"  account folder {folder['folder'][:13]}…: "
+                         f"{'has' if folder['has_chat_database'] else 'no'} chat database")
         diff = entry.get("diff")
         if diff:
             lines.append(f"  diff: {diff['added']} added, {diff['removed']} removed, {diff['changed']} changed")
@@ -280,6 +326,10 @@ def summary_text(state: dict) -> str:
                       for folder, counts in diff["by_folder"].items()]
             lines += [f"    new chat database: {p}" for p in diff["new_chat_storages"]]
         lines.append("")
+    if state.get("destination"):
+        hint = destination_hint(state) or {}
+        lines += [f"Destination: {state['destination']} (suggested: {hint.get('suggested') or '?'}, "
+                  f"{hint.get('reason') or 'no reason'})", ""]
     if len(lines) == 2:
         lines.append("Nothing checked yet.")
     # WhatsApp names folders after phone numbers; the shape survives without them.

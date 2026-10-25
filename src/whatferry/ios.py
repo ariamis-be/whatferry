@@ -5,6 +5,8 @@ have; `diff` answers which files a change on the phone touched, such as
 adding a second account. Both are read-only towards the backup.
 """
 
+import plistlib
+import re
 import sqlite3
 from collections import Counter, defaultdict
 from contextlib import closing
@@ -19,6 +21,8 @@ from whatferry.ios_backup import FILE, Backup, DeviceInfo, Entry
 APPLE_EPOCH = 978307200
 
 CHAT_STORAGE = "ChatStorage.sqlite"
+APP_DOMAIN = "AppDomain-net.whatsapp.WhatsApp"
+SHARED_DOMAIN = "AppDomainGroup-group.net.whatsapp.WhatsApp.shared"
 SIDECARS = ("-wal", "-shm")
 
 # ChatStorage tables the conversion will have to fill, by what they hold.
@@ -48,11 +52,28 @@ class Database:
 
 
 @dataclass
+class Account:
+    """A WhatsApp account on the iPhone, by the last two digits only."""
+    id_ends: str
+    number_ends: str | None
+    country: str | None
+    main: bool  # owns the ChatStorage.sqlite at the root of the shared folder
+
+
+@dataclass
+class AccountFolder:
+    folder: str
+    has_chat_database: bool
+
+
+@dataclass
 class Report:
     device: DeviceInfo
     domains: dict[str, dict[str, int]] = field(default_factory=dict)
     top_folders: dict[str, dict[str, int]] = field(default_factory=dict)
     databases: list[Database] = field(default_factory=list)
+    accounts: list[Account] = field(default_factory=list)
+    account_folders: list[AccountFolder] = field(default_factory=list)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -75,6 +96,7 @@ def inspect(backup: Backup) -> tuple[Report, Path]:
         report.top_folders[domain] = dict(folders.most_common())
 
     by_key = {e.key: e for e in files}
+    extracted: dict[tuple[str, str], Path] = {}
     for entry in files:
         if not entry.path.endswith((".sqlite", ".db")):
             continue
@@ -82,6 +104,7 @@ def inspect(backup: Backup) -> tuple[Report, Path]:
         if not sqlite_summary.is_sqlite(data):
             continue
         target = _extract_database(backup, entry, data, by_key, run)
+        extracted[entry.key] = target
         summary = sqlite_summary.summarise(target)
         db = Database(domain=entry.domain, path=entry.path, size=entry.size,
                       user_version=summary.user_version, tables=len(summary.tables),
@@ -91,7 +114,76 @@ def inspect(backup: Backup) -> tuple[Report, Path]:
         schema = target.with_name(target.name + ".schema.sql")
         workdir.write_private(schema, sqlite_summary.schema_sql(target).encode())
         report.databases.append(db)
+    report.accounts = _accounts(backup, by_key, extracted)
+    report.account_folders = _account_folders(files)
     return report, run
+
+
+# Each account's WhatsApp ID ("LID", a privacy ID, not a phone number). The
+# keyboard keeps a language per account under ID_<lid>@lid; the main
+# account's own ID is the single row of ChatStorage's push-name table; and
+# LID.sqlite pairs IDs with phone numbers. None of this is documented, so
+# every step tolerates it being missing.
+KEYBOARD_PLIST = (APP_DOMAIN, "Library/Preferences/UITextInputContextIdentifiers.plist")
+ACCOUNT_KEY = re.compile(r"^ID_(\d+)@lid$")
+
+
+def _accounts(backup: Backup, by_key: dict, extracted: dict) -> list[Account]:
+    ids: list[str] = []
+    keyboard = by_key.get(KEYBOARD_PLIST)
+    if keyboard:
+        try:
+            ids = sorted({m.group(1) for k in plistlib.loads(backup.read(keyboard))
+                          if (m := ACCOUNT_KEY.match(str(k)))})
+        except (plistlib.InvalidFileException, ValueError, AttributeError, TypeError):
+            ids = []
+    main = _main_account_id(extracted.get((SHARED_DOMAIN, CHAT_STORAGE)))
+    if main and main not in ids:
+        ids.append(main)
+    numbers = _numbers(extracted.get((SHARED_DOMAIN, "LID.sqlite")), ids)
+    return [Account(id_ends=i[-2:], number_ends=(numbers.get(i) or (None, None))[0],
+                    country=(numbers.get(i) or (None, None))[1], main=i == main) for i in ids]
+
+
+def _main_account_id(chat_storage: Path | None) -> str | None:
+    if not chat_storage:
+        return None
+    try:
+        with sqlite_summary.open_read_only(chat_storage) as db:
+            rows = db.execute("SELECT ZJID FROM ZWAPROFILEPUSHNAME WHERE ZJID LIKE '%@lid' LIMIT 2").fetchall()
+    except sqlite3.Error:
+        return None
+    return rows[0][0].split("@")[0] if len(rows) == 1 else None
+
+
+def _numbers(lid_db: Path | None, ids: list[str]) -> dict[str, tuple[str | None, str | None]]:
+    """Last two digits and country of each ID's phone number, where known."""
+    if not lid_db or not ids:
+        return {}
+    out = {}
+    try:
+        with sqlite_summary.open_read_only(lid_db) as db:
+            for i in ids:
+                row = db.execute("SELECT ZPHONENUMBER, ZCOUNTRYCODE FROM ZWAZACCOUNT WHERE ZIDENTIFIER = ?",
+                                 (f"{i}@lid",)).fetchone()
+                if row and row[0]:
+                    digits = re.sub(r"\D", "", str(row[0]))
+                    out[i] = (digits[-2:] if len(digits) >= 2 else None, row[1])
+    except sqlite3.Error:
+        return {}
+    return out
+
+
+def _account_folders(files: list[Entry]) -> list[AccountFolder]:
+    """The data/<id>/ folders WhatsApp keeps for further accounts."""
+    folders: dict[str, bool] = {}
+    for e in files:
+        if e.domain != SHARED_DOMAIN:
+            continue
+        m = re.match(r"^(data/[0-9A-Fa-f-]{36})/(.*)$", e.path)
+        if m:
+            folders[m.group(1)] = folders.get(m.group(1), False) or m.group(2) == CHAT_STORAGE
+    return [AccountFolder(f, has) for f, has in sorted(folders.items())]
 
 
 def _extract_database(backup: Backup, entry: Entry, data: bytes, by_key: dict, run: Path) -> Path:

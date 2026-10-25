@@ -44,10 +44,31 @@ export interface Database {
   last_message: string | null
 }
 
+export interface IphoneAccount {
+  id_ends: string
+  number_ends: string | null
+  country: string | null
+  main: boolean
+}
+
 export interface IosReport {
   device: Device
   domains: Record<string, { files: number; bytes: number }>
   databases: Database[]
+  accounts?: IphoneAccount[]
+  account_folders?: { folder: string; has_chat_database: boolean }[]
+}
+
+export type Destination = "setup" | "second" | "existing"
+
+export interface DestinationHint {
+  suggested: Destination
+  reason: "no-whatsapp" | "number-matches" | "different-number" | "unknown-number"
+  android_ends: string | null
+  accounts: IphoneAccount[]
+  full: boolean
+  match?: IphoneAccount
+  messages?: number | null
 }
 
 export interface Diff {
@@ -74,7 +95,7 @@ export interface State {
   android?: AndroidEntry
   before?: IosEntry
   after?: IosEntry
-  checklist?: Record<string, boolean>
+  destination?: Destination
 }
 
 export interface Overview {
@@ -85,6 +106,7 @@ export interface Overview {
   candidate_folders: string[]
   phone_folder: string
   state: State
+  destination_hint: DestinationHint | null
 }
 
 export interface PhoneBackup {

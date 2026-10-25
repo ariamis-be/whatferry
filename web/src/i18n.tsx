@@ -36,6 +36,7 @@ const en = {
   },
   stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
   stepLabel: (n: number, title: string, done: boolean) => `Step ${n}: ${title}${done ? " (done)" : ""}`,
+  stepSkipped: "not needed",
   nav: { back: "Back", continue: "Continue", start: "Start" },
   common: {
     loading: "Loading…",
@@ -298,7 +299,61 @@ const en = {
     filesAdded: "Files added",
     filesChanged: "Files changed",
   },
+  destination: {
+    title: "Where should the Android chats go?",
+    lead: "Choose which WhatsApp account on this iPhone receives them. The suggestion comes from what the backups show.",
+    suggested: "Suggested",
+    options: {
+      setup: {
+        title: "Set up WhatsApp on this iPhone with the Android number",
+        body: "WhatsApp isn't set up on this iPhone yet: the Android number becomes its only account.",
+      },
+      second: {
+        title: "Add the Android number as a second account",
+        body: "The iPhone keeps its current account; the Android chats go into a new, empty one beside it.",
+      },
+      existing: {
+        title: "An account here already uses the Android number",
+        body: "The Android chats go into that account. If it already has chats, the two histories are merged.",
+      },
+    },
+    reasons: {
+      noWhatsapp: "This backup has no WhatsApp data.",
+      matches: (ends: string) =>
+        `An account here has a number ending in ${ends}, like the Android backup's (only the last two digits are known, so check it's really the same number).`,
+      different: (ends: string, accounts: string) =>
+        `The Android number ends in ${ends}; this iPhone's account numbers end in ${accounts}.`,
+      unknown: "The Android backup doesn't record its number, so the wizard can't compare.",
+    },
+    full: "This iPhone already has two WhatsApp accounts. WhatsApp may not allow a third: you may have to remove one first.",
+    merge: (n: string) =>
+      `That account already has ${n} messages on this iPhone. Merging keeps both histories, but it's the hardest case to get right.`,
+    accountsTitle: "WhatsApp accounts on this iPhone",
+    account: (numberEnds: string | null, country: string | null, main: boolean) =>
+      `Number ending ${numberEnds ?? "?"}${country ? ` (${country})` : ""}${main ? " · main chat database" : ""}`,
+    folders: (n: number) =>
+      `${n} more account ${n === 1 ? "folder" : "folders"} without a chat database in the backup.`,
+    chooseFirst: "Check the iPhone backup first; then choose where the chats go.",
+  },
   account: {
+    setup: {
+      title: "Set up WhatsApp with the Android number",
+      lead: "WhatsApp creates its database, folders and keys for the Android number. The next backup shows where they are.",
+      sectionTitle: "Set up WhatsApp on the iPhone",
+      steps: [
+        "Install WhatsApp from the App Store, if it isn't installed.",
+        "Open it and register the Android phone's number; enter the code WhatsApp sends. WhatsApp on the Android phone signs out: that's expected, and your backup file is already safe on this computer.",
+        "If WhatsApp offers to restore chats, skip it. The account should start empty.",
+      ],
+    },
+    existing: {
+      title: "Nothing to add on the iPhone",
+      lead: "The account that already uses the Android number takes the chats. A second backup isn't needed: continue to the results.",
+    },
+    none: "Choose where the chats go first: it's at the end of the iPhone backup step.",
+    goChoose: "Choose where the chats go",
+    notNeeded: "Not needed for this choice",
+    skipNote: "The account that takes the chats already exists, so there's nothing new to find. Continue to the results.",
     title: "Add the Android number on the iPhone",
     lead: "WhatsApp sets up the second account itself: its own empty database, folders and keys. Later, only that new account is filled with the Android chats; your current account isn't touched.",
     addTitle: "Add the account on the iPhone",
@@ -351,6 +406,7 @@ const zh: Messages = {
   },
   stepOf: (n, total) => `第 ${n} 步，共 ${total} 步`,
   stepLabel: (n, title, done) => `第 ${n} 步：${title}${done ? "（已完成）" : ""}`,
+  stepSkipped: "无需此步",
   nav: { back: "上一步", continue: "继续", start: "开始" },
   common: {
     loading: "加载中…",
@@ -607,7 +663,57 @@ const zh: Messages = {
     filesAdded: "新增的文件",
     filesChanged: "更改的文件",
   },
+  destination: {
+    title: "安卓的聊天应该放到哪里？",
+    lead: "选择这部 iPhone 上由哪个 WhatsApp 账号接收它们。建议根据备份中看到的情况给出。",
+    suggested: "建议",
+    options: {
+      setup: {
+        title: "用安卓手机的号码在这部 iPhone 上设置 WhatsApp",
+        body: "这部 iPhone 上还没有设置 WhatsApp：安卓手机的号码将成为它唯一的账号。",
+      },
+      second: {
+        title: "把安卓手机的号码添加为第二个账号",
+        body: "iPhone 保留现有账号；安卓的聊天放进它旁边一个新的空账号。",
+      },
+      existing: {
+        title: "这里已有账号在使用安卓手机的号码",
+        body: "安卓的聊天放进那个账号。如果它已经有聊天，两份记录会被合并。",
+      },
+    },
+    reasons: {
+      noWhatsapp: "这个备份中没有 WhatsApp 数据。",
+      matches: (ends) => `这里有一个账号的号码以 ${ends} 结尾，与安卓备份的号码相同（只知道最后两位，请确认确实是同一个号码）。`,
+      different: (ends, accounts) => `安卓的号码以 ${ends} 结尾；这部 iPhone 上账号的号码以 ${accounts} 结尾。`,
+      unknown: "安卓备份没有记录它的号码，所以向导无法比较。",
+    },
+    full: "这部 iPhone 上已经有两个 WhatsApp 账号。WhatsApp 可能不允许第三个：你可能需要先移除一个。",
+    merge: (n) => `那个账号在这部 iPhone 上已经有 ${n} 条消息。合并会保留两份记录，但这是最难做对的情况。`,
+    accountsTitle: "这部 iPhone 上的 WhatsApp 账号",
+    account: (numberEnds, country, main) =>
+      `号码以 ${numberEnds ?? "?"} 结尾${country ? `（${country}）` : ""}${main ? " · 主聊天数据库" : ""}`,
+    folders: (n) => `备份中还有 ${n} 个没有聊天数据库的账号文件夹。`,
+    chooseFirst: "请先检查 iPhone 备份，然后选择聊天放到哪里。",
+  },
   account: {
+    setup: {
+      title: "用安卓手机的号码设置 WhatsApp",
+      lead: "WhatsApp 会为安卓手机的号码创建数据库、文件夹和密钥。下一次备份会显示它们的位置。",
+      sectionTitle: "在 iPhone 上设置 WhatsApp",
+      steps: [
+        "如果还没有安装，请从 App Store 安装 WhatsApp。",
+        "打开它并注册安卓手机的号码，输入 WhatsApp 发送的验证码。安卓手机上的 WhatsApp 会退出登录：这是正常的，你的备份文件已经安全地保存在这台电脑上。",
+        "如果 WhatsApp 提出恢复聊天，请跳过。账号应该从空白开始。",
+      ],
+    },
+    existing: {
+      title: "iPhone 上无需添加任何内容",
+      lead: "已经在使用安卓手机号码的账号会接收这些聊天。不需要第二次备份：请继续查看结果。",
+    },
+    none: "请先选择聊天放到哪里：在“iPhone 备份”步骤的最后。",
+    goChoose: "选择聊天放到哪里",
+    notNeeded: "此选择无需这一步",
+    skipNote: "接收聊天的账号已经存在，所以没有新的内容需要查找。请继续查看结果。",
     title: "在 iPhone 上添加安卓手机的号码",
     lead: "WhatsApp 会自己设置第二个账号：它自己的空数据库、文件夹和密钥。之后只有这个新账号会被填入安卓的聊天，你现在的账号不会受到影响。",
     addTitle: "在 iPhone 上添加账号",
