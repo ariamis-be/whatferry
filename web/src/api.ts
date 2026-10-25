@@ -112,6 +112,17 @@ export interface Overview {
   phone_folder: string
   state: State
   destination_hint: DestinationHint | null
+  android_accounts: AndroidAccount[]
+}
+
+export interface AndroidAccount {
+  key: string
+  name: string
+  number_ends: string | null
+  messages: number | null
+  destination: Destination | null
+  second_backup_checked: boolean
+  current: boolean
 }
 
 export interface PhoneBackup {

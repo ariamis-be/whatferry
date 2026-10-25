@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useI18n } from "@/i18n"
+import { AndroidAccounts } from "@/steps/android-accounts"
 import { PhoneCopy } from "@/steps/phone"
 import { platformOf, type StepProps } from "@/wizard"
 
@@ -115,6 +116,8 @@ export function AndroidStep({ overview, refresh }: StepProps) {
   return (
     <>
       <PageHeader title={t.android.title} lead={t.android.lead} />
+
+      <AndroidAccounts overview={overview} refresh={refresh} />
 
       <Section n={1} title={t.android.makeTitle}>
         <Instructions items={t.android.make} />

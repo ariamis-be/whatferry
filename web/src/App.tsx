@@ -212,8 +212,16 @@ export default function App() {
           )}
           {props && (
             <>
-              <p className="mb-3 text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              <p className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">
                 {t.stepOf(index + 1, STEPS.length)}
+                {/* With several Android accounts, every step says which one it's for. */}
+                {props.overview.android_accounts.length > 1 && current !== "start" && (
+                  <span className="rounded-full bg-muted px-2 py-0.5 tracking-normal normal-case">
+                    {t.android.movingAccount(
+                      props.overview.android_accounts.find((a) => a.current)?.number_ends ?? null,
+                    )}
+                  </span>
+                )}
               </p>
               <div className="space-y-8 pb-10">
                 {current === "start" && <StartStep {...props} />}

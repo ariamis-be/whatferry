@@ -109,7 +109,38 @@ class Wizard:
         self.state = State(self.home / "state.json")
         self.jobs = Jobs()
 
+    # Several Android accounts, moved one after another. The current account's
+    # android/destination/after sit at the top of the state, where every step
+    # reads them; each account's own copy is kept in "accounts" by key (its
+    # backup file's path), and "current" names the one on top.
+    PER_ACCOUNT = ("android", "destination", "after")
+
+    def _stash(self) -> dict:
+        """Every account's data, the current one's refreshed from the top."""
+        state = self.state.get()
+        accounts = state.get("accounts") or {}
+        key = state.get("current")
+        if not key and state.get("android"):
+            # Saved before accounts were kept apart: adopt it as the first.
+            key = str(Path(state["android"]["source"]).expanduser().resolve())
+            self.state.update(current=key)
+        if key:
+            accounts[key] = {k: state.get(k) for k in self.PER_ACCOUNT}
+        return accounts
+
+    def _switch(self, key: str, accounts: dict) -> None:
+        saved = accounts.get(key, {})
+        self.state.update(accounts=accounts, current=key, **{k: saved.get(k) for k in self.PER_ACCOUNT})
+
+    def select_android(self, key: str) -> None:
+        accounts = self._stash()
+        if key not in accounts:
+            raise StepError("no such Android account: check its backup first")
+        self._switch(key, accounts)
+
     def overview(self) -> dict:
+        if self.state.get().get("android") and not self.state.get().get("current"):
+            self.state.update(accounts=self._stash())
         return {
             "platform": sys.platform,
             "how_to_back_up": ios_backup.how_to_back_up(),
@@ -120,12 +151,14 @@ class Wizard:
             "phone_folder": str(adb.default_destination()),
             "state": (state := self.state.get()),
             "destination_hint": destination_hint(state),
+            "android_accounts": android_accounts(state),
         }
 
     def set_destination(self, choice: str) -> None:
         if choice not in DESTINATIONS:
             raise StepError(f"unknown destination {choice!r}")
         self.state.update(destination=choice)
+        self.state.update(accounts=self._stash())
 
     # Phone over USB
 
@@ -174,7 +207,12 @@ class Wizard:
         key = android.parse_key(key_text) if encrypted else None
         report, run = android.inspect(source, key)
         entry = {"source": str(source), "run": str(run), "checked_at": _now(), "report": report.as_dict()}
-        self.state.update(android=entry)
+        # Another backup file is another Android account: the current one is
+        # put aside, and checking the same file again keeps its progress.
+        accounts = self._stash()
+        key = str(source.resolve())
+        accounts.setdefault(key, {})["android"] = entry
+        self._switch(key, accounts)
         return entry
 
     # iPhone
@@ -204,10 +242,12 @@ class Wizard:
             snapshot = ios_backup.snapshot_manifest(path, self.home / "snapshots" / run.name)
             entry["snapshot"] = str(snapshot)
             self.state.update(before=entry, after=None)
+            self.state.update(accounts=self._stash())
         else:
             old = Backup(Path(before["snapshot"]), passphrase or None)
             entry["diff"] = diff_summary(ios.diff(old, backup))
             self.state.update(after=entry)
+            self.state.update(accounts=self._stash())
         return entry
 
     # Progress
@@ -227,7 +267,8 @@ class Wizard:
 
     def reset(self) -> None:
         """Forget progress; run folders and snapshots stay until deleted."""
-        self.state.update(android=None, before=None, after=None, checklist=None, step=None, destination=None)
+        self.state.update(android=None, before=None, after=None, checklist=None, step=None, destination=None,
+                          accounts=None, current=None)
 
     def summary(self) -> str:
         return summary_text(self.state.get())
@@ -290,6 +331,23 @@ def destination_hint(state: dict) -> dict | None:
     return hint | {"suggested": "second", "reason": "different-number" if known else "iphone-numbers-unknown"}
 
 
+def android_accounts(state: dict) -> list[dict]:
+    """The Android accounts checked so far, for the page to switch between."""
+    out = []
+    for key, account in (state.get("accounts") or {}).items():
+        report = ((account.get("android") or {}).get("report")) or {}
+        out.append({
+            "key": key,
+            "name": Path(key).name,
+            "number_ends": (report.get("header") or {}).get("number_ends_with"),
+            "messages": (report.get("counts") or {}).get("messages"),
+            "destination": account.get("destination"),
+            "second_backup_checked": bool(account.get("after")),
+            "current": key == state.get("current"),
+        })
+    return out
+
+
 def diff_summary(d: ios.Diff) -> dict:
     def paths(entries):
         return [f"{e.domain}/{e.path}" for e in entries[:MAX_LISTED_PATHS]]
@@ -308,53 +366,74 @@ def diff_summary(d: ios.Diff) -> dict:
 
 
 def summary_text(state: dict) -> str:
-    """The results as plain text to send on: shape and counts, nothing anyone wrote."""
+    """The results as plain text to send on: shape and counts, nothing anyone wrote.
+
+    The iPhone's first backup once, then each Android account with where it
+    goes and, when made, the second iPhone backup that goes with it.
+    """
     lines = ["whatferry discovery summary", ""]
-    a = state.get("android")
-    if a:
-        r = a["report"]
-        h = r.get("header") or {}
-        lines += ["Android",
-                  f"  WhatsApp {h.get('app_version') or '?'}, database version {r['user_version']}, "
-                  f"{r['tables']} tables, {r['layout']}",
-                  f"  messages {r.get('first_message') or '?'} to {r.get('last_message') or '?'}"]
-        lines += [f"  {k}: {v}" for k, v in r["counts"].items() if v is not None]
-        lines += [f"  jid server {k}: {v}" for k, v in r.get("jid_servers", {}).items()]
-        lines += [f"  message types: {len(r.get('message_types', {}))}", ""]
-    for role, title in (("before", "iPhone, first backup"), ("after", "iPhone, second backup")):
-        entry = state.get(role)
-        if not entry:
-            continue
-        r = entry["report"]
-        d = r["device"]
-        lines += [title,
-                  f"  {d.get('model') or '?'}, iOS {d.get('ios_version') or '?'}, "
-                  f"{'encrypted' if d.get('encrypted') else 'NOT encrypted'}, backup {d.get('backup_date') or '?'}"]
-        lines += [f"  {dom}: {n['files']} files" for dom, n in r["domains"].items()]
-        for db in r["databases"]:
-            lines.append(f"  db {db['domain']}/{db['path']}: version {db['user_version']}, {db['tables']} tables")
-            lines += [f"    {k}: {v}" for k, v in db.get("counts", {}).items() if v is not None]
-            if db.get("core_data_entities"):
-                lines.append(f"    entities: {len(db['core_data_entities'])}")
-        for account in r.get("accounts", []):
-            lines.append(f"  account id …{account['id_ends']}: number …{account.get('number_ends') or '?'}"
-                         f"{' (' + account['country'] + ')' if account.get('country') else ''}"
-                         f"{', main chat database' if account.get('main') else ''}")
-        for folder in r.get("account_folders", []):
-            lines.append(f"  account folder {folder['folder'][:13]}…: "
-                         f"{'has' if folder['has_chat_database'] else 'no'} chat database")
-        diff = entry.get("diff")
-        if diff:
-            lines.append(f"  diff: {diff['added']} added, {diff['removed']} removed, {diff['changed']} changed")
-            lines += [f"    {folder}: " + ", ".join(f"{n} {k}" for k, n in counts.items())
-                      for folder, counts in diff["by_folder"].items()]
-            lines += [f"    new chat database: {p}" for p in diff["new_chat_storages"]]
+    if state.get("before"):
+        lines += _iphone_lines("iPhone, first backup", state["before"])
+    # Without accounts kept apart (one account, or none checked yet), what's
+    # on top is the only one.
+    on_top = {k: state.get(k) for k in Wizard.PER_ACCOUNT}
+    accounts = state.get("accounts") or ({state.get("current"): on_top} if any(on_top.values()) else {})
+    for key, account in accounts.items():
+        if key == state.get("current"):
+            account = {k: state.get(k) for k in Wizard.PER_ACCOUNT}
+        android = account.get("android")
+        if android:
+            lines += _android_lines(android["report"])
+        if account.get("destination"):
+            hint = destination_hint(state | account) or {}
+            lines += [f"  Destination: {account['destination']} (suggested: {hint.get('suggested') or '?'}, "
+                      f"{hint.get('reason') or 'no reason'})"]
+        if account.get("after"):
+            lines += [""] + _iphone_lines("  iPhone, second backup for this account", account["after"])
         lines.append("")
-    if state.get("destination"):
-        hint = destination_hint(state) or {}
-        lines += [f"Destination: {state['destination']} (suggested: {hint.get('suggested') or '?'}, "
-                  f"{hint.get('reason') or 'no reason'})", ""]
     if len(lines) == 2:
         lines.append("Nothing checked yet.")
     # WhatsApp names folders after phone numbers; the shape survives without them.
     return _LONG_NUMBER.sub("<number>", "\n".join(lines).rstrip() + "\n")
+
+
+def _android_lines(r: dict) -> list[str]:
+    h = r.get("header") or {}
+    lines = [f"Android account, number ending {h.get('number_ends_with') or '?'}",
+             f"  WhatsApp {h.get('app_version') or '?'}, database version {r['user_version']}, "
+             f"{r['tables']} tables, {r['layout']}",
+             f"  messages {r.get('first_message') or '?'} to {r.get('last_message') or '?'}"]
+    lines += [f"  {k}: {v}" for k, v in r["counts"].items() if v is not None]
+    lines += [f"  jid server {k}: {v}" for k, v in r.get("jid_servers", {}).items()]
+    lines.append(f"  message types: {len(r.get('message_types', {}))}")
+    return lines
+
+
+def _iphone_lines(title: str, entry: dict) -> list[str]:
+    r = entry["report"]
+    d = r["device"]
+    lines = [title,
+             f"  {d.get('model') or '?'}, iOS {d.get('ios_version') or '?'}, "
+             f"{'encrypted' if d.get('encrypted') else 'NOT encrypted'}, backup {d.get('backup_date') or '?'}"]
+    lines += [f"  {dom}: {n['files']} files" for dom, n in r["domains"].items()]
+    for db in r["databases"]:
+        lines.append(f"  db {db['domain']}/{db['path']}: version {db['user_version']}, {db['tables']} tables")
+        lines += [f"    {k}: {v}" for k, v in db.get("counts", {}).items() if v is not None]
+        if db.get("core_data_entities"):
+            lines.append(f"    entities: {len(db['core_data_entities'])}")
+    for account in r.get("accounts", []):
+        lines.append(f"  account id …{account.get('id_ends') or '?'}: number …{account.get('number_ends') or '?'}"
+                     f"{' (' + account['country'] + ')' if account.get('country') else ''}"
+                     f"{', main chat database' if account.get('main') else ', second account'}"
+                     f"{'' if account.get('has_chats', account.get('main')) else ', no chats in backup'}")
+    for folder in r.get("account_folders", []):
+        lines.append(f"  account folder {folder['folder'][:13]}…: "
+                     f"{'has' if folder['has_chat_database'] else 'no'} chat database")
+    diff = entry.get("diff")
+    if diff:
+        lines.append(f"  diff: {diff['added']} added, {diff['removed']} removed, {diff['changed']} changed")
+        lines += [f"    {folder}: " + ", ".join(f"{n} {k}" for k, n in counts.items())
+                  for folder, counts in diff["by_folder"].items()]
+        lines += [f"    new chat database: {p}" for p in diff["new_chat_storages"]]
+    lines.append("")
+    return lines

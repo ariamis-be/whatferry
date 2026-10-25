@@ -179,6 +179,10 @@ class Handler(BaseHTTPRequestHandler):
         body = self._read_json()
         self._send_json(HTTPStatus.OK, {"checklist": self.server.wizard.set_checklist(body["item"], body["done"])})
 
+    def _select_android(self):
+        self.server.wizard.select_android(self._read_json()["key"])
+        self._send_json(HTTPStatus.OK, {})
+
     def _destination(self):
         self.server.wizard.set_destination(self._read_json()["choice"])
         self._send_json(HTTPStatus.OK, {})
@@ -253,6 +257,7 @@ ROUTES = {
     ("POST", "/api/checklist"): Handler._checklist,
     ("POST", "/api/step"): Handler._step,
     ("POST", "/api/destination"): Handler._destination,
+    ("POST", "/api/android/select"): Handler._select_android,
     ("POST", "/api/reset"): Handler._reset,
     ("GET", "/api/summary"): Handler._summary,
 }

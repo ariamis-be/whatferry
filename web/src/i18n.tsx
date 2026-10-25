@@ -171,6 +171,16 @@ const en = {
     jidTitle: "Contact identifiers by type",
     jidHead: ["Server", "Count"],
     decryptedCopy: "Decrypted copy:",
+    accountsTitle: "Android accounts",
+    accountsLead: "Each account is moved on its own. To add another, choose its backup file below and decrypt it; switch here to work on one.",
+    accountRow: (ends: string | null, messages: string) => `Number ending ${ends ?? "?"} · ${messages} messages`,
+    accountProgress: (destination: string | null, secondDone: boolean) =>
+      [destination ? `goes to: ${destination}` : "destination not chosen yet", secondDone ? "second backup checked" : null]
+        .filter(Boolean).join(" · "),
+    destinationNames: { setup: "set up WhatsApp", second: "second account", existing: "existing account" } as Record<string, string>,
+    workingOn: "Working on this one",
+    switchTo: "Switch to this account",
+    movingAccount: (ends: string | null) => `Android account ending ${ends ?? "?"}`,
   },
   phone: {
     intro: (folder: string): ReactNode => (
@@ -547,6 +557,16 @@ const zh: Messages = {
     jidTitle: "按类型统计的联系人标识",
     jidHead: ["服务器", "数量"],
     decryptedCopy: "解密后的副本：",
+    accountsTitle: "安卓账号",
+    accountsLead: "每个账号单独转移。要添加另一个账号，请在下面选择它的备份文件并解密；在这里切换要处理的账号。",
+    accountRow: (ends, messages) => `号码以 ${ends ?? "?"} 结尾 · ${messages} 条消息`,
+    accountProgress: (destination, secondDone) =>
+      [destination ? `转移到：${destination}` : "还没有选择转移位置", secondDone ? "已检查第二次备份" : null]
+        .filter(Boolean).join(" · "),
+    destinationNames: { setup: "设置 WhatsApp", second: "第二个账号", existing: "现有账号" },
+    workingOn: "正在处理这个账号",
+    switchTo: "切换到这个账号",
+    movingAccount: (ends) => `安卓账号，号码以 ${ends ?? "?"} 结尾`,
   },
   phone: {
     intro: (folder) => (
