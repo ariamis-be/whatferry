@@ -53,7 +53,7 @@ def two_account_iphone(tmp_path, root):
 def test_main_account_found_by_its_last_two_digits(tmp_path):
     fake = two_account_iphone(tmp_path, tmp_path / "backups")
     report, _ = ios.inspect(Backup(fake.folder))
-    assert [(a.id_ends, a.number_ends, a.main) for a in report.accounts] == [("00", "02", True)]
+    assert [(a.id_ends, a.number_ends, a.main) for a in report.accounts] == [("00", "0102", True)]
     assert [(f.folder, f.has_chat_database) for f in report.account_folders] == [(FOLDER, False)]
 
 
@@ -63,7 +63,7 @@ def test_keyboard_context_ids_are_chats_not_accounts(tmp_path):
     fake = two_account_iphone(tmp_path, tmp_path / "backups")
     report, _ = ios.inspect(Backup(fake.folder))
     assert all(a.id_ends != SECOND_ID[-2:] for a in report.accounts)
-    assert all(a.number_ends != "88" for a in report.accounts)
+    assert all(not (a.number_ends or "").endswith("88") for a in report.accounts)
     # Nothing longer than two digits of an id or number is kept.
     text = str(report.as_dict())
     for secret in (MAIN_ID, SECOND_ID, "32470000102", "32470000188"):
@@ -83,12 +83,12 @@ def state(android_ends=None, accounts=(), stores=("ChatStorage.sqlite",), messag
     databases = [{"path": p, "counts": {"messages": messages}} for p in stores]
     return {
         "android": {"report": {"header": {"number_ends_with": android_ends}}} if android_ends else None,
-        "before": {"report": {"accounts": list(accounts), "databases": databases}},
+        "before": {"report": {"accounts": list(accounts), "databases": databases, "accounts_method": 2}},
     }
 
 
-ACCOUNTS = [{"id_ends": "00", "number_ends": "02", "main": True},
-            {"id_ends": "11", "number_ends": "88", "main": False}]
+ACCOUNTS = [{"id_ends": "00", "number_ends": "0102", "main": True},
+            {"id_ends": "11", "number_ends": "0188", "main": False}]
 
 
 def test_no_hint_before_the_first_backup():
@@ -122,11 +122,24 @@ def test_matching_number_suggests_the_existing_account_with_its_chats():
     assert second["match"]["id_ends"] == "11" and second["messages"] is None
 
 
-def test_check_from_before_account_detection_says_check_again():
+@pytest.mark.parametrize("method", [None, 1])
+def test_checks_from_older_account_detection_say_check_again(method):
+    """None: saved before accounts were read; 1: the keyboard-file method,
+    which mistook a chat for an account. Both must ask for a new check."""
     s = state("78", ACCOUNTS)
-    del s["before"]["report"]["accounts"]
+    if method is None:
+        del s["before"]["report"]["accounts_method"]
+        del s["before"]["report"]["accounts"]
+    else:
+        s["before"]["report"]["accounts_method"] = method
     hint = destination_hint(s)
     assert (hint["suggested"], hint["reason"], hint["stale"]) == ("second", "stale-check", True)
+
+
+def test_four_iphone_digits_match_the_android_two():
+    hint = destination_hint(state("02", ACCOUNTS[:1]))
+    assert hint["suggested"] == "existing" and hint["match"]["number_ends"] == "0102"
+    assert destination_hint(state("12", ACCOUNTS[:1]))["suggested"] == "second"
 
 
 def test_accounts_without_numbers_are_called_unknown():
@@ -166,7 +179,7 @@ def test_summary_names_destination_and_accounts():
     s["destination"] = "second"
     text = summary_text(s | {"android": None})
     assert "Destination: second (suggested: second, unknown-number)" in text
-    assert "account id …00: number …02, main chat database" in text
+    assert "account id …00: number …0102, main chat database" in text
     assert "account folder data/0A1B2C3D…: no chat database" in text
 
 

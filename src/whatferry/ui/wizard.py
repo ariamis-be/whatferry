@@ -255,16 +255,17 @@ def destination_hint(state: dict) -> dict | None:
     stores = [d for d in report["databases"] if Path(d["path"]).name == ios.CHAT_STORAGE]
     header = ((state.get("android") or {}).get("report") or {}).get("header") or {}
     ends = header.get("number_ends_with")
-    # Checks saved before whatferry read accounts have no "accounts" at all:
-    # say so, rather than comparing against nothing.
-    stale = "accounts" not in report
+    # Checks saved before the current account detection (none, or the old
+    # one that misread chats as accounts): say so, rather than compare.
+    stale = report.get("accounts_method") != ios.ACCOUNTS_METHOD
     # A data/<id>/ folder is the only sign of a further account; its number
     # can't be read, so "full" only says there may already be two.
     folders = report.get("account_folders", [])
     hint = {"android_ends": ends, "accounts": accounts, "full": len(accounts) + len(folders) >= 2, "stale": stale}
     if not stores and not accounts:
         return hint | {"suggested": "setup", "reason": "no-whatsapp"}
-    match = next((a for a in accounts if ends and a.get("number_ends") == ends), None)
+    # The iPhone gives the last four digits, the Android header only two.
+    match = next((a for a in accounts if ends and (a.get("number_ends") or "").endswith(ends)), None)
     if match:
         main = next((d for d in stores if d["path"] == ios.CHAT_STORAGE), None)
         messages = (main or {}).get("counts", {}).get("messages") if match.get("main") else None

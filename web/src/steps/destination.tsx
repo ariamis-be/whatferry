@@ -59,7 +59,7 @@ export function DestinationChoice({ overview, refresh }: Pick<StepProps, "overvi
         <CardDescription>{t.destination.lead}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {hint.accounts.length > 0 && (
+        {hint.accounts.length > 0 && !hint.stale && (
           <div className="space-y-1.5">
             <h3 className="text-sm font-medium">{t.destination.accountsTitle}</h3>
             <ul className="space-y-1 text-sm text-muted-foreground">

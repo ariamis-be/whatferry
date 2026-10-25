@@ -21,6 +21,7 @@ APPLE_EPOCH = 978307200
 
 CHAT_STORAGE = "ChatStorage.sqlite"
 SHARED_DOMAIN = "AppDomainGroup-group.net.whatsapp.WhatsApp.shared"
+ACCOUNTS_METHOD = 2
 SIDECARS = ("-wal", "-shm")
 
 # ChatStorage tables the conversion will have to fill, by what they hold.
@@ -51,7 +52,7 @@ class Database:
 
 @dataclass
 class Account:
-    """A WhatsApp account on the iPhone, by the last two digits only."""
+    """A WhatsApp account on the iPhone, by its last digits only (two of the ID, four of the number)."""
     id_ends: str
     number_ends: str | None
     country: str | None
@@ -72,6 +73,9 @@ class Report:
     databases: list[Database] = field(default_factory=list)
     accounts: list[Account] = field(default_factory=list)
     account_folders: list[AccountFolder] = field(default_factory=list)
+    # Bumped whenever account detection changes, so older saved checks can be
+    # told apart: 1 read the keyboard file (wrong), 2 does not.
+    accounts_method: int = ACCOUNTS_METHOD
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -160,7 +164,7 @@ def _numbers(lid_db: Path | None, ids: list[str]) -> dict[str, tuple[str | None,
                                  (f"{i}@lid",)).fetchone()
                 if row and row[0]:
                     digits = re.sub(r"\D", "", str(row[0]))
-                    out[i] = (digits[-2:] if len(digits) >= 2 else None, row[1])
+                    out[i] = (digits[-4:] if len(digits) >= 4 else None, row[1])
     except sqlite3.Error:
         return {}
     return out
