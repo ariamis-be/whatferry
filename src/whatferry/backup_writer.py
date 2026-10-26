@@ -37,8 +37,8 @@ from Crypto.Cipher import AES
 from iphone_backup_decrypt import EncryptedBackup
 from iphone_backup_decrypt.exceptions import IncorrectPassphraseError
 
-from whatferry import workdir
-from whatferry.ios_backup import FILE, FOLDER, BackupError, WrongPassphrase, device_info
+from whatferry import ios, workdir
+from whatferry.ios_backup import FILE, FOLDER, Backup, BackupError, WrongPassphrase, device_info
 
 BLOCK = 16
 CHUNK = 1 << 20
@@ -291,6 +291,49 @@ class BackupWriter:
 SHARED_DOMAIN = "AppDomainGroup-group.net.whatsapp.WhatsApp.shared"
 
 
+def account_database_sha256(source: Path, passphrase: str | None, account_folder: str | None) -> str:
+    """The SHA-256 of an account's ChatStorage.sqlite as `whatferry ios inspect` extracts it.
+
+    The same steps (database plus its -wal, folded together) give the same
+    bytes, so this matches the converter's record when the backup still holds
+    the database the conversion started from.
+    """
+    backup = Backup(source, passphrase)
+    files = [e for e in backup.entries() if e.flags == FILE]
+    by_key = {e.key: e for e in files}
+    entry = by_key.get((SHARED_DOMAIN, f"{account_folder + '/' if account_folder else ''}ChatStorage.sqlite"))
+    if entry is None:
+        raise WriteError(f"this backup has no chat database for {account_folder or 'the main account'}")
+    scratch = workdir.new_run("guard")
+    try:
+        extracted = ios._extract_database(backup, entry, backup.read(entry), by_key, scratch)
+        return hashlib.sha256(extracted.read_bytes()).hexdigest()
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def check_same_source(source: Path, passphrase: str | None, convert_run: Path, account_folder: str | None) -> None:
+    """Refuse to write a conversion into a backup it wasn't made from.
+
+    Restoring rolls the whole account back to its database in the backup. A
+    conversion made from an older backup, written into a newer one, would
+    put the older database back and lose what came after.
+    """
+    try:
+        made_from = json.loads((convert_run / "report.json").read_text())
+    except (OSError, ValueError):
+        raise WriteError(f"{convert_run} has no conversion report: convert again") from None
+    expected = made_from.get("source_sha256")
+    if not expected:
+        raise WriteError("this conversion was made before whatferry recorded where it came from: convert again")
+    if made_from.get("account_folder") != account_folder:
+        raise WriteError(f"this conversion was made for {made_from.get('account_folder') or 'the main account'}, "
+                         f"not {account_folder or 'the main account'}")
+    if account_database_sha256(source, passphrase, account_folder) != expected:
+        raise WriteError("this backup's chat database for the account isn't the one the conversion was made "
+                         "from (a newer backup?): check this backup again, convert again, then write")
+
+
 def write_conversion(source: Path, passphrase: str | None, convert_run: Path, account_folder: str | None,
                      target: Path | None = None) -> tuple[WriteReport, Path]:
     """Put a `whatferry convert` result into a copy of the backup it was made from."""
@@ -299,6 +342,7 @@ def write_conversion(source: Path, passphrase: str | None, convert_run: Path, ac
     if not merged.is_file():
         raise WriteError(f"{convert_run} has no converted ChatStorage.sqlite")
     prefix = f"{account_folder}/" if account_folder else ""
+    check_same_source(source, passphrase, convert_run, account_folder)
     run = workdir.new_run("backup")
     target = target or run / source.name
     with BackupWriter(source, target, passphrase) as writer:

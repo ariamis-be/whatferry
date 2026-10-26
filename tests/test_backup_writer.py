@@ -1,6 +1,7 @@
 """Writing into a copy of an iPhone backup, read back by an independent reader."""
 
 import hashlib
+import json
 import plistlib
 import sqlite3
 from contextlib import closing
@@ -164,6 +165,59 @@ def test_cli_writes_a_conversion(tmp_path, monkeypatch, capsys):
     assert main(["ios", "write", str(source), str(run), "--account-folder", ACCOUNT]) == 0
     out = capsys.readouterr().out
     assert "read back and verified" in out and source.name in out
+
+
+# The guard: a conversion only goes into the backup it was made from.
+
+def account_backup(tmp_path, name, change=0):
+    """An encrypted backup holding the second account; `change` makes its database differ."""
+    second = make_sqlite(tmp_path / f"{name}.sqlite", IOS)
+    with closing(sqlite3.connect(second)) as db:
+        db.execute(f"PRAGMA user_version = {change}")
+        db.commit()
+    return make_encrypted_backup(tmp_path / "backups" / name, PASS, {
+        (SHARED, f"{ACCOUNT}/ChatStorage.sqlite"): second.read_bytes()}, folders=[(SHARED, "data"), (SHARED, ACCOUNT)])
+
+
+def converted_from(source, tmp_path):
+    """Check the backup, then convert into the database the check extracted: the wizard's flow."""
+    android = make_sqlite(tmp_path / f"msgstore-{source.name}.db", ANDROID)
+    _, run = ios.inspect(Backup(source, PASS))
+    return convert.convert(android, run / "files" / SHARED / ACCOUNT / "ChatStorage.sqlite", None, ACCOUNT)[1]
+
+
+def test_guard_lets_the_checked_backup_through(tmp_path):
+    source = account_backup(tmp_path, "00008160-0010")
+    written, _ = write_conversion(source, PASS, converted_from(source, tmp_path), ACCOUNT)
+    assert written.verified_files == 1
+
+
+def test_guard_refuses_a_newer_backup(tmp_path):
+    """Converted from one backup, written into a later one where the account had moved on."""
+    run = converted_from(account_backup(tmp_path, "00008160-0011"), tmp_path)
+    newer = account_backup(tmp_path, "00008160-0012", change=1)
+    with pytest.raises(WriteError, match="isn't the one the conversion was made"):
+        write_conversion(newer, PASS, run, ACCOUNT)
+
+
+def test_guard_refuses_the_wrong_account(tmp_path):
+    source = account_backup(tmp_path, "00008160-0013")
+    with pytest.raises(WriteError, match=f"made for {ACCOUNT}, not the main account"):
+        write_conversion(source, PASS, converted_from(source, tmp_path), None)
+
+
+def test_guard_refuses_a_conversion_without_a_record(tmp_path):
+    source = account_backup(tmp_path, "00008160-0014")
+    run = converted_from(source, tmp_path)
+    report = json.loads((run / "report.json").read_text())
+    del report["source_sha256"]
+    (run / "report.json").unlink()
+    (run / "report.json").write_text(json.dumps(report))
+    with pytest.raises(WriteError, match="convert again"):
+        write_conversion(source, PASS, run, ACCOUNT)
+    (run / "report.json").unlink()
+    with pytest.raises(WriteError, match="no conversion report"):
+        write_conversion(source, PASS, run, ACCOUNT)
 
 
 def test_manifest_stays_a_valid_encrypted_index(backup, tmp_path):

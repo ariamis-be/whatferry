@@ -91,6 +91,10 @@ class Report:
     not_converted_yet: dict[str, int] = field(default_factory=dict)
     checks: dict[str, object] = field(default_factory=dict)
     output: str = ""
+    # SHA-256 of the iPhone database the history was merged into. The backup
+    # writer refuses a backup whose database no longer matches it.
+    source_sha256: str = ""
+    account_folder: str | None = None
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -180,7 +184,8 @@ def convert(android_db: Path, ios_db: Path, media_root: Path | None, account_fol
     out.mkdir(mode=0o700)
     merged = out / "ChatStorage.sqlite"
     workdir.write_private(merged, ios_db.read_bytes())
-    report = Report(output=str(run))
+    report = Report(output=str(run), source_sha256=hashlib.sha256(ios_db.read_bytes()).hexdigest(),
+                    account_folder=account_folder)
     android = Android(android_db)
     target = Target(merged)
     # Files land where the account keeps them: data/<id>/Message/Media for a

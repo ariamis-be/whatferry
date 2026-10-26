@@ -131,6 +131,14 @@ New entries are cloned from entries iOS wrote in the same backup. Every
 written file is then read back with an independent reader
 (iphone_backup_decrypt) and compared. The original backup is never changed.
 
+It only writes into the backup the conversion was made from. `whatferry
+convert` records the SHA-256 of the iPhone database it merged into and the
+account folder; before writing anything, `ios write` extracts that account's
+database from the backup it was given (with its `-wal` folded in) and refuses
+if the fingerprint or the account differs. Restoring rolls the whole phone
+back to the backup, so a newer backup means converting again from it, not
+writing an old conversion into it.
+
 The passphrase comes from `WHATFERRY_BACKUP_PASSPHRASE` or a hidden prompt.
 The new backup goes to a private run folder unless `--to` says otherwise.
 
