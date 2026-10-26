@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-from whatferry import adb, android, convert, ios, sqlite_summary, workdir
+from whatferry import adb, android, backup_writer, convert, ios, sqlite_summary, workdir
 from whatferry.ios_backup import (Backup, BackupError, WrongPassphrase, backup_roots, device_info, find_backup,
                                   how_to_back_up, list_backups)
 
@@ -21,7 +21,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         return args.run(args)
-    except (android.DecryptError, BackupError, adb.AdbError, convert.ConvertError, FileNotFoundError) as e:
+    except (android.DecryptError, BackupError, adb.AdbError, convert.ConvertError, backup_writer.WriteError,
+            FileNotFoundError) as e:
         print(f"whatferry: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
@@ -59,6 +60,12 @@ def _parser() -> argparse.ArgumentParser:
     idf.add_argument("before", help="the earlier backup (folder or name)")
     idf.add_argument("after", help="the later backup (folder or name)")
     idf.set_defaults(run=_ios_diff)
+    iw = i.add_parser("write", help="put a `whatferry convert` result into a copy of a backup")
+    iw.add_argument("backup", help="the backup the conversion was made from (folder or name)")
+    iw.add_argument("convert_run", type=Path, help="the run folder `whatferry convert` printed")
+    iw.add_argument("--account-folder", help="data/<id> folder of a second iPhone account (omit for the main one)")
+    iw.add_argument("--to", type=Path, help="where to write the new backup folder (default: a private run folder)")
+    iw.set_defaults(run=_ios_write)
 
     c = sides.add_parser("convert", help="merge an Android account's chats into a copy of an iPhone account's database")
     c.add_argument("android_db", type=Path, help="decrypted msgstore.db (from `whatferry android inspect`)")
@@ -247,6 +254,21 @@ def _ios_diff(args) -> int:
     for folder, counts in result.by_folder().items():
         print(f"  {folder}  " + ", ".join(f"{n} {kind}" for kind, n in counts.items()))
     _print_run(run)
+    return 0
+
+
+def _ios_write(args) -> int:
+    source = _open_backup(args.backup)  # checks the passphrase before anything is copied
+    target = args.to / source.folder.name if args.to else None
+    report, written = backup_writer.write_conversion(source.folder, source.passphrase, args.convert_run,
+                                                     args.account_folder, target)
+    print(f"Wrote a new {'encrypted ' if report.encrypted else ''}backup: {written}")
+    print(f"  replaced: {', '.join(p.split('/', 1)[1] for p in report.replaced)}")
+    if report.removed:
+        print(f"  removed: {', '.join(p.split('/', 1)[1] for p in report.removed)}")
+    print(f"  added: {report.added_files} files ({_size(report.added_bytes)}) and {report.added_folders} folders")
+    print(f"  {report.verified_files} written files read back and verified")
+    print("The original backup is unchanged. Nothing has been restored to the phone.")
     return 0
 
 

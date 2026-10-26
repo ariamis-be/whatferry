@@ -114,8 +114,27 @@ quoted replies, reactions, polls, calls, system notices (all counted in the
 report). Left empty, pending a test on a phone: the search index ID
 (ZDOCID), media download keys and the ZMETADATA thumbnail blob.
 
-Putting the result back (into an encrypted backup, then restoring it) is
-the next step, not built yet.
+## Writing the result into a backup
+
+```sh
+whatferry ios write <backup> <convert run folder> --account-folder data/<id>
+```
+
+copies the backup the conversion came from (an APFS clone on macOS: instant,
+no extra space) and writes into the copy: the merged ChatStorage.sqlite
+replaces the account's, its old `-wal`/`-shm` are removed (they would be
+replayed over it), and every converted media file is added with its folder
+entries. Encrypted backups are written as iOS writes them: each file
+AES-256-CBC under a fresh key, wrapped (RFC 3394) with its protection
+class's keybag key; Manifest.db re-encrypted under the same manifest key.
+New entries are cloned from entries iOS wrote in the same backup. Every
+written file is then read back with an independent reader
+(iphone_backup_decrypt) and compared. The original backup is never changed.
+
+The passphrase comes from `WHATFERRY_BACKUP_PASSPHRASE` or a hidden prompt.
+The new backup goes to a private run folder unless `--to` says otherwise.
+
+Restoring it to the iPhone is the next step, not built yet.
 
 ## The same steps on the command line
 

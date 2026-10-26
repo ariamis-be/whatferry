@@ -170,6 +170,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "iphone-backup-decrypt" },
+    { name = "pycryptodome" },
     { name = "wa-crypt-tools" },
 ]
 
@@ -181,6 +182,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "iphone-backup-decrypt", specifier = ">=0.11.2" },
+    { name = "pycryptodome", specifier = ">=4.2.0" },
     { name = "wa-crypt-tools", specifier = ">=0.1.0" },
 ]
 
