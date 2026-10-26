@@ -87,6 +87,36 @@ The page is React with shadcn/ui, built from `web/` into
 `src/whatferry/ui/static/` and committed, so running whatferry needs only
 Python. To change it, see [`web/README.md`](web/README.md).
 
+## Converting
+
+```sh
+whatferry convert <android run>/msgstore.db \
+  <ios run>/files/AppDomainGroup-group.net.whatsapp.WhatsApp.shared/data/<id>/ChatStorage.sqlite \
+  --media ~/whatferry-android/media/account-1001 --account-folder data/<id>
+```
+
+merges the decrypted Android history into a **copy** of the iPhone account's
+ChatStorage.sqlite, in a new private run folder, with the media laid out
+where the iPhone keeps it (`data/<id>/Message/Media/<chat>/<x>/<y>/<uuid>.<ext>`;
+hard links, so no extra space). Leave out `--account-folder` for the main
+account. Nothing is written to a phone or a backup.
+
+Rows are filled the way WhatsApp itself writes them, measured on a real
+iPhone: direction in ZFROMJID/ZTOJID, group senders as ZWAGROUPMEMBER rows,
+ZSORT by date within a chat, image size in ZLATITUDE/ZLONGITUDE, MIME type
+and SHA-256 in the media row's vCard columns. Chats are matched by JID, an
+Android privacy ID (`@lid`) by the phone number it maps to; history lands
+before anything the iPhone account already has.
+
+Converted: text, images, videos, audio and voice notes, documents, GIFs,
+stickers, locations, contact cards, deleted-message placeholders. Not yet:
+quoted replies, reactions, polls, calls, system notices (all counted in the
+report). Left empty, pending a test on a phone: the search index ID
+(ZDOCID), media download keys and the ZMETADATA thumbnail blob.
+
+Putting the result back (into an encrypted backup, then restoring it) is
+the next step, not built yet.
+
 ## The same steps on the command line
 
 **Android.** In WhatsApp: Settings → Chats → Chat backup → End-to-end

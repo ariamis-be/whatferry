@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-from whatferry import adb, android, ios, sqlite_summary, workdir
+from whatferry import adb, android, convert, ios, sqlite_summary, workdir
 from whatferry.ios_backup import (Backup, BackupError, WrongPassphrase, backup_roots, device_info, find_backup,
                                   how_to_back_up, list_backups)
 
@@ -21,7 +21,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         return args.run(args)
-    except (android.DecryptError, BackupError, adb.AdbError, FileNotFoundError) as e:
+    except (android.DecryptError, BackupError, adb.AdbError, convert.ConvertError, FileNotFoundError) as e:
         print(f"whatferry: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
@@ -60,11 +60,36 @@ def _parser() -> argparse.ArgumentParser:
     idf.add_argument("after", help="the later backup (folder or name)")
     idf.set_defaults(run=_ios_diff)
 
+    c = sides.add_parser("convert", help="merge an Android account's chats into a copy of an iPhone account's database")
+    c.add_argument("android_db", type=Path, help="decrypted msgstore.db (from `whatferry android inspect`)")
+    c.add_argument("ios_db", type=Path, help="the iPhone account's ChatStorage.sqlite (from `whatferry ios inspect`)")
+    c.add_argument("--media", type=Path, help="folder with the account's WhatsApp/Media contents "
+                                               "(e.g. ~/whatferry-android/media/account-1001)")
+    c.add_argument("--account-folder", help="data/<id> folder of a second iPhone account (omit for the main one)")
+    c.set_defaults(run=_convert)
+
     u = sides.add_parser("ui", help="open the step-by-step wizard in your browser")
     u.add_argument("--port", type=int, default=0, help="port on 127.0.0.1 (default: any free one)")
     u.add_argument("--no-browser", action="store_true", help="print the link instead of opening it")
     u.set_defaults(run=_ui)
     return p
+
+
+def _convert(args) -> int:
+    report, run = convert.convert(args.android_db, args.ios_db, args.media, args.account_folder)
+    print(f"Converted {sum(report.converted.values())} of {report.android_messages} Android messages")
+    print(f"  chats: {report.chats_matched} matched, {report.chats_created} created; "
+          f"group members added: {report.members_created}")
+    print(f"  media: {report.media_rows} items, {report.media_files_copied} files placed, "
+          f"{report.media_files_missing} missing" + ("" if args.media else " (no --media given)"))
+    if report.skipped:
+        print(f"  not converted (other kinds): {sum(report.skipped.values())}")
+    for label, n in report.not_converted_yet.items():
+        print(f"  not converted yet: {n} {label}")
+    problems = {k: v for k, v in report.checks.items() if isinstance(v, int) and v and k not in ("messages", "chats")}
+    print(f"  checks: integrity {report.checks['integrity']}, " + (f"problems {problems}" if problems else "no problems"))
+    _print_run(run)
+    return 1 if problems or report.checks["integrity"] != "ok" else 0
 
 
 def _ui(args) -> int:
