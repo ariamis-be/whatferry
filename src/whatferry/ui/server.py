@@ -195,6 +195,33 @@ class Handler(BaseHTTPRequestHandler):
         self.server.wizard.reset()
         self._send_json(HTTPStatus.OK, {})
 
+    def _convert_options(self):
+        self._send_json(HTTPStatus.OK, self.server.wizard.convert_options())
+
+    def _convert(self):
+        body = self._read_json()
+        wizard = self.server.wizard
+        job = wizard.jobs.start(lambda: wizard.make_conversion(body.get("account_folder"), body.get("media")))
+        self._send_json(HTTPStatus.ACCEPTED, {"job": job})
+
+    def _write(self):
+        body = self._read_json()
+        wizard = self.server.wizard
+        job = wizard.jobs.start(lambda: wizard.write_backup(body.get("passphrase"),
+                                                            bool(body.get("skip_source_check"))))
+        self._send_json(HTTPStatus.ACCEPTED, {"job": job})
+
+    def _restore_status(self):
+        self._send_json(HTTPStatus.OK, self.server.wizard.restore_status())
+
+    def _restore(self):
+        body = self._read_json()
+        wizard = self.server.wizard
+        job = wizard.jobs.start(lambda progress: wizard.restore_backup(body.get("passphrase"),
+                                                                       body.get("confirmed") is True, progress),
+                                progress=True)
+        self._send_json(HTTPStatus.ACCEPTED, {"job": job})
+
     def _settings(self):
         self._send_json(HTTPStatus.OK, self.server.wizard.settings.get())
 
@@ -266,6 +293,11 @@ ROUTES = {
     ("POST", "/api/android/select"): Handler._select_android,
     ("POST", "/api/reset"): Handler._reset,
     ("GET", "/api/summary"): Handler._summary,
+    ("GET", "/api/convert/options"): Handler._convert_options,
+    ("POST", "/api/convert"): Handler._convert,
+    ("POST", "/api/write"): Handler._write,
+    ("GET", "/api/restore/status"): Handler._restore_status,
+    ("POST", "/api/restore"): Handler._restore,
     ("GET", "/api/settings"): Handler._settings,
     ("POST", "/api/settings"): Handler._set_settings,
 }

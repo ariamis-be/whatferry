@@ -5,11 +5,11 @@ up, without Move to iOS and without erasing the iPhone. It is built for an
 iPhone that already runs one WhatsApp account and will add the Android one as
 its second.
 
-**This version only reads.** It decrypts and describes backups so the
-conversion can be designed against real data; it never writes to a phone or
-to a backup.
+It never changes a backup you made: it writes a new one beside it. The only
+thing it writes to a phone is that new backup, restored over USB when you ask
+and confirm.
 
-## How the transfer will work
+## How the transfer works
 
 1. Android: WhatsApp's end-to-end encrypted backup, with the 64-digit key,
    gives a `msgstore.db.crypt15` file whatferry can decrypt without root.
@@ -19,10 +19,11 @@ to a backup.
    database and fills only that new account's database, inside an encrypted
    Finder backup of the iPhone.
 4. That edited backup is restored to the same iPhone. The other account's
-   files are never written.
+   files are restored as the backup had them, never edited.
 
-Steps 3 and 4 are not built yet. Discovery comes first: finding where
-WhatsApp keeps each account, and what both databases look like today.
+All four steps are built. The conversion is checked against real data and
+the written backup by an independent reader; the restore onto a real iPhone
+is the step still to be tried.
 
 ## Setup
 
@@ -48,8 +49,11 @@ finds the Android backup in Downloads (or takes it from a file picker),
 decrypts it with the key you type, lists the iPhone backups on this
 computer, checks the first one and keeps its file list, walks through adding
 the second account, then compares the second backup with the first and points
-at the new account's chat database. The last step is a summary to copy and
-send on: counts, versions and file locations, with phone numbers masked.
+at the new account's chat database. Then it converts the chats into the
+iPhone account picked (suggesting the one on the Android number, and the
+media folder that has the Android history's files), writes the new backup,
+and restores it onto the iPhone. The last step is a summary to copy and send
+on: counts, versions and file locations, with phone numbers masked.
 
 Progress is saved, so the page can be closed while a backup runs; keys and
 passphrases are never saved. The page is served on 127.0.0.1 only, behind a
@@ -80,7 +84,9 @@ ChatStorage's profile-name row both belong to contacts.
 
 The page is in English and Simplified Chinese (it starts in the browser's
 language; the header switches it), with light, dark or system theme (system
-by default). Both choices are kept in the browser. Messages from the server,
+by default). Both choices are kept in `settings.json` in whatferry's folder,
+not in the browser, which keeps them per port, and the port changes on every
+start. Messages from the server,
 and the summary to send on, stay in English.
 
 The page is React with shadcn/ui, built from `web/` into
@@ -144,7 +150,25 @@ on the phone after the conversion's backup is then lost on restore.
 The passphrase comes from `WHATFERRY_BACKUP_PASSPHRASE` or a hidden prompt.
 The new backup goes to a private run folder unless `--to` says otherwise.
 
-Restoring it to the iPhone is the next step, not built yet.
+## Restoring it onto the iPhone
+
+```sh
+whatferry ios restore <the backup folder `ios write` printed>
+```
+
+puts the new backup onto the iPhone it came from, over USB, as Finder's
+Restore Backup does: system files and settings too, then a restart. The
+iPhone goes back to the moment of its backup, plus the converted chats;
+anything that reached it later is gone. It asks for the passphrase and for
+the iPhone's name to be typed before it starts.
+
+It talks to the phone with [pymobiledevice3](https://github.com/doronz88/pymobiledevice3)
+through usbmuxd (Apple's on macOS and Windows, which comes with Finder or the
+Apple Devices app; the `usbmuxd` package on Linux), and only to an iPhone
+this computer is already paired with. It refuses, before touching the phone,
+when the backup's device ID isn't the connected iPhone's, when the computer
+isn't trusted, when the passphrase is wrong, or when Find My is on (iOS
+would refuse it anyway; `com.apple.fmip`/`IsAssociated` says so beforehand).
 
 ## The same steps on the command line
 

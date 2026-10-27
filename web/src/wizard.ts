@@ -1,7 +1,7 @@
 import type { Overview } from "@/api"
 
 // Titles and texts live in i18n.tsx; these are the ids the server knows.
-export const STEPS = ["start", "android", "before", "account", "after", "done"] as const
+export const STEPS = ["start", "android", "before", "account", "after", "convert", "write", "restore", "done"] as const
 
 export type StepId = (typeof STEPS)[number]
 

@@ -10,6 +10,7 @@ requires-python = ">=3.14"
 dependencies = [
     "iphone-backup-decrypt>=0.11.2",
     "pycryptodome>=4.2.0",
+    "pymobiledevice3>=11.44.0",
     "wa-crypt-tools>=0.1.0",
 ]
 
@@ -24,3 +25,9 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1.1",
 ]
+
+[tool.uv]
+# pyimg4 (through pymobiledevice3) pins pylzss 0.3.4, which has no Python 3.14
+# wheels and so needs a C compiler to install. 0.3.9 has wheels everywhere;
+# whatferry never touches the firmware-image code that uses it.
+override-dependencies = ["pylzss>=0.3.9"]

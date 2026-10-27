@@ -15,10 +15,12 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-from whatferry import adb, android, ios, ios_backup, sqlite_summary, workdir
+from whatferry import adb, android, backup_writer, convert, ios, ios_backup, restore, sqlite_summary, workdir
+from whatferry.backup_writer import WriteError
 from whatferry.ios_backup import Backup, BackupError
+from whatferry.restore import RestoreError
 
-STEPS = ("start", "android", "before", "account", "after", "done")
+STEPS = ("start", "android", "before", "account", "after", "convert", "write", "restore", "done")
 CHECKLIST = ("add-account", "register-number", "leave-empty", "new-backup")
 
 # Where people usually put the Android file once it reaches the computer.
@@ -35,7 +37,11 @@ class StepError(Exception):
 
 
 # Errors whose message is meant for the person using the wizard.
-USER_ERRORS = (android.DecryptError, BackupError, StepError, adb.AdbError, OSError)
+USER_ERRORS = (android.DecryptError, BackupError, StepError, adb.AdbError, convert.ConvertError, WriteError,
+               RestoreError, OSError)
+
+# Android media folders: the copies made from the phone, one per account.
+MEDIA_FOLDERS = ("whatferry-android", "whatferry-android/media")
 
 # Six or more digits in a row: a phone number or account ID inside a path.
 _LONG_NUMBER = re.compile(r"\d{6,}")
@@ -76,15 +82,20 @@ class Jobs:
         self._jobs: dict[str, dict] = {}
         self._lock = threading.Lock()
 
-    def start(self, fn) -> str:
+    def start(self, fn, *, progress: bool = False) -> str:
+        """Run fn in the background; with progress, fn gets a function to report a percentage through."""
         job_id = secrets.token_hex(8)
         job = {"status": "running"}
         with self._lock:
             self._jobs[job_id] = job
 
+        def report(percent: float) -> None:
+            with self._lock:
+                job["progress"] = round(float(percent), 1)
+
         def run():
             try:
-                result = fn()
+                result = fn(report) if progress else fn()
                 update = {"status": "done", "result": result}
             except USER_ERRORS as e:
                 update = {"status": "error", "error": str(e)}
@@ -126,7 +137,7 @@ class Wizard:
     # android/destination/after sit at the top of the state, where every step
     # reads them; each account's own copy is kept in "accounts" by key (its
     # backup file's path), and "current" names the one on top.
-    PER_ACCOUNT = ("android", "destination", "after")
+    PER_ACCOUNT = ("android", "destination", "after", "converted", "written", "restored")
 
     def _stash(self) -> dict:
         """Every account's data, the current one's refreshed from the top."""
@@ -263,6 +274,84 @@ class Wizard:
             self.state.update(accounts=self._stash())
         return entry
 
+    # Convert, write, restore: the current Android account's chats into the
+    # iPhone account picked, then into a copy of the backup they came from,
+    # then onto the phone. Each step's record is dropped when an earlier one
+    # is redone, so a later step never works from something stale.
+
+    def _account_update(self, **values) -> None:
+        self.state.update(**values)
+        self.state.update(accounts=self._stash())
+
+    def convert_options(self) -> dict:
+        state = self.state.get()
+        android_entry, iphone = state.get("android"), iphone_entry(state)
+        if not android_entry or not iphone:
+            raise StepError("check the Android backup and the iPhone backup first")
+        media = media_candidates(Path(android_entry["run"]) / "msgstore.db")
+        return {
+            "backup": iphone["folder"],
+            "backup_checked_at": iphone["checked_at"],
+            "second_backup": bool(state.get("after")),
+            "targets": convert_targets(state),
+            "media": media,
+        }
+
+    def make_conversion(self, account_folder: str | None, media: str | None) -> dict:
+        state = self.state.get()
+        android_entry, iphone = state.get("android"), iphone_entry(state)
+        if not android_entry or not iphone:
+            raise StepError("check the Android backup and the iPhone backup first")
+        account_folder = account_folder or None
+        if account_folder not in {t["folder"] for t in convert_targets(state)}:
+            raise StepError("that iPhone account isn't in the checked backup")
+        android_db = Path(android_entry["run"]) / "msgstore.db"
+        ios_db = (Path(iphone["run"]) / "files" / workdir.safe_relative(ios.SHARED_DOMAIN)
+                  / workdir.safe_relative(f"{account_folder + '/' if account_folder else ''}{ios.CHAT_STORAGE}"))
+        if not android_db.is_file() or not ios_db.is_file():
+            raise StepError("the checked copies are gone: check both backups again")
+        media_root = Path(media).expanduser() if media else None
+        if media_root and not media_root.is_dir():
+            raise StepError(f"{media_root} isn't a folder")
+        report, run = convert.convert(android_db, ios_db, media_root, account_folder)
+        entry = {"run": str(run), "backup": iphone["folder"], "account_folder": account_folder,
+                 "media": str(media_root) if media_root else None, "made_at": _now(), "report": report.as_dict()}
+        self._account_update(converted=entry, written=None, restored=None)
+        return entry
+
+    def write_backup(self, passphrase: str | None, skip_source_check: bool = False) -> dict:
+        converted = self.state.get().get("converted")
+        if not converted:
+            raise StepError("convert first")
+        report, target = backup_writer.write_conversion(Path(converted["backup"]), passphrase or None,
+                                                        Path(converted["run"]), converted["account_folder"],
+                                                        check_source=not skip_source_check)
+        entry = {"folder": str(target), "from": converted["backup"], "made_at": _now(), "report": report.as_dict()}
+        self._account_update(written=entry, restored=None)
+        return entry
+
+    def restore_status(self) -> dict:
+        written = self.state.get().get("written")
+        try:
+            phones, error = [p.as_dict() for p in restore.iphones()], None
+        except RestoreError as e:
+            phones, error = [], str(e)
+        return {"phones": phones, "error": error, "udid": Path(written["folder"]).name if written else None}
+
+    def restore_backup(self, passphrase: str | None, confirmed: bool, progress=lambda _: None) -> dict:
+        written = self.state.get().get("written")
+        if not written:
+            raise StepError("write the new backup first")
+        if not confirmed:
+            raise StepError("confirm the restore first")
+        folder = Path(written["folder"])
+        if ios_backup.device_info(folder).encrypted:
+            Backup(folder, passphrase or None)  # a wrong passphrase stops here, before the phone is touched
+        phone = restore.restore(folder, passphrase or None, progress)
+        entry = {"folder": str(folder), "phone": phone.name, "restored_at": _now()}
+        self._account_update(restored=entry)
+        return entry
+
     # Progress
 
     def set_checklist(self, item: str, done: bool) -> dict:
@@ -280,8 +369,8 @@ class Wizard:
 
     def reset(self) -> None:
         """Forget progress; run folders and snapshots stay until deleted."""
-        self.state.update(android=None, before=None, after=None, checklist=None, step=None, destination=None,
-                          accounts=None, current=None)
+        self.state.update(before=None, checklist=None, step=None, accounts=None, current=None,
+                          **dict.fromkeys(self.PER_ACCOUNT))
 
     def summary(self) -> str:
         return summary_text(self.state.get())
@@ -342,6 +431,69 @@ def destination_hint(state: dict) -> dict | None:
         return hint | {"suggested": "second", "reason": "unknown-number"}
     known = [a for a in accounts if a.get("number_ends")]
     return hint | {"suggested": "second", "reason": "different-number" if known else "iphone-numbers-unknown"}
+
+
+def iphone_entry(state: dict) -> dict | None:
+    """The iPhone backup the chats go into: the second one when made, else the first."""
+    return state.get("after") or state.get("before")
+
+
+def convert_targets(state: dict) -> list[dict]:
+    """The checked backup's WhatsApp accounts with chat databases, the likely one marked."""
+    iphone = iphone_entry(state)
+    if not iphone:
+        return []
+    report = iphone["report"]
+    accounts = report.get("accounts", [])
+    targets = []
+    for db in report["databases"]:
+        if db["domain"] != ios.SHARED_DOMAIN or Path(db["path"]).name != ios.CHAT_STORAGE:
+            continue
+        folder = db["path"].rpartition("/")[0] or None
+        account = next((a for a in accounts if (a.get("folder") == folder if folder else a.get("main"))), None) or {}
+        targets.append({"folder": folder, "main": folder is None, "number_ends": account.get("number_ends"),
+                        "country": account.get("country"), "messages": (db.get("counts") or {}).get("messages"),
+                        "suggested": False})
+    # The likely one: the account the destination check matched, else the
+    # one on the Android number, else a chat database the second backup added.
+    hint = destination_hint(state) or {}
+    match = hint.get("match")
+    ends = hint.get("android_ends")
+    added = {p.removeprefix(f"{ios.SHARED_DOMAIN}/").rpartition("/")[0] or None
+             for p in (iphone.get("diff") or {}).get("new_chat_storages", [])}
+    pick = (next((t for t in targets if match and t["folder"] == (None if match.get("main") else match.get("folder"))),
+                 None)
+            or next((t for t in targets if ends and (t["number_ends"] or "").endswith(ends)), None)
+            or next((t for t in targets if t["folder"] in added), None)
+            or (targets[0] if len(targets) == 1 else None))
+    if pick:
+        pick["suggested"] = True
+    return targets
+
+
+def media_candidates(android_db: Path) -> list[dict]:
+    """Folders holding a copy of an Android WhatsApp Media folder; the one that has this history's files marked.
+
+    One per account looks the same from outside, so each is asked how many
+    of the newest media files the Android history names it has.
+    """
+    seen, found = set(), []
+    for base in MEDIA_FOLDERS:
+        root = Path.home() / base
+        try:
+            folders = [root, *sorted(p for p in root.iterdir() if p.is_dir())] if root.is_dir() else []
+        except OSError:
+            continue
+        for folder in folders:
+            if folder.resolve() in seen or not any(folder.glob("WhatsApp *")):
+                continue
+            seen.add(folder.resolve())
+            has, of = convert.media_found(android_db, folder)
+            found.append({"path": str(folder), "name": folder.name, "found": has, "sampled": of, "suggested": False})
+    best = max(found, key=lambda m: m["found"], default=None)
+    if best and best["found"]:
+        best["suggested"] = True
+    return found
 
 
 def android_accounts(state: dict) -> list[dict]:

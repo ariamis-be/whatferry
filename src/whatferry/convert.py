@@ -36,7 +36,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-from whatferry import workdir
+from whatferry import sqlite_summary, workdir
 
 APPLE_EPOCH = 978307200
 
@@ -354,13 +354,28 @@ def _media_item(android: Android, target: Target, has: dict, m, message_pk: int,
     return pk
 
 
+def _media_source(media_root: Path, file_path: str) -> Path:
+    """Where a message_media file_path ("Media/WhatsApp Images/…") sits in a copy of the Media folder."""
+    return media_root / (file_path.split("/", 1)[1] if file_path.startswith("Media/") else file_path)
+
+
+def media_found(android_db: Path, media_root: Path, sample: int = 200) -> tuple[int, int]:
+    """Of the newest `sample` media files the Android history names, how many this folder has."""
+    try:
+        with sqlite_summary.open_read_only(android_db) as db:
+            paths = [r[0] for r in db.execute("SELECT file_path FROM message_media WHERE file_path IS NOT NULL "
+                                              "ORDER BY message_row_id DESC LIMIT ?", (sample,))]
+    except sqlite3.Error:
+        return 0, 0
+    return sum(_media_source(media_root, p).is_file() for p in paths), len(paths)
+
+
 def _copy_media(file_path: str | None, chat_jid: str, media_root: Path | None, media_out: Path,
                 report: Report) -> str | None:
     """Place one file as the iPhone keeps it; returns ZMEDIALOCALPATH, or None if it's missing."""
     if not file_path or media_root is None:
         return None
-    relative = file_path.split("/", 1)[1] if file_path.startswith("Media/") else file_path
-    source = media_root / relative
+    source = _media_source(media_root, file_path)
     if not source.is_file():
         report.media_files_missing += 1
         return None

@@ -1,4 +1,4 @@
-"""whatferry's command line: read-only discovery, Android and iPhone side.
+"""whatferry's command line: discovery, conversion, writing the new backup, and restoring it.
 
 Secrets never go on the command line, where shell history would keep them:
 the Android key comes from --key-file, WHATFERRY_ANDROID_KEY or a prompt, and
@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-from whatferry import adb, android, backup_writer, convert, ios, sqlite_summary, workdir
+from whatferry import adb, android, backup_writer, convert, ios, restore, sqlite_summary, workdir
 from whatferry.ios_backup import (Backup, BackupError, WrongPassphrase, backup_roots, device_info, find_backup,
                                   how_to_back_up, list_backups)
 
@@ -22,7 +22,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.run(args)
     except (android.DecryptError, BackupError, adb.AdbError, convert.ConvertError, backup_writer.WriteError,
-            FileNotFoundError) as e:
+            restore.RestoreError, FileNotFoundError) as e:
         print(f"whatferry: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
@@ -31,8 +31,8 @@ def main(argv: list[str] | None = None) -> int:
 
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="whatferry", description=(
-        "Move WhatsApp chats from Android to iPhone. This version only reads: "
-        "it decrypts and describes backups, and never writes to a phone or a backup."))
+        "Move WhatsApp chats from Android to iPhone: decrypt and describe both backups, convert the "
+        "chats, write them into a new copy of the iPhone backup, and restore that onto the iPhone."))
     sides = p.add_subparsers(required=True, metavar="command")
 
     a = sides.add_parser("android", help="the Android backup").add_subparsers(required=True, metavar="command")
@@ -69,6 +69,10 @@ def _parser() -> argparse.ArgumentParser:
                     help="write even if the backup isn't the one the conversion was made from (its account "
                          "database differs); chats added on the phone since the conversion are lost on restore")
     iw.set_defaults(run=_ios_write)
+    ir = i.add_parser("restore", help="put a backup `whatferry ios write` made onto its iPhone, over USB "
+                                      "(replaces everything on the phone)")
+    ir.add_argument("backup", type=Path, help="the backup folder `whatferry ios write` printed")
+    ir.set_defaults(run=_ios_restore)
 
     c = sides.add_parser("convert", help="merge an Android account's chats into a copy of an iPhone account's database")
     c.add_argument("android_db", type=Path, help="decrypted msgstore.db (from `whatferry android inspect`)")
@@ -275,6 +279,30 @@ def _ios_write(args) -> int:
     print(f"  added: {report.added_files} files ({_size(report.added_bytes)}) and {report.added_folders} folders")
     print(f"  {report.verified_files} written files read back and verified")
     print("The original backup is unchanged. Nothing has been restored to the phone.")
+    return 0
+
+
+def _ios_restore(args) -> int:
+    folder = args.backup.expanduser()
+    udid = restore.backup_udid(folder)
+    backup = _open_backup(str(folder))  # checks the passphrase before the phone is touched
+    phone = next((p for p in restore.iphones() if p.udid.upper() == udid.upper()), None)
+    name = phone.name if phone and phone.name else udid
+    print(f"This replaces everything on {name} with the backup in {folder}.")
+    print("Anything that reached the phone after that backup was made will be gone.")
+    if input(f"Type {name} to restore: ").strip() != name:
+        print("Not restored.")
+        return 1
+    last = -10.0
+
+    def progress(percent: float) -> None:
+        nonlocal last
+        if percent >= last + 10 or percent >= 100:
+            last = percent
+            print(f"  {percent:.0f}%")
+
+    restore.restore(folder, backup.passphrase, progress)
+    print(f"Restored. {name} restarts now; keep it connected until it shows the lock screen.")
     return 0
 
 

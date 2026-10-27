@@ -101,6 +101,92 @@ export interface State {
   before?: IosEntry
   after?: IosEntry
   destination?: Destination
+  converted?: ConvertedEntry
+  written?: WrittenEntry
+  restored?: RestoredEntry
+}
+
+export interface ConvertReport {
+  android_messages: number
+  converted: Record<string, number>
+  skipped: Record<string, number>
+  already_there: number
+  chats_matched: number
+  chats_created: number
+  groups_created: number
+  members_created: number
+  media_rows: number
+  media_files_copied: number
+  media_files_missing: number
+  not_converted_yet: Record<string, number>
+  checks: Record<string, unknown>
+}
+
+export interface ConvertedEntry {
+  run: string
+  backup: string
+  account_folder: string | null
+  media: string | null
+  made_at: string
+  report: ConvertReport
+}
+
+export interface WrittenEntry {
+  folder: string
+  from: string
+  made_at: string
+  report: {
+    encrypted: boolean
+    added_files: number
+    added_bytes: number
+    verified_files: number
+    source_checked: boolean
+  }
+}
+
+export interface RestoredEntry {
+  folder: string
+  phone: string | null
+  restored_at: string
+}
+
+export interface ConvertTarget {
+  folder: string | null
+  main: boolean
+  number_ends: string | null
+  country: string | null
+  messages: number | null
+  suggested: boolean
+}
+
+export interface MediaFolder {
+  path: string
+  name: string
+  found: number
+  sampled: number
+  suggested: boolean
+}
+
+export interface ConvertOptions {
+  backup: string
+  backup_checked_at: string
+  second_backup: boolean
+  targets: ConvertTarget[]
+  media: MediaFolder[]
+}
+
+export interface ConnectedIphone {
+  udid: string
+  name: string | null
+  ios_version: string | null
+  paired: boolean
+  find_my: boolean | null
+}
+
+export interface RestoreStatus {
+  phones: ConnectedIphone[]
+  error: string | null
+  udid: string | null
 }
 
 export interface Overview {
@@ -189,11 +275,12 @@ export async function api<T>(method: "GET" | "POST", path: string, body?: unknow
 }
 
 /** Start a background job and wait for it, polling. */
-export async function runJob<T>(path: string, body: unknown): Promise<T> {
+export async function runJob<T>(path: string, body: unknown, onProgress?: (percent: number) => void): Promise<T> {
   const { job } = await api<{ job: string }>("POST", path, body)
   for (;;) {
     await new Promise((r) => setTimeout(r, 600))
-    const status = await api<{ status: string; result?: T; error?: string }>("GET", `/api/jobs/${job}`)
+    const status = await api<{ status: string; result?: T; error?: string; progress?: number }>("GET", `/api/jobs/${job}`)
+    if (status.progress !== undefined) onProgress?.(status.progress)
     if (status.status === "done") return status.result as T
     if (status.status === "error") throw new Error(status.error)
   }

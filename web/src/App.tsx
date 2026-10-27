@@ -18,8 +18,11 @@ import { cn } from "@/lib/utils"
 import { AccountStep } from "@/steps/account"
 import { AndroidStep } from "@/steps/android"
 import { BackupStep } from "@/steps/backup"
+import { ConvertStep } from "@/steps/convert"
+import { RestoreStep } from "@/steps/restore"
 import { ResultsStep } from "@/steps/results"
 import { StartStep } from "@/steps/start"
+import { WriteStep } from "@/steps/write"
 import { applyTheme, followSystem, type Theme } from "@/theme"
 import { STEPS, type StepId } from "@/wizard"
 
@@ -32,6 +35,9 @@ function isDone(id: StepId, s: State) {
     // unless the chats go to an account that already exists.
     case "account": return s.destination === "existing" || Boolean(s.after)
     case "after": return Boolean(s.after)
+    case "convert": return Boolean(s.converted)
+    case "write": return Boolean(s.written)
+    case "restore": return Boolean(s.restored)
     default: return false
   }
 }
@@ -229,6 +235,9 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                 {current === "before" && <BackupStep {...props} role="before" />}
                 {current === "account" && <AccountStep overview={props.overview} go={go} />}
                 {current === "after" && <BackupStep {...props} role="after" />}
+                {current === "convert" && <ConvertStep {...props} />}
+                {current === "write" && <WriteStep {...props} />}
+                {current === "restore" && <RestoreStep {...props} />}
                 {current === "done" && <ResultsStep {...props} />}
               </div>
 
