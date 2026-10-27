@@ -34,7 +34,7 @@ function BackupFolders() {
           {FOLDERS.map((folder, i) => (
             <TableRow key={folder}>
               <TableCell className="text-sm">{t.android.folders[i]}</TableCell>
-              <TableCell className="font-mono text-xs whitespace-normal wrap-anywhere">{folder}</TableCell>
+              <TableCell className="font-mono text-xs whitespace-nowrap">{folder}</TableCell>
             </TableRow>
           ))}
         </TableBody>

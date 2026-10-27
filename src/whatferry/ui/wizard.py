@@ -138,6 +138,9 @@ class Wizard:
     # reads them; each account's own copy is kept in "accounts" by key (its
     # backup file's path), and "current" names the one on top.
     PER_ACCOUNT = ("android", "destination", "after", "converted", "written", "restored")
+    # Made from the checked backups: dropped whenever one is checked again,
+    # so no step shows as done from something older.
+    LATER = ("converted", "written", "restored")
 
     def _stash(self) -> dict:
         """Every account's data, the current one's refreshed from the top."""
@@ -235,7 +238,7 @@ class Wizard:
         # put aside, and checking the same file again keeps its progress.
         accounts = self._stash()
         key = str(source.resolve())
-        accounts.setdefault(key, {})["android"] = entry
+        accounts.setdefault(key, {}).update(android=entry, **dict.fromkeys(self.LATER))
         self._switch(key, accounts)
         return entry
 
@@ -265,12 +268,15 @@ class Wizard:
         if role == "before":
             snapshot = ios_backup.snapshot_manifest(path, self.home / "snapshots" / run.name)
             entry["snapshot"] = str(snapshot)
-            self.state.update(before=entry, after=None)
-            self.state.update(accounts=self._stash())
+            # Every account's second backup and transfer came from the old first backup.
+            accounts = self._stash()
+            for account in accounts.values():
+                account.update(after=None, **dict.fromkeys(self.LATER))
+            self.state.update(before=entry, after=None, accounts=accounts or None, **dict.fromkeys(self.LATER))
         else:
             old = Backup(Path(before["snapshot"]), passphrase or None)
             entry["diff"] = diff_summary(ios.diff(old, backup))
-            self.state.update(after=entry)
+            self.state.update(after=entry, **dict.fromkeys(self.LATER))
             self.state.update(accounts=self._stash())
         return entry
 

@@ -108,6 +108,29 @@ def test_redoing_a_step_drops_the_later_ones(wizard, monkeypatch):
     assert state["converted"] and not state.get("written") and not state.get("restored")
 
 
+@pytest.mark.parametrize("recheck", ["android", "before", "after"])
+def test_checking_a_backup_again_drops_the_transfer(wizard, monkeypatch, recheck):
+    iphone = wizard.state.get()["before"]["folder"]
+    if recheck == "after":
+        wizard.ios_inspect(iphone, PASS, "after")
+    wizard.make_conversion(ACCOUNT, None)
+    wizard.write_backup(PASS)
+    FakePhone(monkeypatch)
+    wizard.restore_backup(PASS, True)
+
+    if recheck == "android":
+        wizard.android_inspect(wizard.state.get()["android"]["source"], None)
+    else:
+        wizard.ios_inspect(iphone, PASS, recheck)
+
+    state = wizard.state.get()
+    assert not any(state.get(k) for k in ("converted", "written", "restored"))
+    for account in state["accounts"].values():
+        assert not any(account.get(k) for k in ("converted", "written", "restored"))
+    assert state["android"] and state["before"]
+    assert bool(state.get("after")) == (recheck == "after"), "a new first backup drops the second"
+
+
 def test_steps_out_of_order_are_refused(private_home):
     w = Wizard(private_home)
     with pytest.raises(StepError):

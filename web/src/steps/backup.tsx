@@ -243,7 +243,7 @@ function BackupResult({ entry, first }: { entry: IosEntry; first: boolean }) {
             <TableBody>
               {Object.entries(r.domains).map(([domain, n]) => (
                 <TableRow key={domain}>
-                  <TableCell className="font-mono text-xs whitespace-normal break-all">{domain}</TableCell>
+                  <TableCell className="font-mono text-xs whitespace-nowrap">{domain}</TableCell>
                   <TableCell className="text-right tabular-nums">{num(n.files)}</TableCell>
                   <TableCell className="text-right tabular-nums">{size(n.bytes)}</TableCell>
                 </TableRow>
@@ -277,7 +277,7 @@ function DiffView({ diff }: { diff: Diff }) {
           <AlertTitle>{found === 1 ? t.backup.foundOne : t.backup.foundMany(found)}</AlertTitle>
           <AlertDescription className="space-y-2">
             {diff.new_chat_storages.map((p) => (
-              <Path key={p} className="block text-foreground">
+              <Path key={p} className="block overflow-x-auto whitespace-nowrap text-foreground">
                 {p}
               </Path>
             ))}
@@ -291,23 +291,25 @@ function DiffView({ diff }: { diff: Diff }) {
           <AlertDescription>{t.backup.noneNewBody}</AlertDescription>
         </Alert>
       )}
+      {/* Counts first: the folder names run long and scroll, the numbers stay in view. */}
       <Table>
         <TableHeader>
           <TableRow>
-            {t.backup.diffHead.map((head, i) => (
-              <TableHead key={head} className={i ? "text-right" : undefined}>
+            {t.backup.diffHead.slice(1).map((head) => (
+              <TableHead key={head} className="w-0 text-right">
                 {head}
               </TableHead>
             ))}
+            <TableHead>{t.backup.diffHead[0]}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {Object.entries(diff.by_folder).map(([where, c]) => (
             <TableRow key={where}>
-              <TableCell className="font-mono text-xs whitespace-normal break-all">{where}</TableCell>
               <TableCell className="text-right tabular-nums">{c.added ?? 0}</TableCell>
               <TableCell className="text-right tabular-nums">{c.changed ?? 0}</TableCell>
               <TableCell className="text-right tabular-nums">{c.removed ?? 0}</TableCell>
+              <TableCell className="font-mono text-xs whitespace-nowrap">{where}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -315,7 +317,7 @@ function DiffView({ diff }: { diff: Diff }) {
       {lists.map(([title, paths]) =>
         paths.length ? (
           <Disclosure key={title} title={title}>
-            <pre className="max-h-72 overflow-auto rounded-lg bg-muted p-3 font-mono text-xs wrap-anywhere whitespace-pre-wrap">
+            <pre className="max-h-72 overflow-auto rounded-lg bg-muted p-3 font-mono text-xs whitespace-pre">
               {paths.join("\n")}
             </pre>
           </Disclosure>
