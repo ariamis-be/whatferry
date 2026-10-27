@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Check, Copy, RotateCcw } from "lucide-react"
 
 import { api } from "@/api"
-import { PageHeader, Section } from "@/components/bits"
+import { Disclosure, PageHeader, Section } from "@/components/bits"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useI18n } from "@/i18n"
@@ -42,13 +42,17 @@ export function ResultsStep({ overview, refresh, go }: StepProps) {
 
       <div className="space-y-3">
         {t.results.summaryLanguage && <p className="text-xs text-muted-foreground">{t.results.summaryLanguage}</p>}
-        <Textarea
-          readOnly
-          aria-label={t.results.summaryLabel}
-          value={text ?? t.common.loading}
-          lang="en"
-          className="min-h-96 font-mono text-xs leading-relaxed"
-        />
+        {/* Folded: Copy is all most people need. Unwrapped: paths stay on one line. */}
+        <Disclosure title={t.results.summaryLabel}>
+          <Textarea
+            readOnly
+            wrap="off"
+            aria-label={t.results.summaryLabel}
+            value={text ?? t.common.loading}
+            lang="en"
+            className="min-h-96 overflow-x-auto font-mono text-xs leading-relaxed whitespace-pre"
+          />
+        </Disclosure>
         <Button onClick={copy} disabled={text === null}>
           {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
           {copied ? t.results.copied : t.results.copy}
