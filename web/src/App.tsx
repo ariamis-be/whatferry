@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { ArrowLeft, ArrowRight, Check, Languages, Monitor, Moon, ShieldCheck, Sun } from "lucide-react"
 
-import { api, setLocale, TOKEN, type Overview, type State } from "@/api"
+import { api, saveSettings, setLocale, TOKEN, type Overview, type State } from "@/api"
 import { ErrorNotice } from "@/components/bits"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,14 +13,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Spinner } from "@/components/ui/spinner"
-import { I18nContext, initialLang, LANGS, locale, MESSAGES, saveLang, type Lang } from "@/i18n"
+import { I18nContext, LANGS, locale, MESSAGES, type Lang } from "@/i18n"
 import { cn } from "@/lib/utils"
 import { AccountStep } from "@/steps/account"
 import { AndroidStep } from "@/steps/android"
 import { BackupStep } from "@/steps/backup"
 import { ResultsStep } from "@/steps/results"
 import { StartStep } from "@/steps/start"
-import { applyTheme, followSystem, savedTheme, saveTheme, type Theme } from "@/theme"
+import { applyTheme, followSystem, type Theme } from "@/theme"
 import { STEPS, type StepId } from "@/wizard"
 
 function isDone(id: StepId, s: State) {
@@ -41,9 +41,9 @@ function isSkipped(id: StepId, s: State) {
   return id === "after" && s.destination === "existing"
 }
 
-export default function App() {
+export default function App({ initialTheme, initialLang }: { initialTheme: Theme; initialLang: Lang }) {
   const [lang, setLangState] = useState<Lang>(initialLang)
-  const [theme, setThemeState] = useState<Theme>(savedTheme)
+  const [theme, setThemeState] = useState<Theme>(initialTheme)
   const [overview, setOverview] = useState<Overview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [current, setCurrent] = useState<StepId>("start")
@@ -54,7 +54,7 @@ export default function App() {
     lang,
     t,
     setLang: (l: Lang) => {
-      saveLang(l)
+      saveSettings({ lang: l })
       setLangState(l)
     },
   }), [lang, t])
@@ -140,7 +140,7 @@ export default function App() {
                     <DropdownMenuRadioGroup
                       value={theme}
                       onValueChange={(v) => {
-                        saveTheme(v as Theme)
+                        saveSettings({ theme: v })
                         setThemeState(v as Theme)
                       }}
                     >

@@ -220,6 +220,20 @@ def test_guard_refuses_a_conversion_without_a_record(tmp_path):
         write_conversion(source, PASS, run, ACCOUNT)
 
 
+def test_guard_can_be_skipped_on_request(tmp_path, monkeypatch, capsys):
+    run = converted_from(account_backup(tmp_path, "00008160-0015"), tmp_path)
+    newer = account_backup(tmp_path, "00008160-0016", change=1)
+    written, _ = write_conversion(newer, PASS, run, ACCOUNT, check_source=False)
+    assert written.verified_files == 1 and not written.source_checked
+
+    monkeypatch.setenv("WHATFERRY_BACKUP_PASSPHRASE", PASS)
+    args = ["ios", "write", str(newer), str(run), "--account-folder", ACCOUNT, "--to", str(tmp_path / "w")]
+    assert main(args) == 1, "refused without the flag"
+    capsys.readouterr()
+    assert main([*args, "--skip-source-check"]) == 0
+    assert "Source check skipped" in capsys.readouterr().out
+
+
 def test_manifest_stays_a_valid_encrypted_index(backup, tmp_path):
     out = tmp_path / "out" / backup.name
     with BackupWriter(backup, out, PASS) as w:

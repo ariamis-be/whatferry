@@ -3,13 +3,20 @@ import { createRoot } from "react-dom/client"
 
 import "./index.css"
 import App from "./App.tsx"
-import { applyTheme, savedTheme } from "./theme"
+import { api, type Settings } from "./api"
+import { toLang } from "./i18n"
+import { applyTheme, toTheme } from "./theme"
 
-// Before the first render, so the page never flashes the wrong theme.
-applyTheme(savedTheme())
-
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// Saved settings first, before the first render, so the page never flashes
+// the wrong theme or language. The server is local: this takes milliseconds.
+api<Settings>("GET", "/api/settings")
+  .catch((): Settings => ({}))
+  .then((settings) => {
+    const theme = toTheme(settings.theme)
+    applyTheme(theme)
+    createRoot(document.getElementById("root")!).render(
+      <StrictMode>
+        <App initialTheme={theme} initialLang={toLang(settings.lang)} />
+      </StrictMode>,
+    )
+  })

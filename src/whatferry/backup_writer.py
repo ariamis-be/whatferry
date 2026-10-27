@@ -98,6 +98,8 @@ class WriteReport:
     added_folders: int = 0
     added_bytes: int = 0
     verified_files: int = 0
+    # False when the same-source guard was skipped on request.
+    source_checked: bool = True
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -335,14 +337,15 @@ def check_same_source(source: Path, passphrase: str | None, convert_run: Path, a
 
 
 def write_conversion(source: Path, passphrase: str | None, convert_run: Path, account_folder: str | None,
-                     target: Path | None = None) -> tuple[WriteReport, Path]:
+                     target: Path | None = None, check_source: bool = True) -> tuple[WriteReport, Path]:
     """Put a `whatferry convert` result into a copy of the backup it was made from."""
     files = convert_run / "files"
     merged = files / "ChatStorage.sqlite"
     if not merged.is_file():
         raise WriteError(f"{convert_run} has no converted ChatStorage.sqlite")
     prefix = f"{account_folder}/" if account_folder else ""
-    check_same_source(source, passphrase, convert_run, account_folder)
+    if check_source:  # off only on request: `ios write --skip-source-check`
+        check_same_source(source, passphrase, convert_run, account_folder)
     run = workdir.new_run("backup")
     target = target or run / source.name
     with BackupWriter(source, target, passphrase) as writer:
@@ -355,6 +358,7 @@ def write_conversion(source: Path, passphrase: str | None, convert_run: Path, ac
         for path in sorted(p for p in media.rglob("*") if p.is_file()) if media.is_dir() else []:
             writer.add(SHARED_DOMAIN, f"{prefix}Message/Media/{path.relative_to(media).as_posix()}", path)
         report = writer.commit()
+    report.source_checked = check_source
     workdir.write_private(run / "write-report.json", json.dumps(report.as_dict(), indent=2).encode())
     return report, target
 

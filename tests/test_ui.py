@@ -268,6 +268,22 @@ def test_unknown_step_and_item_are_refused(server):
     assert request(server, "POST", "/api/checklist", {"item": "nope", "done": True})[0] == 400
 
 
+def test_settings_survive_a_restart_and_a_reset(server, private_home):
+    """The page's language and theme: a new start has a new port, so the browser can't keep them."""
+    assert request(server, "GET", "/api/settings")[2] == {}
+    status, _, saved = request(server, "POST", "/api/settings", {"theme": "dark"})
+    assert status == 200 and saved == {"theme": "dark"}
+    request(server, "POST", "/api/settings", {"lang": "zh"})
+    request(server, "POST", "/api/reset", {})
+    assert Wizard(private_home).settings.get() == {"theme": "dark", "lang": "zh"}
+
+
+@pytest.mark.parametrize("body", [{"theme": "purple"}, {"lang": "fr"}, {"token": "x"}])
+def test_unknown_settings_are_refused(server, body):
+    assert request(server, "POST", "/api/settings", body)[0] == 400
+    assert request(server, "GET", "/api/settings")[2] == {}
+
+
 def test_reset_forgets_progress(server, private_home):
     request(server, "POST", "/api/step", {"step": "after"})
     request(server, "POST", "/api/reset", {})

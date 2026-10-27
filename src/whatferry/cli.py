@@ -65,6 +65,9 @@ def _parser() -> argparse.ArgumentParser:
     iw.add_argument("convert_run", type=Path, help="the run folder `whatferry convert` printed")
     iw.add_argument("--account-folder", help="data/<id> folder of a second iPhone account (omit for the main one)")
     iw.add_argument("--to", type=Path, help="where to write the new backup folder (default: a private run folder)")
+    iw.add_argument("--skip-source-check", action="store_true",
+                    help="write even if the backup isn't the one the conversion was made from (its account "
+                         "database differs); chats added on the phone since the conversion are lost on restore")
     iw.set_defaults(run=_ios_write)
 
     c = sides.add_parser("convert", help="merge an Android account's chats into a copy of an iPhone account's database")
@@ -261,7 +264,10 @@ def _ios_write(args) -> int:
     source = _open_backup(args.backup)  # checks the passphrase before anything is copied
     target = args.to / source.folder.name if args.to else None
     report, written = backup_writer.write_conversion(source.folder, source.passphrase, args.convert_run,
-                                                     args.account_folder, target)
+                                                     args.account_folder, target,
+                                                     check_source=not args.skip_source_check)
+    if args.skip_source_check:
+        print("Source check skipped: the conversion may not match this backup.")
     print(f"Wrote a new {'encrypted ' if report.encrypted else ''}backup: {written}")
     print(f"  replaced: {', '.join(p.split('/', 1)[1] for p in report.replaced)}")
     if report.removed:

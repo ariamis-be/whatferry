@@ -195,6 +195,12 @@ class Handler(BaseHTTPRequestHandler):
         self.server.wizard.reset()
         self._send_json(HTTPStatus.OK, {})
 
+    def _settings(self):
+        self._send_json(HTTPStatus.OK, self.server.wizard.settings.get())
+
+    def _set_settings(self):
+        self._send_json(HTTPStatus.OK, self.server.wizard.set_settings(self._read_json()))
+
     def _summary(self):
         self._send_json(HTTPStatus.OK, {"text": self.server.wizard.summary()})
 
@@ -260,6 +266,8 @@ ROUTES = {
     ("POST", "/api/android/select"): Handler._select_android,
     ("POST", "/api/reset"): Handler._reset,
     ("GET", "/api/summary"): Handler._summary,
+    ("GET", "/api/settings"): Handler._settings,
+    ("POST", "/api/settings"): Handler._set_settings,
 }
 
 

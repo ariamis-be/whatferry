@@ -803,23 +803,10 @@ export function useI18n() {
 }
 
 /** The language to start in: saved choice, else the browser's, else English. */
-export function initialLang(): Lang {
-  try {
-    const saved = localStorage.getItem("whatferry-lang")
-    if (saved === "en" || saved === "zh") return saved
-  } catch {
-    // storage blocked: fall through
-  }
+export function toLang(saved: string | undefined): Lang {
+  if (saved === "en" || saved === "zh") return saved
   return navigator.languages.some((l) => l.toLowerCase().startsWith("zh")) &&
     !navigator.languages[0]?.toLowerCase().startsWith("en")
     ? "zh"
     : "en"
-}
-
-export function saveLang(lang: Lang) {
-  try {
-    localStorage.setItem("whatferry-lang", lang)
-  } catch {
-    // not saved; still switches for this visit
-  }
 }

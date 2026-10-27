@@ -137,7 +137,9 @@ account folder; before writing anything, `ios write` extracts that account's
 database from the backup it was given (with its `-wal` folded in) and refuses
 if the fingerprint or the account differs. Restoring rolls the whole phone
 back to the backup, so a newer backup means converting again from it, not
-writing an old conversion into it.
+writing an old conversion into it. `--skip-source-check` writes anyway (and
+says so in the output and in write-report.json); whatever the account gained
+on the phone after the conversion's backup is then lost on restore.
 
 The passphrase comes from `WHATFERRY_BACKUP_PASSPHRASE` or a hidden prompt.
 The new backup goes to a private run folder unless `--to` says otherwise.

@@ -1,27 +1,14 @@
-// Light, dark, or the system's setting (the default). The choice is kept in
-// this browser only; shadcn's dark theme hangs off a .dark class.
+// Light, dark, or the system's setting (the default). The choice is kept by
+// the whatferry server (see saveSettings); shadcn's dark theme hangs off a
+// .dark class.
 
 export type Theme = "light" | "dark" | "system"
 
-const KEY = "whatferry-theme"
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)")
 
-export function savedTheme(): Theme {
-  try {
-    const saved = localStorage.getItem(KEY)
-    if (saved === "light" || saved === "dark" || saved === "system") return saved
-  } catch {
-    // storage blocked: use the default
-  }
+export function toTheme(saved: string | undefined): Theme {
+  if (saved === "light" || saved === "dark" || saved === "system") return saved
   return "system"
-}
-
-export function saveTheme(theme: Theme) {
-  try {
-    localStorage.setItem(KEY, theme)
-  } catch {
-    // not saved; still applies for this visit
-  }
 }
 
 export function applyTheme(theme: Theme) {

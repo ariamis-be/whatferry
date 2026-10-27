@@ -107,7 +107,20 @@ class Wizard:
     def __init__(self, home: Path | None = None):
         self.home = home or workdir.home()
         self.state = State(self.home / "state.json")
+        # The page's language and theme. Kept here, not in the browser: the
+        # wizard gets a new port each start, and a browser keeps its storage
+        # per port. A reset leaves them alone.
+        self.settings = State(self.home / "settings.json")
         self.jobs = Jobs()
+
+    SETTINGS = {"lang": ("en", "zh"), "theme": ("light", "dark", "system")}
+
+    def set_settings(self, values: dict) -> dict:
+        for key, value in values.items():
+            if key not in self.SETTINGS or value not in self.SETTINGS[key]:
+                raise StepError(f"unknown setting {key}={value}")
+        self.settings.update(**values)
+        return self.settings.get()
 
     # Several Android accounts, moved one after another. The current account's
     # android/destination/after sit at the top of the state, where every step

@@ -229,3 +229,14 @@ export function day(iso: string | null | undefined) {
   const d = new Date(iso)
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString(currentLocale, { dateStyle: "medium" })
 }
+
+/** The page's language and theme, kept by the server across restarts. */
+export interface Settings {
+  lang?: string
+  theme?: string
+}
+
+export function saveSettings(settings: Settings) {
+  // Not saved (server gone): the choice still applies for this visit.
+  api("POST", "/api/settings", settings).catch(() => {})
+}
