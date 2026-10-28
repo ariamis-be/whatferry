@@ -3,6 +3,7 @@ import { CircleCheck, Info, TriangleAlert } from "lucide-react"
 
 import { api, num, runJob, when, type ConvertOptions, type ConvertedEntry } from "@/api"
 import { Busy, ErrorNotice, PageHeader, Path, Section, StatGrid } from "@/components/bits"
+import { ConversionPreview } from "@/components/preview"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -185,6 +186,7 @@ export function ConvertStep({ overview, refresh, go }: StepProps) {
               {state.converted ? t.convert.again : t.convert.run}
             </Button>
             {state.converted && <ConvertResult entry={state.converted} />}
+            {state.converted && <ConversionPreview madeAt={state.converted.made_at} />}
           </div>
         </>
       )}

@@ -15,7 +15,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-from whatferry import adb, android, backup_writer, convert, ios, ios_backup, restore, sqlite_summary, workdir
+from whatferry import adb, android, backup_writer, convert, ios, ios_backup, preview, restore, sqlite_summary, workdir
 from whatferry.backup_writer import WriteError
 from whatferry.ios_backup import Backup, BackupError
 from whatferry.restore import RestoreError
@@ -38,7 +38,7 @@ class StepError(Exception):
 
 # Errors whose message is meant for the person using the wizard.
 USER_ERRORS = (android.DecryptError, BackupError, StepError, adb.AdbError, convert.ConvertError, WriteError,
-               RestoreError, OSError)
+               RestoreError, preview.PreviewError, OSError)
 
 # Android media folders: the copies made from the phone, one per account.
 MEDIA_FOLDERS = ("whatferry-android", "whatferry-android/media")
@@ -320,10 +320,38 @@ class Wizard:
         if media_root and not media_root.is_dir():
             raise StepError(f"{media_root} isn't a folder")
         report, run = convert.convert(android_db, ios_db, media_root, account_folder)
-        entry = {"run": str(run), "backup": iphone["folder"], "account_folder": account_folder,
+        entry = {"run": str(run), "backup": iphone["folder"], "account_folder": account_folder, "ios_db": str(ios_db),
                  "media": str(media_root) if media_root else None, "made_at": _now(), "report": report.as_dict()}
         self._account_update(converted=entry, written=None, restored=None)
         return entry
+
+    # The preview: the merged database read back, names and message text
+    # included. Answered to the page only, never saved.
+
+    def _preview(self) -> preview.Preview:
+        converted = self.state.get().get("converted")
+        if not converted:
+            raise StepError("convert first")
+        if not converted.get("ios_db"):
+            raise StepError("this conversion was made before previews existed: convert again")
+        ios_db, run, folder = Path(converted["ios_db"]), Path(converted["run"]), converted["account_folder"]
+        # The account's own contacts first, then the main account's.
+        shared = ios_db.parents[2] if folder else ios_db.parent
+        names = preview.contact_names(ios_db.parent / "ContactsV2.sqlite", shared / "ContactsV2.sqlite")
+        return preview.Preview(run / "files" / ios.CHAT_STORAGE, ios_db, names,
+                               run / "files" / workdir.safe_relative(folder or ".") / "Message")
+
+    def preview_chats(self) -> dict:
+        chats = self._preview().chats()
+        return {"chats": chats, "totals": {
+            change: sum(c["change"] == change for c in chats) for change in ("new", "joined", "unchanged")
+        } | {"from_android": sum(c["from_android"] for c in chats)}}
+
+    def preview_messages(self, chat: int, limit: int = 60) -> dict:
+        return {"messages": self._preview().messages(chat, limit)}
+
+    def preview_picture(self, message: int) -> dict:
+        return {"data": self._preview().picture(message)}
 
     def write_backup(self, passphrase: str | None, skip_source_check: bool = False) -> dict:
         converted = self.state.get().get("converted")

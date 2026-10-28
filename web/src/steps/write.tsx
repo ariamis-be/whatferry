@@ -58,6 +58,12 @@ export function WriteStep({ overview, refresh, go }: StepProps) {
         <p className="text-sm">{t.write.from(source ? when(source.report.device.backup_date) : "?")}</p>
         <Path>{converted.backup}</Path>
         <p className="text-sm text-muted-foreground">{t.write.untouched}</p>
+        <p className="text-sm">
+          {t.write.previewFirst}{" "}
+          <Button variant="link" className="h-auto p-0" onClick={() => go("convert")}>
+            {t.write.openPreview}
+          </Button>
+        </p>
       </Section>
 
       <Section n={2} title={t.write.passTitle}>

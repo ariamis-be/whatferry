@@ -204,6 +204,20 @@ class Handler(BaseHTTPRequestHandler):
         job = wizard.jobs.start(lambda: wizard.make_conversion(body.get("account_folder"), body.get("media")))
         self._send_json(HTTPStatus.ACCEPTED, {"job": job})
 
+    def _query_int(self, name: str) -> int:
+        return int(parse_qs(urlsplit(self.path).query)[name][0])
+
+    def _preview_chats(self):
+        self._send_json(HTTPStatus.OK, self.server.wizard.preview_chats())
+
+    def _preview_messages(self):
+        query = parse_qs(urlsplit(self.path).query)
+        limit = int(query.get("limit", ["60"])[0])
+        self._send_json(HTTPStatus.OK, self.server.wizard.preview_messages(self._query_int("chat"), limit))
+
+    def _preview_picture(self):
+        self._send_json(HTTPStatus.OK, self.server.wizard.preview_picture(self._query_int("message")))
+
     def _write(self):
         body = self._read_json()
         wizard = self.server.wizard
@@ -295,6 +309,9 @@ ROUTES = {
     ("GET", "/api/summary"): Handler._summary,
     ("GET", "/api/convert/options"): Handler._convert_options,
     ("POST", "/api/convert"): Handler._convert,
+    ("GET", "/api/preview/chats"): Handler._preview_chats,
+    ("GET", "/api/preview/messages"): Handler._preview_messages,
+    ("GET", "/api/preview/picture"): Handler._preview_picture,
     ("POST", "/api/write"): Handler._write,
     ("GET", "/api/restore/status"): Handler._restore_status,
     ("POST", "/api/restore"): Handler._restore,

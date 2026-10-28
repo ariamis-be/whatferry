@@ -317,6 +317,36 @@ export function day(iso: string | null | undefined) {
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString(currentLocale, { dateStyle: "medium" })
 }
 
+export type ChatChange = "new" | "joined" | "unchanged"
+
+export interface PreviewChat {
+  id: number
+  name: string
+  jid: string
+  group: boolean
+  change: ChatChange
+  messages: number
+  from_android: number
+  first: string | null
+  last: string | null
+}
+
+export interface PreviewChats {
+  chats: PreviewChat[]
+  totals: Record<ChatChange | "from_android", number>
+}
+
+export interface PreviewMessage {
+  id: number
+  at: string | null
+  from_me: boolean
+  sender: string | null
+  kind: string
+  text: string | null
+  from_android: boolean
+  picture: boolean
+}
+
 /** The page's language and theme, kept by the server across restarts. */
 export interface Settings {
   lang?: string

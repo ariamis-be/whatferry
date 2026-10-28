@@ -1,6 +1,8 @@
 """The wizard's last three steps: convert, write, restore. The phone is a stand-in."""
 
 import plistlib
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -8,7 +10,7 @@ import pytest
 from conftest import make_sqlite
 from encrypted_backup import make_encrypted_backup
 from test_convert import ACCOUNT, ANDROID, IOS
-from whatferry import restore
+from whatferry import preview, restore
 from whatferry.backup_writer import SHARED_DOMAIN as SHARED, WriteError
 from whatferry.cli import main
 from whatferry.ios_backup import Backup, WrongPassphrase
@@ -129,6 +131,72 @@ def test_checking_a_backup_again_drops_the_transfer(wizard, monkeypatch, recheck
         assert not any(account.get(k) for k in ("converted", "written", "restored"))
     assert state["android"] and state["before"]
     assert bool(state.get("after")) == (recheck == "after"), "a new first backup drops the second"
+
+
+def test_preview_shows_what_the_iphone_will_have(wizard, tmp_path):
+    media = tmp_path / "media"
+    (media / "WhatsApp Images" / "Sent").mkdir(parents=True)
+    (media / "WhatsApp Images" / "Sent" / "IMG-1.jpg").write_bytes(b"\xff\xd8 a jpeg")
+    with pytest.raises(StepError, match="convert first"):
+        wizard.preview_chats()
+    converted = wizard.make_conversion(ACCOUNT, str(media))
+
+    found = wizard.preview_chats()
+    chats = found["chats"]
+    assert found["totals"]["from_android"] == sum(converted["report"]["converted"].values())
+    assert {c["change"] for c in chats} <= {"new", "joined", "unchanged"}
+    assert found["totals"]["new"] == converted["report"]["chats_created"]
+    with closing(sqlite3.connect(converted["ios_db"])) as db:  # the iPhone account's own person and group chats
+        own = db.execute("SELECT count(*) FROM ZWACHATSESSION WHERE ZSESSIONTYPE IN (0, 1)").fetchone()[0]
+    assert found["totals"]["joined"] + found["totals"]["unchanged"] == own
+
+    every = [m for c in chats for m in wizard.preview_messages(c["id"], 200)["messages"]]
+    assert sum(m["from_android"] for m in every) == found["totals"]["from_android"]
+    picture = next(m for m in every if m["picture"])
+    assert wizard.preview_picture(picture["id"])["data"].startswith("data:image/jpeg;base64,")
+    iphone_own = next(m for m in every if not m["from_android"])
+    with pytest.raises(preview.PreviewError):
+        wizard.preview_picture(iphone_own["id"])
+
+
+def test_preview_names_come_from_the_iphone_contacts(tmp_path):
+    contacts = make_sqlite(tmp_path / "ContactsV2.sqlite", """
+        CREATE TABLE ZWAADDRESSBOOKCONTACT (ZWHATSAPPID TEXT, ZLID TEXT, ZFULLNAME TEXT, ZBUSINESSNAME TEXT,
+                                            ZGIVENNAME TEXT);
+        INSERT INTO ZWAADDRESSBOOKCONTACT VALUES ('3247@s.whatsapp.net', '99@lid', 'Ana Pop', NULL, 'Ana');
+        INSERT INTO ZWAADDRESSBOOKCONTACT VALUES ('3248@s.whatsapp.net', NULL, '', 'Bakery', NULL);
+    """)
+    main = make_sqlite(tmp_path / "main-contacts.sqlite", """
+        CREATE TABLE ZWAADDRESSBOOKCONTACT (ZWHATSAPPID TEXT, ZLID TEXT, ZFULLNAME TEXT, ZBUSINESSNAME TEXT,
+                                            ZGIVENNAME TEXT);
+        INSERT INTO ZWAADDRESSBOOKCONTACT VALUES ('3247@s.whatsapp.net', NULL, 'Ana (main)', NULL, NULL);
+        INSERT INTO ZWAADDRESSBOOKCONTACT VALUES ('3249@s.whatsapp.net', NULL, 'Dan', NULL, NULL);
+    """)
+    names = preview.contact_names(contacts, main, tmp_path / "missing.sqlite")
+    assert names == {"3247@s.whatsapp.net": "Ana Pop", "99@lid": "Ana Pop", "3248@s.whatsapp.net": "Bakery",
+                     "3249@s.whatsapp.net": "Dan"}
+
+
+def test_preview_over_http(wizard, tmp_path):
+    import threading
+
+    from test_ui import request
+    from whatferry.ui.server import Server
+
+    wizard.make_conversion(ACCOUNT, None)
+    srv = Server(wizard)
+    threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True).start()
+    try:
+        status, headers, found = request(srv, "GET", "/api/preview/chats")
+        assert status == 200 and headers["Cache-Control"] == "no-store"
+        chat = found["chats"][0]["id"]
+        status, _, body = request(srv, "GET", f"/api/preview/messages?chat={chat}&limit=5")
+        assert status == 200 and 0 < len(body["messages"]) <= 5
+        assert request(srv, "GET", "/api/preview/messages?chat=nope")[0] == 400
+        assert request(srv, "GET", "/api/preview/chats", token=False)[0] == 403
+    finally:
+        srv.shutdown()
+        srv.server_close()
 
 
 def test_steps_out_of_order_are_refused(private_home):

@@ -51,7 +51,10 @@ computer, checks the first one and keeps its file list, walks through adding
 the second account, then compares the second backup with the first and points
 at the new account's chat database. Then it converts the chats into the
 iPhone account picked (suggesting the one on the Android number, and the
-media folder that has the Android history's files), writes the new backup,
+media folder that has the Android history's files), shows a preview of the
+result (every chat the account will have, marked new, joined or iPhone-only,
+with names from the iPhone's WhatsApp contacts, and each chat's newest
+messages with the Android ones outlined), writes the new backup,
 and restores it onto the iPhone. The last step is a summary to copy and send
 on: counts, versions and file locations, with phone numbers masked.
 
@@ -262,6 +265,11 @@ that is where the conversion will write.
 - The terminal shows counts, table names and paths, never message text,
   names or numbers. `report.json` and the `*.schema.sql` files beside the
   decrypted copies hold the same: shape, not content.
+- The one exception is the wizard's preview of a conversion, which shows chat
+  names, messages and converted photos so you can check the result before
+  writing it. It is read from the merged copy on request, sent only to the
+  local page (with `Cache-Control: no-store`), and never saved in
+  `state.json`, a report or the summary.
 - Delete the run folders when done.
 
 ## Development
