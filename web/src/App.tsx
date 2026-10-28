@@ -106,7 +106,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
     <I18nContext.Provider value={i18n}>
       <div className="flex min-h-svh flex-col">
         <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-4xl xl:max-w-5xl">
             <div className="flex h-14 items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 font-semibold">
                 <img src="/static/icon.svg" alt="" className="size-6" />
@@ -208,7 +208,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
           </div>
         </header>
 
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-3xl px-4 pt-10 pb-6 outline-none sm:px-6 sm:pt-14">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-3xl px-4 pt-10 pb-6 outline-none sm:px-6 sm:pt-14 lg:max-w-4xl xl:max-w-5xl">
           {!TOKEN && <ErrorNotice message={t.common.openWithLink} />}
           {error && <ErrorNotice message={t.common.cantReach(error)} />}
           {TOKEN && !error && !props && (
@@ -229,7 +229,8 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                   </span>
                 )}
               </p>
-              <div className="space-y-8 pb-10">
+              {/* Tables and paths take the full width; running text stays at a readable line length. */}
+              <div className="space-y-8 pb-10 [&_p]:max-w-prose">
                 {current === "start" && <StartStep {...props} />}
                 {current === "android" && <AndroidStep {...props} />}
                 {current === "before" && <BackupStep {...props} role="before" />}
