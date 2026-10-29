@@ -47,6 +47,13 @@ function isSkipped(id: StepId, s: State) {
   return id === "after" && s.destination === "existing"
 }
 
+/** For a step that works on an earlier one's result, the step still to do first. */
+function blockedBy(id: StepId, s: State): StepId | null {
+  if (id === "write" && !s.converted) return "convert"
+  if (id === "restore" && !s.written) return s.converted ? "write" : "convert"
+  return null
+}
+
 export default function App({ initialTheme, initialLang }: { initialTheme: Theme; initialLang: Lang }) {
   const [lang, setLangState] = useState<Lang>(initialLang)
   const [theme, setThemeState] = useState<Theme>(initialTheme)
@@ -101,6 +108,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
   const props = overview ? { overview, refresh, go } : null
   const back = STEPS.slice(0, index).filter((s) => !isSkipped(s, state)).at(-1) ?? null
   const next = STEPS.slice(index + 1).find((s) => !isSkipped(s, state)) ?? null
+  const nextBlocker = next ? blockedBy(next, state) : null
 
   return (
     <I18nContext.Provider value={i18n}>
@@ -170,15 +178,20 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                   const done = isDone(step, state)
                   const skipped = isSkipped(step, state)
                   const active = step === current
+                  const blocker = active ? null : blockedBy(step, state)
                   const label = t.stepLabel(i + 1, t.steps[step], done)
                   return (
                     <li key={step} className={cn("min-w-0 flex-1", active && "max-sm:flex-[3]")}>
                       <button
                         type="button"
                         onClick={() => go(step)}
+                        disabled={blocker !== null}
+                        title={blocker ? t.nav.first(t.steps[blocker]) : undefined}
                         aria-current={active ? "step" : undefined}
-                        aria-label={skipped ? `${label} (${t.stepSkipped})` : label}
-                        className="group flex w-full flex-col gap-2 rounded-sm py-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                        aria-label={
+                          skipped ? `${label} (${t.stepSkipped})` : blocker ? `${label} (${t.nav.first(t.steps[blocker])})` : label
+                        }
+                        className="group flex w-full flex-col gap-2 rounded-sm py-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <span
                           className={cn(
@@ -252,13 +265,17 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                   <span />
                 )}
                 {next && (
-                  <Button
-                    size="lg"
-                    variant={current === "start" || (current === "account" && state.destination) || isDone(current, state) || isSkipped(current, state) ? "default" : "outline"}
-                    onClick={() => go(next)}
-                  >
-                    {current === "start" ? t.nav.start : t.nav.continue} <ArrowRight data-icon="inline-end" />
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    {nextBlocker && <span className="text-sm text-muted-foreground">{t.nav.first(t.steps[nextBlocker])}</span>}
+                    <Button
+                      size="lg"
+                      variant={current === "start" || (current === "account" && state.destination) || isDone(current, state) || isSkipped(current, state) ? "default" : "outline"}
+                      disabled={nextBlocker !== null}
+                      onClick={() => go(next)}
+                    >
+                      {current === "start" ? t.nav.start : t.nav.continue} <ArrowRight data-icon="inline-end" />
+                    </Button>
+                  </div>
                 )}
               </footer>
             </>

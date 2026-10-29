@@ -41,7 +41,7 @@ const en = {
   stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
   stepLabel: (n: number, title: string, done: boolean) => `Step ${n}: ${title}${done ? " (done)" : ""}`,
   stepSkipped: "not needed",
-  nav: { back: "Back", continue: "Continue", start: "Start" },
+  nav: { back: "Back", continue: "Continue", start: "Start", first: (step: string) => `${step} first` },
   common: {
     loading: "Loading…",
     openWithLink: "Open the wizard with the link `whatferry ui` printed.",
@@ -573,7 +573,7 @@ const zh: Messages = {
   stepOf: (n, total) => `第 ${n} 步，共 ${total} 步`,
   stepLabel: (n, title, done) => `第 ${n} 步：${title}${done ? "（已完成）" : ""}`,
   stepSkipped: "无需此步",
-  nav: { back: "上一步", continue: "继续", start: "开始" },
+  nav: { back: "上一步", continue: "继续", start: "开始", first: (step) => `请先完成“${step}”` },
   common: {
     loading: "加载中…",
     openWithLink: "请用 `whatferry ui` 打印的链接打开向导。",
