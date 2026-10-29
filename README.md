@@ -172,6 +172,9 @@ this computer is already paired with. It refuses, before touching the phone,
 when the backup's device ID isn't the connected iPhone's, when the computer
 isn't trusted, when the passphrase is wrong, or when Find My is on (iOS
 would refuse it anyway; `com.apple.fmip`/`IsAssociated` says so beforehand).
+With Stolen Device Protection on, iOS only lets Find My be turned off after
+it (Settings → Face ID & Passcode), which away from a familiar location
+means an hour's Security Delay.
 
 ## The same steps on the command line
 

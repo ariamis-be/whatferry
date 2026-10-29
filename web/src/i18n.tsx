@@ -495,7 +495,7 @@ const en = {
     before: [
       "In WhatsApp on the iPhone, back up each account's chats to iCloud (Settings → Chats → Chat Backup → Back Up Now). That's the way back if anything goes wrong.",
       "Keep the iPhone in airplane mode from the backup until the restore is done, or make a new backup and go through Convert again.",
-      "Turn off Find My: Settings → your name → Find My → Find My iPhone.",
+      "Turn off Find My. If Stolen Device Protection is on, iOS asks for that first: Settings → Face ID & Passcode → Stolen Device Protection → off (away from a familiar place, iOS makes you wait an hour). Then Settings → your name → Find My → Find My iPhone → off.",
       "Connect the iPhone with a cable, unlock it, and keep it unlocked. Close Finder's window for it.",
     ] as ReactNode[],
     phoneTitle: "The iPhone",
@@ -510,7 +510,7 @@ const en = {
     trusted: "This computer is trusted",
     notTrusted: "Not trusted yet: unlock the iPhone, tap Trust, and look again",
     findMyOff: "Find My is off",
-    findMyOn: "Find My is on: turn it off, then look again",
+    findMyOn: "Find My is on: turn it off (Stolen Device Protection first, if it's on), then look again",
     findMyUnknown: "Find My: can't tell. Unlock the iPhone and look again",
     lookAgain: "Look again",
     confirmTitle: "Confirm",
@@ -524,7 +524,7 @@ const en = {
       "The iPhone restarts and finishes restoring. Keep it connected until the lock screen shows, then unlock it.",
       "Apps reinstall from the App Store in the background: wait for WhatsApp.",
       "Open WhatsApp, switch to the account the chats went to, and look through them. If it asks to verify the number, do. If it offers to restore chat history from iCloud, skip it: that would replace the converted chats.",
-      "Turn Find My back on.",
+      "Turn Find My back on, then Stolen Device Protection.",
     ] as ReactNode[],
   },
   results: {
@@ -1011,7 +1011,7 @@ const zh: Messages = {
     before: [
       "在 iPhone 的 WhatsApp 中，把每个账号的聊天备份到 iCloud（设置 → 聊天 → 聊天备份 → 立即备份）。出问题时可以靠它恢复。",
       "从备份时起到恢复完成，让 iPhone 保持飞行模式；或者重新备份，再做一次转换。",
-      "关闭“查找”：设置 → 你的名字 → 查找 → 查找我的 iPhone。",
+      "关闭“查找”。如果开启了“失窃设备保护”，iOS 会要求先关闭它：设置 → 面容 ID 与密码 → 失窃设备保护 → 关闭（不在常用地点时，iOS 会让你等待一小时）。然后：设置 → 你的名字 → 查找 → 查找我的 iPhone → 关闭。",
       "用数据线连接 iPhone，解锁并保持解锁。关闭访达中它的窗口。",
     ],
     phoneTitle: "iPhone",
@@ -1024,7 +1024,7 @@ const zh: Messages = {
     trusted: "这台电脑已受信任",
     notTrusted: "尚未受信任：解锁 iPhone，轻点“信任”，然后再查找",
     findMyOff: "“查找”已关闭",
-    findMyOn: "“查找”已开启：关闭后再查找",
+    findMyOn: "“查找”已开启：请关闭它（如开启了“失窃设备保护”，先关闭它），然后再查找",
     findMyUnknown: "“查找”：无法判断。解锁 iPhone 后再查找",
     lookAgain: "再次查找",
     confirmTitle: "确认",
@@ -1038,7 +1038,7 @@ const zh: Messages = {
       "iPhone 会重新启动并完成恢复。在出现锁定屏幕之前保持连接，然后解锁。",
       "应用会在后台从 App Store 重新安装：等待 WhatsApp 安装完成。",
       "打开 WhatsApp，切换到接收聊天的账号并查看。如果要求验证号码，请照做。如果提示从 iCloud 恢复聊天记录，请跳过：那会替换转换后的聊天。",
-      "重新打开“查找”。",
+      "重新打开“查找”，再打开“失窃设备保护”。",
     ],
   },
   results: {
