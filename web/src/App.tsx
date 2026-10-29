@@ -51,6 +51,7 @@ function isSkipped(id: StepId, s: State) {
 function blockedBy(id: StepId, s: State): StepId | null {
   if (id === "write" && !s.converted) return "convert"
   if (id === "restore" && !s.written) return s.converted ? "write" : "convert"
+  if (id === "done" && !s.restored) return s.written ? "restore" : s.converted ? "write" : "convert"
   return null
 }
 
@@ -90,8 +91,9 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
     api<Overview>("GET", "/api/overview")
       .then((o) => {
         setOverview(o)
+        // A saved step that's locked now (a backup checked again since) opens on what it waits for.
         const saved = STEPS.find((s) => s === o.state.step)
-        if (saved) setCurrent(saved)
+        if (saved) setCurrent(blockedBy(saved, o.state) ?? saved)
       })
       .catch((e: Error) => setError(e.message))
   }, [])
