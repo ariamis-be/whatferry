@@ -244,8 +244,8 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                   </span>
                 )}
               </p>
-              {/* Tables and paths take the full width; running text stays at a readable line length. */}
-              <div className="space-y-8 pb-10 [&_p]:max-w-prose">
+              {/* Text runs the same width as the tables and boxes around it, so it never stops short of them. */}
+              <div className="space-y-8 pb-10">
                 {current === "start" && <StartStep {...props} />}
                 {current === "android" && <AndroidStep {...props} />}
                 {current === "before" && <BackupStep {...props} role="before" />}
