@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-from whatferry import adb, android, backup_writer, convert, ios, restore, sqlite_summary, workdir
+from whatferry import adb, android, android_writer, backup_writer, convert, ios, restore, sqlite_summary, to_android, workdir
 from whatferry.ios_backup import (Backup, BackupError, WrongPassphrase, backup_roots, device_info, find_backup,
                                   how_to_back_up, list_backups)
 
@@ -22,7 +22,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.run(args)
     except (android.DecryptError, BackupError, adb.AdbError, convert.ConvertError, backup_writer.WriteError,
-            restore.RestoreError, FileNotFoundError) as e:
+            restore.RestoreError, android_writer.AndroidWriteError, FileNotFoundError) as e:
         print(f"whatferry: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
@@ -49,6 +49,27 @@ def _parser() -> argparse.ArgumentParser:
     al.add_argument("--serial", help="which phone, when more than one is connected")
     al.add_argument("--to", type=Path, help=f"folder to copy into (default: {adb.default_destination()})")
     al.set_defaults(run=_android_pull)
+    ac = a.add_parser("convert", help="merge an iPhone account's chats into a copy of an Android account's database "
+                                      "(iPhone -> Android)")
+    ac.add_argument("ios_db", type=Path, help="the iPhone account's ChatStorage.sqlite (from `whatferry ios inspect`)")
+    ac.add_argument("android_db", type=Path, help="decrypted msgstore.db of the Android account the chats go into "
+                                                  "(from `whatferry android inspect`)")
+    ac.add_argument("--backup", help="the iPhone backup, to take photos and other media from (folder or name)")
+    ac.add_argument("--account-folder", help="data/<id> folder of the iPhone account (omit for the main one)")
+    ac.set_defaults(run=_android_convert)
+    aw = a.add_parser("write", help="encrypt an iPhone -> Android conversion into a WhatsApp backup")
+    aw.add_argument("backup", type=Path, help="the msgstore.db.crypt15 the conversion was made from")
+    aw.add_argument("convert_run", type=Path, help="the run folder `whatferry android convert` printed")
+    aw.add_argument("--key-file", type=Path, help="file holding the 64-digit key")
+    aw.add_argument("--skip-source-check", action="store_true",
+                    help="write even if the backup isn't the one the conversion was made from")
+    aw.set_defaults(run=_android_write)
+    au = a.add_parser("push", help="copy a written backup onto a phone connected with USB debugging "
+                                   "(keeps what's there)")
+    au.add_argument("folder", type=Path, help="the WhatsApp folder `whatferry android write` printed")
+    au.add_argument("--serial", help="which phone, when more than one is connected")
+    au.add_argument("--into", default=adb.WHATSAPP_ROOT, help=f"WhatsApp folder on the phone (default: {adb.WHATSAPP_ROOT})")
+    au.set_defaults(run=_android_push)
 
     i = sides.add_parser("ios", help="the iPhone backup").add_subparsers(required=True, metavar="command")
     ib = i.add_parser("backups", help="list the iPhone backups on this computer")
@@ -100,6 +121,7 @@ def _convert(args) -> int:
         print(f"  not converted (other kinds): {sum(report.skipped.values())}")
     for label, n in report.not_converted_yet.items():
         print(f"  not converted yet: {n} {label}")
+    _print_compatibility(report)
     problems = {k: v for k, v in report.checks.items() if isinstance(v, int) and v and k not in ("messages", "chats")}
     print(f"  checks: integrity {report.checks['integrity']}, " + (f"problems {problems}" if problems else "no problems"))
     _print_run(run)
@@ -187,6 +209,61 @@ def _android_pull(args) -> int:
     for path in paths:
         target = adb.pull(tool, serial, path, args.to)
         print(f"Copied {path}\n    to {target}")
+    return 0
+
+
+def _print_compatibility(report) -> None:
+    for c in report.compatibility:
+        if c.get("note"):
+            print(f"  note ({c['kind']}): {c['note']}")
+
+
+def _android_convert(args) -> int:
+    media = None
+    if args.backup:
+        media = to_android.backup_media(_open_backup(args.backup), args.account_folder)
+    report, run = to_android.convert(args.ios_db, args.android_db, media, args.account_folder)
+    print(f"Converted {sum(report.converted.values())} of {report.iphone_messages} iPhone messages")
+    print(f"  chats: {report.chats_matched} matched, {report.chats_created} created; "
+          f"group members added: {report.members_created}; already there: {report.already_there}")
+    print(f"  media: {report.media_rows} items, {report.media_files_copied} files placed, "
+          f"{report.media_files_missing} not in the backup" + ("" if args.backup else " (no --backup given)"))
+    _print_compatibility(report)
+    # Only what the conversion added counts: WhatsApp's own database has quirks of its own.
+    problems = {k: v for k, v in report.checks.items() if isinstance(v, int) and k not in ("messages", "chats")
+                and v > (report.checks_before.get(k) or 0)}
+    print(f"  checks: integrity {report.checks['integrity']}, " + (f"problems {problems}" if problems else "no problems"))
+    _print_run(run)
+    return 1 if problems or report.checks["integrity"] != "ok" else 0
+
+
+def _android_write(args) -> int:
+    key = android.load_key(args.key_file) if args.key_file else android.parse_key(
+        os.environ.get("WHATFERRY_ANDROID_KEY") or getpass.getpass("64-digit backup key (hidden): "))
+    report, folder = android_writer.write_backup(args.backup, key, args.convert_run,
+                                                 check_source=not args.skip_source_check)
+    if args.skip_source_check:
+        print("Source check skipped: the conversion may not match this backup.")
+    print(f"Wrote {folder}")
+    print(f"  Databases/msgstore.db.crypt15: {_size(report.backup_bytes)}, decrypted again and verified")
+    print(f"  Media: {report.media_files} files")
+    print("Nothing has been copied to a phone yet: `whatferry android push` does that.")
+    return 0
+
+
+def _android_push(args) -> int:
+    tool = adb.find_adb()
+    if tool is None:
+        raise adb.AdbError("adb isn't installed: see `whatferry android phone`")
+    ready = [d for d in adb.devices(tool) if d.ready]
+    serial = args.serial or (ready[0].serial if len(ready) == 1 else None)
+    if serial is None:
+        raise adb.AdbError("connect one phone with USB debugging on, or pick one with --serial")
+    result = adb.push(tool, serial, args.into, args.folder)
+    print(f"Copied the backup into {result['root']}/Databases and {result['media_files']} media files into Media")
+    if result["kept"]:
+        print(f"  the phone's own backup is kept as {result['kept']}")
+    print("Now open WhatsApp on the phone, verify the number, and restore with the 64-digit key.")
     return 0
 
 

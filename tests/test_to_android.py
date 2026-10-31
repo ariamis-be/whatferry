@@ -219,6 +219,21 @@ def test_writer_refuses_a_forward_conversion(converted, tmp_path):
         android_writer.write_backup(reference, KeyFactory.from_hex(KEY), run)
 
 
+def test_command_line_convert_and_write(iphone, tmp_path, monkeypatch, capsys):
+    from whatferry.cli import main
+
+    ios_db, _ = iphone
+    template = make_sqlite(tmp_path / "template.db", TEMPLATE)
+    reference = encrypt(template, tmp_path / "msgstore.db.crypt15")
+    assert main(["android", "convert", str(ios_db), str(template)]) == 0
+    out = capsys.readouterr().out
+    assert "iPhone messages" in out and "no problems" in out
+    run = Path(out.split("report.json are in ", 1)[1].split(" (readable only by you)", 1)[0])
+    monkeypatch.setenv("WHATFERRY_ANDROID_KEY", KEY)
+    assert main(["android", "write", str(reference), str(run)]) == 0
+    assert "decrypted again and verified" in capsys.readouterr().out
+
+
 # Copying onto the phone, with a fake adb that keeps the phone's files in a folder.
 
 FAKE_PHONE_ADB = """\
