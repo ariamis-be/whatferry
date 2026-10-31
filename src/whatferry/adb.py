@@ -1,12 +1,14 @@
-"""Copy WhatsApp backups off an Android phone with adb (USB debugging).
+"""Copy WhatsApp backups off, and a written one onto, an Android phone with adb (USB debugging).
 
-Only reads from the phone: lists WhatsApp's backup files and pulls one. A
-pull is only allowed for a path the same phone listed a moment before, so
-nothing here can be used to read other files off the phone.
+Lists WhatsApp's backup files and pulls one; a pull is only allowed for a
+path the same phone listed a moment before, so nothing here can be used to
+read other files off the phone. The one write, `push`, only goes into one of
+WhatsApp's own folders and never replaces a file already there.
 """
 
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -196,6 +198,68 @@ def pull(adb: Path, serial: str, remote: str, dest_folder: Path | None = None) -
     partial.chmod(0o600)
     os.replace(partial, target)
     return target
+
+
+WHATSAPP_ROOT = "/sdcard/Android/media/com.whatsapp/WhatsApp"
+
+
+def whatsapp_folders(adb: Path, serial: str) -> list[str]:
+    """Where WhatsApp keeps an account's backup and media: the main folder, and accounts/<n>/ ones listed."""
+    found = {WHATSAPP_ROOT}
+    for backup in phone_backups(adb, serial):
+        if backup.path.startswith(f"{WHATSAPP_ROOT}/accounts/") and "/Databases/" in backup.path:
+            found.add(backup.path.split("/Databases/")[0])
+    return sorted(found)
+
+
+def push(adb: Path, serial: str, root: str, folder: Path) -> dict:
+    """Copy a written WhatsApp/ folder onto the phone, into one of its WhatsApp folders.
+
+    Nothing on the phone is replaced: a backup already there is kept under a
+    new name (WhatsApp only restores msgstore.db.crypt15), and media files
+    are copied without overwriting any file of the same name.
+    """
+    if root not in whatsapp_folders(adb, serial):
+        raise AdbError("that isn't one of the phone's WhatsApp folders (list them again)")
+    backup = folder / "Databases" / "msgstore.db.crypt15"
+    if not backup.is_file():
+        raise AdbError(f"{folder} has no Databases/msgstore.db.crypt15")
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    remote = f"{root}/Databases/msgstore.db.crypt15"
+    kept = f"{remote}.before-whatferry-{stamp}"
+    q = shlex.quote
+    _shell(adb, serial, f"mkdir -p {q(root + '/Databases')} {q(root + '/Media')}")
+    media = folder / "Media"
+    files = [p for p in media.rglob("*") if p.is_file()] if media.is_dir() else []
+    staging = f"{root}/.whatferry-{stamp}"
+    if files:
+        # Media first, into a staging folder: if the phone already has a file
+        # under one of these names, stop before anything on it has changed.
+        _push(adb, serial, media, staging)
+        clashes = _shell(adb, serial, f"cd {q(staging)} && find . -type f | while read -r f; do "
+                                      f"[ -e {q(root + '/Media')}/\"$f\" ] && echo \"$f\"; done; true").split()
+        if clashes:
+            _shell(adb, serial, f"rm -rf {q(staging)}")
+            raise AdbError(f"the phone already has {len(clashes)} file(s) under names the conversion uses "
+                           f"(such as {clashes[0].removeprefix('./')}); nothing was changed")
+    answer = _shell(adb, serial, f"if [ -e {q(remote)} ]; then mv {q(remote)} {q(kept)} && echo kept; fi")
+    _push(adb, serial, backup, remote)
+    if files:
+        _shell(adb, serial, f"cp -R {q(staging)}/. {q(root + '/Media')}/ && rm -rf {q(staging)}")
+    return {"root": root, "kept": kept if "kept" in answer else None, "media_files": len(files)}
+
+
+def _shell(adb: Path, serial: str, command: str) -> str:
+    result = _run(adb, "-s", serial, "shell", command)
+    if result.returncode != 0:
+        raise AdbError(f"the phone refused: {(result.stderr or result.stdout).strip() or 'adb gave no reason'}")
+    return result.stdout
+
+
+def _push(adb: Path, serial: str, local: Path, remote: str) -> None:
+    result = _run(adb, "-s", serial, "push", str(local), remote, timeout=PULL_TIMEOUT)
+    if result.returncode != 0:
+        raise AdbError(f"copying to the phone failed: {(result.stderr or result.stdout).strip() or 'adb gave no reason'}")
 
 
 def status() -> dict:

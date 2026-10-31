@@ -319,7 +319,8 @@ class Wizard:
         media_root = Path(media).expanduser() if media else None
         if media_root and not media_root.is_dir():
             raise StepError(f"{media_root} isn't a folder")
-        report, run = convert.convert(android_db, ios_db, media_root, account_folder)
+        app = ((android_entry["report"].get("header") or {}).get("app_version"))
+        report, run = convert.convert(android_db, ios_db, media_root, account_folder, android_app=app)
         entry = {"run": str(run), "backup": iphone["folder"], "account_folder": account_folder, "ios_db": str(ios_db),
                  "media": str(media_root) if media_root else None, "made_at": _now(), "report": report.as_dict()}
         self._account_update(converted=entry, written=None, restored=None)

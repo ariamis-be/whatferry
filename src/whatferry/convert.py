@@ -36,7 +36,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-from whatferry import sqlite_summary, workdir
+from whatferry import compat, sqlite_summary, workdir
 
 APPLE_EPOCH = 978307200
 
@@ -95,9 +95,20 @@ class Report:
     # writer refuses a backup whose database no longer matches it.
     source_sha256: str = ""
     account_folder: str | None = None
+    # Both databases checked against what whatferry was measured on (compat.py).
+    compatibility: list[dict] = field(default_factory=list)
 
     def as_dict(self) -> dict:
         return asdict(self)
+
+
+def compatible(*checks: compat.Compat) -> list[dict]:
+    """Refuse databases missing a column the conversion uses; pass the rest on, version notes included."""
+    missing = [c for c in checks if not c.ok]
+    if missing:
+        raise ConvertError("; ".join(f"the {c.kind} database is {c.note}" if c.note.startswith("not a ")
+                                     else f"the {c.kind} database can't be converted: {c.note}" for c in missing))
+    return [c.as_dict() for c in checks]
 
 
 def apple_time(ms: int | None) -> float | None:
@@ -177,15 +188,17 @@ class Target:
         self.db.execute(f"INSERT INTO {table} ({cols}) VALUES ({marks})", list(values.values()))
 
 
-def convert(android_db: Path, ios_db: Path, media_root: Path | None, account_folder: str | None = None) -> tuple[Report, Path]:
+def convert(android_db: Path, ios_db: Path, media_root: Path | None, account_folder: str | None = None,
+            android_app: str | None = None) -> tuple[Report, Path]:
     """Merge the Android history into a copy of the iPhone account's ChatStorage.sqlite."""
+    checked = compatible(compat.check_android(android_db, android_app), compat.check_ios(ios_db))
     run = workdir.new_run("convert")
     out = run / "files"
     out.mkdir(mode=0o700)
     merged = out / "ChatStorage.sqlite"
     workdir.write_private(merged, ios_db.read_bytes())
     report = Report(output=str(run), source_sha256=hashlib.sha256(ios_db.read_bytes()).hexdigest(),
-                    account_folder=account_folder)
+                    account_folder=account_folder, compatibility=checked)
     android = Android(android_db)
     target = Target(merged)
     # Files land where the account keeps them: data/<id>/Message/Media for a
