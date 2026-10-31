@@ -183,6 +183,10 @@ class Handler(BaseHTTPRequestHandler):
         self.server.wizard.select_android(self._read_json()["key"])
         self._send_json(HTTPStatus.OK, {})
 
+    def _direction(self):
+        self.server.wizard.set_direction(self._read_json()["direction"])
+        self._send_json(HTTPStatus.OK, {})
+
     def _destination(self):
         self.server.wizard.set_destination(self._read_json()["choice"])
         self._send_json(HTTPStatus.OK, {})
@@ -201,7 +205,8 @@ class Handler(BaseHTTPRequestHandler):
     def _convert(self):
         body = self._read_json()
         wizard = self.server.wizard
-        job = wizard.jobs.start(lambda: wizard.make_conversion(body.get("account_folder"), body.get("media")))
+        job = wizard.jobs.start(lambda: wizard.make_conversion(body.get("account_folder"), body.get("media"),
+                                                               body.get("passphrase")))
         self._send_json(HTTPStatus.ACCEPTED, {"job": job})
 
     def _query_int(self, name: str) -> int:
@@ -232,7 +237,8 @@ class Handler(BaseHTTPRequestHandler):
         body = self._read_json()
         wizard = self.server.wizard
         job = wizard.jobs.start(lambda progress: wizard.restore_backup(body.get("passphrase"),
-                                                                       body.get("confirmed") is True, progress),
+                                                                       body.get("confirmed") is True, progress,
+                                                                       body.get("serial"), body.get("folder")),
                                 progress=True)
         self._send_json(HTTPStatus.ACCEPTED, {"job": job})
 
@@ -304,6 +310,7 @@ ROUTES = {
     ("POST", "/api/checklist"): Handler._checklist,
     ("POST", "/api/step"): Handler._step,
     ("POST", "/api/destination"): Handler._destination,
+    ("POST", "/api/direction"): Handler._direction,
     ("POST", "/api/android/select"): Handler._select_android,
     ("POST", "/api/reset"): Handler._reset,
     ("GET", "/api/summary"): Handler._summary,

@@ -326,14 +326,14 @@ export interface PreviewChat {
   group: boolean
   change: ChatChange
   messages: number
-  from_android: number
+  moved: number
   first: string | null
   last: string | null
 }
 
 export interface PreviewChats {
   chats: PreviewChat[]
-  totals: Record<ChatChange | "from_android", number>
+  totals: Record<ChatChange | "moved", number>
 }
 
 export interface PreviewMessage {
@@ -343,7 +343,7 @@ export interface PreviewMessage {
   sender: string | null
   kind: string
   text: string | null
-  from_android: boolean
+  moved: boolean
   picture: boolean
 }
 

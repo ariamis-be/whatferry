@@ -56,7 +56,7 @@ export function ConversionPreview({ madeAt }: { madeAt: string }) {
           {t.preview.title}
         </CardTitle>
         <CardDescription>
-          {t.preview.totals(num(found.totals.new), num(found.totals.joined), num(found.totals.unchanged), num(found.totals.from_android))}
+          {t.preview.totals(num(found.totals.new), num(found.totals.joined), num(found.totals.unchanged), num(found.totals.moved))}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -99,7 +99,7 @@ export function ConversionPreview({ madeAt }: { madeAt: string }) {
                     <ChangeBadge change={c.change} />
                   </span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {t.preview.chatLine(num(c.from_android), num(c.messages), day(c.first), day(c.last))}
+                    {t.preview.chatLine(num(c.moved), num(c.messages), day(c.first), day(c.last))}
                   </span>
                 </span>
               </button>
@@ -174,7 +174,7 @@ function Bubble({ m, group }: { m: PreviewMessage; group: boolean }) {
         className={cn(
           "max-w-[80%] rounded-lg px-3 py-1.5 text-sm",
           m.from_me ? "bg-primary/15" : "bg-muted",
-          m.from_android && "ring-1 ring-primary/40",
+          m.moved && "ring-1 ring-primary/40",
         )}
       >
         {group && !m.from_me && m.sender && <p className="text-xs font-medium text-primary">{m.sender}</p>}
@@ -187,7 +187,7 @@ function Bubble({ m, group }: { m: PreviewMessage; group: boolean }) {
         )}
         {m.text && <p className="break-words whitespace-pre-wrap">{m.text}</p>}
         <p className="mt-0.5 flex items-center justify-end gap-1.5 text-[0.7rem] text-muted-foreground">
-          {m.from_android && <span>{t.preview.androidMark}</span>}
+          {m.moved && <span>{t.preview.androidMark}</span>}
           {when(m.at)}
         </p>
       </div>

@@ -15,7 +15,8 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-from whatferry import adb, android, backup_writer, convert, ios, ios_backup, preview, restore, sqlite_summary, workdir
+from whatferry import (adb, android, android_writer, backup_writer, convert, ios, ios_backup, preview, restore,
+                       sqlite_summary, to_android, workdir)
 from whatferry.backup_writer import WriteError
 from whatferry.ios_backup import Backup, BackupError
 from whatferry.restore import RestoreError
@@ -38,7 +39,7 @@ class StepError(Exception):
 
 # Errors whose message is meant for the person using the wizard.
 USER_ERRORS = (android.DecryptError, BackupError, StepError, adb.AdbError, convert.ConvertError, WriteError,
-               RestoreError, preview.PreviewError, OSError)
+               RestoreError, preview.PreviewError, android_writer.AndroidWriteError, OSError)
 
 # Android media folders: the copies made from the phone, one per account.
 MEDIA_FOLDERS = ("whatferry-android", "whatferry-android/media")
@@ -181,6 +182,17 @@ class Wizard:
             "android_accounts": android_accounts(state),
         }
 
+    def set_direction(self, choice: str) -> None:
+        """Android -> iPhone (the default) or iPhone -> Android. A conversion belongs to one: switching drops it."""
+        if choice not in DIRECTIONS:
+            raise StepError(f"unknown direction {choice!r}")
+        if direction(self.state.get()) == choice:
+            return
+        accounts = self._stash()
+        for account in accounts.values():
+            account.update(dict.fromkeys(self.LATER))
+        self.state.update(direction=choice, accounts=accounts or None, **dict.fromkeys(self.LATER))
+
     def set_destination(self, choice: str) -> None:
         if choice not in DESTINATIONS:
             raise StepError(f"unknown destination {choice!r}")
@@ -294,8 +306,18 @@ class Wizard:
         android_entry, iphone = state.get("android"), iphone_entry(state)
         if not android_entry or not iphone:
             raise StepError("check the Android backup and the iPhone backup first")
+        if direction(state) == "to-android":
+            return {
+                "direction": "to-android",
+                "backup": iphone["folder"],
+                "backup_checked_at": iphone["checked_at"],
+                "encrypted": bool(iphone["report"]["device"].get("encrypted")),
+                "targets": source_accounts(state),
+                "android_ready": android_writable(android_entry),
+            }
         media = media_candidates(Path(android_entry["run"]) / "msgstore.db")
         return {
+            "direction": "to-iphone",
             "backup": iphone["folder"],
             "backup_checked_at": iphone["checked_at"],
             "second_backup": bool(state.get("after")),
@@ -303,7 +325,7 @@ class Wizard:
             "media": media,
         }
 
-    def make_conversion(self, account_folder: str | None, media: str | None) -> dict:
+    def make_conversion(self, account_folder: str | None, media: str | None, passphrase: str | None = None) -> dict:
         state = self.state.get()
         android_entry, iphone = state.get("android"), iphone_entry(state)
         if not android_entry or not iphone:
@@ -316,6 +338,9 @@ class Wizard:
                   / workdir.safe_relative(f"{account_folder + '/' if account_folder else ''}{ios.CHAT_STORAGE}"))
         if not android_db.is_file() or not ios_db.is_file():
             raise StepError("the checked copies are gone: check both backups again")
+        if direction(state) == "to-android":
+            return self._convert_to_android(android_entry, iphone, android_db, ios_db, account_folder,
+                                            media == "backup", passphrase)
         media_root = Path(media).expanduser() if media else None
         if media_root and not media_root.is_dir():
             raise StepError(f"{media_root} isn't a folder")
@@ -326,19 +351,40 @@ class Wizard:
         self._account_update(converted=entry, written=None, restored=None)
         return entry
 
+    def _convert_to_android(self, android_entry: dict, iphone: dict, android_db: Path, ios_db: Path,
+                            account_folder: str | None, with_media: bool, passphrase: str | None) -> dict:
+        if not android_writable(android_entry):
+            raise StepError("the Android backup must be WhatsApp's end-to-end encrypted one (msgstore.db.crypt15, "
+                            "with the 64-digit key): only that one can be written back")
+        reader = None
+        if with_media:
+            # The photos and videos come straight out of the iPhone backup.
+            reader = to_android.backup_media(Backup(Path(iphone["folder"]), passphrase or None), account_folder)
+        app = ((android_entry["report"].get("header") or {}).get("app_version"))
+        report, run = to_android.convert(ios_db, android_db, reader, account_folder, android_app=app)
+        entry = {"run": str(run), "direction": "to-android", "backup": iphone["folder"],
+                 "account_folder": account_folder, "ios_db": str(ios_db), "android_db": str(android_db),
+                 "android_source": android_entry["source"], "media": "backup" if reader else None,
+                 "made_at": _now(), "report": report.as_dict()}
+        self._account_update(converted=entry, written=None, restored=None)
+        return entry
+
     # The preview: the merged database read back, names and message text
     # included. Answered to the page only, never saved.
 
-    def _preview(self) -> preview.Preview:
+    def _preview(self) -> preview.Preview | preview.AndroidPreview:
         converted = self.state.get().get("converted")
         if not converted:
             raise StepError("convert first")
         if not converted.get("ios_db"):
             raise StepError("this conversion was made before previews existed: convert again")
         ios_db, run, folder = Path(converted["ios_db"]), Path(converted["run"]), converted["account_folder"]
-        # The account's own contacts first, then the main account's.
+        # The iPhone account's own contacts first, then the main account's.
         shared = ios_db.parents[2] if folder else ios_db.parent
         names = preview.contact_names(ios_db.parent / "ContactsV2.sqlite", shared / "ContactsV2.sqlite")
+        if converted.get("direction") == "to-android":
+            return preview.AndroidPreview(run / "files" / "msgstore.db", Path(converted["android_db"]), names,
+                                          run / "files")
         return preview.Preview(run / "files" / ios.CHAT_STORAGE, ios_db, names,
                                run / "files" / workdir.safe_relative(folder or ".") / "Message")
 
@@ -346,7 +392,7 @@ class Wizard:
         chats = self._preview().chats()
         return {"chats": chats, "totals": {
             change: sum(c["change"] == change for c in chats) for change in ("new", "joined", "unchanged")
-        } | {"from_android": sum(c["from_android"] for c in chats)}}
+        } | {"moved": sum(c["moved"] for c in chats)}}
 
     def preview_messages(self, chat: int, limit: int = 60) -> dict:
         return {"messages": self._preview().messages(chat, limit)}
@@ -355,9 +401,18 @@ class Wizard:
         return {"data": self._preview().picture(message)}
 
     def write_backup(self, passphrase: str | None, skip_source_check: bool = False) -> dict:
+        """The new backup. For iPhone -> Android, `passphrase` is the Android backup's 64-digit key."""
         converted = self.state.get().get("converted")
         if not converted:
             raise StepError("convert first")
+        if converted.get("direction") == "to-android":
+            report, folder = android_writer.write_backup(Path(converted["android_source"]),
+                                                         android.parse_key(passphrase or ""), Path(converted["run"]),
+                                                         check_source=not skip_source_check)
+            entry = {"folder": str(folder), "from": converted["android_source"], "direction": "to-android",
+                     "made_at": _now(), "report": report.as_dict()}
+            self._account_update(written=entry, restored=None)
+            return entry
         report, target = backup_writer.write_conversion(Path(converted["backup"]), passphrase or None,
                                                         Path(converted["run"]), converted["account_folder"],
                                                         check_source=not skip_source_check)
@@ -367,18 +422,47 @@ class Wizard:
 
     def restore_status(self) -> dict:
         written = self.state.get().get("written")
+        if (written or {}).get("direction") == "to-android":
+            return self._android_phones(written)
         try:
             phones, error = [p.as_dict() for p in restore.iphones()], None
         except RestoreError as e:
             phones, error = [], str(e)
         return {"phones": phones, "error": error, "udid": Path(written["folder"]).name if written else None}
 
-    def restore_backup(self, passphrase: str | None, confirmed: bool, progress=lambda _: None) -> dict:
+    def _android_phones(self, written: dict) -> dict:
+        """Phones connected with USB debugging, and the WhatsApp folders on each that the backup can go into."""
+        status = adb.status()
+        tool = adb.find_adb()
+        for device in status.get("devices", []):
+            if device.get("ready") and tool:
+                try:
+                    device["folders"] = adb.whatsapp_folders(tool, device["serial"])
+                except adb.AdbError as e:
+                    device["error"] = str(e)
+        # The account folder the backup was copied from, when its name says (whatsapp-account-1001-…).
+        account = re.search(r"account-(\d+)", Path(written["from"]).name)
+        suggested = f"{adb.WHATSAPP_ROOT}/accounts/{account.group(1)}" if account else adb.WHATSAPP_ROOT
+        return {"direction": "to-android", "adb": status.get("adb"), "devices": status.get("devices", []),
+                "error": status.get("error"), "suggested_folder": suggested}
+
+    def restore_backup(self, passphrase: str | None, confirmed: bool, progress=lambda _: None,
+                       serial: str | None = None, folder: str | None = None) -> dict:
+        """Onto the phone: an iPhone restore, or for iPhone -> Android a copy into WhatsApp's folder."""
         written = self.state.get().get("written")
         if not written:
             raise StepError("write the new backup first")
         if not confirmed:
             raise StepError("confirm the restore first")
+        if written.get("direction") == "to-android":
+            tool = adb.find_adb()
+            if tool is None or not serial or not folder:
+                raise StepError("connect the Android phone with USB debugging and pick its WhatsApp folder")
+            result = adb.push(tool, serial, folder, Path(written["folder"]))
+            entry = {"folder": written["folder"], "phone": serial, "root": result["root"], "kept": result["kept"],
+                     "media_files": result["media_files"], "direction": "to-android", "restored_at": _now()}
+            self._account_update(restored=entry)
+            return entry
         folder = Path(written["folder"])
         if ios_backup.device_info(folder).encrypted:
             Backup(folder, passphrase or None)  # a wrong passphrase stops here, before the phone is touched
@@ -409,6 +493,15 @@ class Wizard:
 
     def summary(self) -> str:
         return summary_text(self.state.get())
+
+
+#   to-iphone   an Android account's chats into WhatsApp on the iPhone (the default)
+#   to-android  an iPhone account's chats into WhatsApp on the Android phone
+DIRECTIONS = ("to-iphone", "to-android")
+
+
+def direction(state: dict) -> str:
+    return state.get("direction") or "to-iphone"
 
 
 # Where the Android chats go on the iPhone:
@@ -504,6 +597,24 @@ def convert_targets(state: dict) -> list[dict]:
     if pick:
         pick["suggested"] = True
     return targets
+
+
+def source_accounts(state: dict) -> list[dict]:
+    """iPhone -> Android: the iPhone accounts with chats, the one on the Android backup's number marked."""
+    targets = convert_targets(state)
+    for t in targets:
+        t["suggested"] = False
+    ends = (((state.get("android") or {}).get("report") or {}).get("header") or {}).get("number_ends_with")
+    pick = (next((t for t in targets if ends and (t["number_ends"] or "").endswith(ends)), None)
+            or (targets[0] if len(targets) == 1 else None))
+    if pick:
+        pick["suggested"] = True
+    return targets
+
+
+def android_writable(android_entry: dict) -> bool:
+    """Only the end-to-end encrypted backup (crypt15, with its header) can be written back for the phone."""
+    return android_entry["source"].endswith(".crypt15") and bool((android_entry.get("report") or {}).get("header"))
 
 
 def media_candidates(android_db: Path) -> list[dict]:

@@ -15,7 +15,7 @@ import sqlite3
 from contextlib import closing
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from whatferry import sqlite_summary
 from whatferry.convert import APPLE_EPOCH, SESSION_GROUP, SESSION_1TO1
@@ -45,7 +45,7 @@ class Chat:
     # history added) or "unchanged" (iPhone only).
     change: str
     messages: int
-    from_android: int
+    moved: int
     first: str | None
     last: str | None
 
@@ -58,7 +58,7 @@ class Message:
     sender: str | None
     kind: str
     text: str | None
-    from_android: bool
+    moved: bool
     picture: bool
 
 
@@ -151,11 +151,89 @@ class Preview:
                              "WHERE m.Z_PK = ? AND m.Z_PK > ?", (message, self.original_max)).fetchone()
         if not row or not row[0]:
             raise PreviewError("no converted picture for that message")
-        root = self.media_root.resolve()
-        path = (root / row[0]).resolve()
-        if not path.is_relative_to(root) or path.suffix.lower() not in PICTURES or not path.is_file():
+        return _data_url(self.media_root, row[0])
+
+
+def _data_url(root: Path, relative: str) -> str:
+    """A converted picture under `root` as a data: URL (the page's CSP allows those, not other origins)."""
+    root = root.resolve()
+    path = (root / relative).resolve()
+    if not path.is_relative_to(root) or path.suffix.lower() not in PICTURES or not path.is_file():
+        raise PreviewError("no converted picture for that message")
+    if path.stat().st_size > MAX_PICTURE:
+        raise PreviewError("that picture is too large to preview")
+    data = base64.b64encode(path.read_bytes()).decode()
+    return f"data:{PICTURE_TYPES[path.suffix.lower()]};base64,{data}"
+
+
+# WhatsApp for Android message types, as the page labels them.
+ANDROID_KINDS = {0: "text", 1: "image", 2: "audio", 3: "video", 4: "contact", 5: "location", 7: "system",
+                 9: "document", 13: "gif", 15: "deleted", 20: "sticker"}
+
+
+class AndroidPreview:
+    """An iPhone -> Android conversion: the merged msgstore.db next to the one it was merged into."""
+
+    def __init__(self, merged: Path, original: Path, names: dict[str, str], files: Path):
+        if not merged.is_file() or not original.is_file():
+            raise PreviewError("the conversion's files are gone: convert again")
+        self.merged, self.names, self.files = merged, names, files
+        with sqlite_summary.open_read_only(original) as db:
+            self.original_chats = {r[0] for r in db.execute("SELECT _id FROM chat")}
+            self.original_max = db.execute("SELECT coalesce(max(_id), 0) FROM message").fetchone()[0]
+        with sqlite_summary.open_read_only(merged) as db:
+            mapped = db.execute("SELECT lid_row_id, jid_row_id FROM jid_map").fetchall() \
+                if db.execute("SELECT 1 FROM sqlite_master WHERE name = 'jid_map'").fetchone() else []
+            jids = {r[0]: f"{r[1]}@{r[2]}" for r in db.execute("SELECT _id, user, server FROM jid")}
+        # A privacy ID shows under the name of the number it stands for.
+        self.jids = jids
+        self.phone_of = {jids.get(lid): jids.get(phone) for lid, phone in mapped}
+
+    def _name(self, jid: str | None) -> str:
+        return self.names.get(jid) or self.names.get(self.phone_of.get(jid)) or _number(self.phone_of.get(jid) or jid)
+
+    def chats(self) -> list[dict]:
+        with sqlite_summary.open_read_only(self.merged) as db:
+            rows = db.execute(
+                "SELECT c._id, c.jid_row_id, c.subject, count(m._id), coalesce(sum(m._id > ?), 0), "
+                "min(nullif(m.timestamp, 0)), max(m.timestamp) FROM chat c "
+                "LEFT JOIN message m ON m.chat_row_id = c._id WHERE coalesce(c.hidden, 0) = 0 "
+                "GROUP BY c._id HAVING count(m._id) > 0 ORDER BY max(m.timestamp) DESC", (self.original_max,)).fetchall()
+        out = []
+        for pk, jid_row, subject, total, added, first, last in rows:
+            jid = self.jids.get(jid_row) or "?"
+            if jid.endswith("@broadcast") or jid.endswith("@temp"):
+                continue
+            group = jid.endswith("@g.us")
+            change = "new" if pk not in self.original_chats else "joined" if added else "unchanged"
+            name = (subject if group else None) or self._name(jid)
+            out.append(asdict(Chat(pk, name, jid, group, change, total, added, _ms_iso(first), _ms_iso(last))))
+        return out
+
+    def messages(self, chat: int, limit: int = 60) -> list[dict]:
+        limit = max(1, min(int(limit), MAX_MESSAGES))
+        with sqlite_summary.open_read_only(self.merged) as db:
+            rows = db.execute(
+                "SELECT m._id, m.timestamp, m.from_me, m.message_type, m.text_data, m.sender_jid_row_id, "
+                "mm.file_path, mm.media_name FROM message m LEFT JOIN message_media mm ON mm.message_row_id = m._id "
+                "WHERE m.chat_row_id = ? ORDER BY m.sort_id DESC, m._id DESC LIMIT ?", (chat, limit)).fetchall()
+        out = []
+        for pk, ts, from_me, kind, text, sender, path, media_name in reversed(rows):
+            android = pk > self.original_max
+            picture = bool(android and path and PurePosixPath(path).suffix.lower() in PICTURES)
+            who = None if from_me or not sender else self._name(self.jids.get(sender))
+            out.append(asdict(Message(pk, _ms_iso(ts), bool(from_me), who, ANDROID_KINDS.get(kind, "other"),
+                                      text or media_name, android, picture)))
+        return out
+
+    def picture(self, message: int) -> str:
+        with sqlite_summary.open_read_only(self.merged) as db:
+            row = db.execute("SELECT mm.file_path FROM message_media mm WHERE mm.message_row_id = ? "
+                             "AND mm.message_row_id > ?", (message, self.original_max)).fetchone()
+        if not row or not row[0]:
             raise PreviewError("no converted picture for that message")
-        if path.stat().st_size > MAX_PICTURE:
-            raise PreviewError("that picture is too large to preview")
-        data = base64.b64encode(path.read_bytes()).decode()
-        return f"data:{PICTURE_TYPES[path.suffix.lower()]};base64,{data}"
+        return _data_url(self.files, row[0])
+
+
+def _ms_iso(ms) -> str | None:
+    return datetime.fromtimestamp(ms / 1000, UTC).isoformat(timespec="seconds") if ms else None

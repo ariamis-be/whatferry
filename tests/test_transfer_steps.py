@@ -143,7 +143,7 @@ def test_preview_shows_what_the_iphone_will_have(wizard, tmp_path):
 
     found = wizard.preview_chats()
     chats = found["chats"]
-    assert found["totals"]["from_android"] == sum(converted["report"]["converted"].values())
+    assert found["totals"]["moved"] == sum(converted["report"]["converted"].values())
     assert {c["change"] for c in chats} <= {"new", "joined", "unchanged"}
     assert found["totals"]["new"] == converted["report"]["chats_created"]
     with closing(sqlite3.connect(converted["ios_db"])) as db:  # the iPhone account's own person and group chats
@@ -151,10 +151,10 @@ def test_preview_shows_what_the_iphone_will_have(wizard, tmp_path):
     assert found["totals"]["joined"] + found["totals"]["unchanged"] == own
 
     every = [m for c in chats for m in wizard.preview_messages(c["id"], 200)["messages"]]
-    assert sum(m["from_android"] for m in every) == found["totals"]["from_android"]
+    assert sum(m["moved"] for m in every) == found["totals"]["moved"]
     picture = next(m for m in every if m["picture"])
     assert wizard.preview_picture(picture["id"])["data"].startswith("data:image/jpeg;base64,")
-    iphone_own = next(m for m in every if not m["from_android"])
+    iphone_own = next(m for m in every if not m["moved"])
     with pytest.raises(preview.PreviewError):
         wizard.preview_picture(iphone_own["id"])
 
