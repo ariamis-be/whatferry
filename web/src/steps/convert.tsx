@@ -23,6 +23,11 @@ const NONE = "none"
 // Counts in the checks that are problems when not zero.
 const SUMMARY_CHECKS = new Set(["integrity", "messages", "chats", "first message", "last message"])
 
+// The count labels are lower case for the stat tiles; a list line starts with a capital.
+function capitalized(label: string) {
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
 export function ConvertStep({ overview, refresh, go }: StepProps) {
   const { t } = useI18n()
   const state = overview.state
@@ -238,7 +243,7 @@ function ConvertResult({ entry }: { entry: ConvertedEntry }) {
         <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
           {skipped > 0 && <li>{t.convert.skipped(num(skipped))}</li>}
           {Object.entries(r.not_converted_yet).map(([what, n]) => (
-            <li key={what}>{t.convert.notYet(t.counts[what] ?? what, num(n))}</li>
+            <li key={what}>{t.convert.notYet(capitalized(t.counts[what] ?? what), num(n))}</li>
           ))}
         </ul>
       </CardContent>

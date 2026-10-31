@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Image as ImageIcon, Search, Users } from "lucide-react"
+import { Eye, Image as ImageIcon, Search, Users } from "lucide-react"
 
 import { api, day, num, when, type ChatChange, type PreviewChat, type PreviewChats, type PreviewMessage } from "@/api"
 import { Busy, ErrorNotice } from "@/components/bits"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useI18n } from "@/i18n"
@@ -48,67 +49,72 @@ export function ConversionPreview({ madeAt }: { madeAt: string }) {
 
   const shown = all ? chats : chats.slice(0, SHOWN)
   return (
-    <section className="space-y-3" aria-label={t.preview.title}>
-      <div>
-        <h3 className="text-sm font-medium">{t.preview.title}</h3>
-        <p className="text-sm text-muted-foreground">
+    <Card aria-label={t.preview.title}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Eye className="size-4 text-primary" />
+          {t.preview.title}
+        </CardTitle>
+        <CardDescription>
           {t.preview.totals(num(found.totals.new), num(found.totals.joined), num(found.totals.unchanged), num(found.totals.from_android))}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as "android" | "all")}>
-          <TabsList>
-            <TabsTrigger value="android">{t.preview.fromAndroid}</TabsTrigger>
-            <TabsTrigger value="all">{t.preview.all}</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="relative min-w-48 flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            aria-label={t.preview.search}
-            placeholder={t.preview.search}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="pl-8"
-          />
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as "android" | "all")}>
+            <TabsList>
+              <TabsTrigger value="android">{t.preview.fromAndroid}</TabsTrigger>
+              <TabsTrigger value="all">{t.preview.all}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className="relative min-w-48 flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              aria-label={t.preview.search}
+              placeholder={t.preview.search}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
-      </div>
 
-      <ul className="max-h-96 divide-y overflow-y-auto rounded-lg border">
-        {shown.length === 0 && <li className="p-3 text-sm text-muted-foreground">{t.preview.noChats}</li>}
-        {shown.map((c) => (
-          <li key={c.id}>
-            <button
-              type="button"
-              onClick={() => setOpen(c)}
-              aria-pressed={open?.id === c.id}
-              className={cn(
-                "flex w-full items-center gap-3 px-3 py-2.5 text-left outline-none hover:bg-muted/50 focus-visible:bg-muted/50",
-                open?.id === c.id && "bg-muted",
-              )}
-            >
-              <span className="grid min-w-0 flex-1 gap-0.5">
-                <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
-                  {c.group && <Users className="size-3.5 shrink-0 text-muted-foreground" aria-label={t.preview.group} />}
-                  <span className="truncate">{c.name}</span>
-                  <ChangeBadge change={c.change} />
+        <ul className="max-h-96 divide-y overflow-y-auto rounded-lg border">
+          {shown.length === 0 && <li className="p-3 text-sm text-muted-foreground">{t.preview.noChats}</li>}
+          {shown.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => setOpen(c)}
+                aria-pressed={open?.id === c.id}
+                className={cn(
+                  "flex w-full items-center gap-3 px-3 py-2.5 text-left outline-none hover:bg-muted/50 focus-visible:bg-muted/50",
+                  open?.id === c.id && "bg-muted",
+                )}
+              >
+                <span className="grid min-w-0 flex-1 gap-0.5">
+                  <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                    {c.group && <Users className="size-3.5 shrink-0 text-muted-foreground" aria-label={t.preview.group} />}
+                    <span className="truncate">{c.name}</span>
+                    <ChangeBadge change={c.change} />
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {t.preview.chatLine(num(c.from_android), num(c.messages), day(c.first), day(c.last))}
+                  </span>
                 </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {t.preview.chatLine(num(c.from_android), num(c.messages), day(c.first), day(c.last))}
-                </span>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      {!all && chats.length > SHOWN && (
-        <Button variant="ghost" size="sm" onClick={() => setAll(true)}>
-          {t.preview.showAll(num(chats.length))}
-        </Button>
-      )}
+              </button>
+            </li>
+          ))}
+        </ul>
+        {!all && chats.length > SHOWN && (
+          <Button variant="ghost" size="sm" onClick={() => setAll(true)}>
+            {t.preview.showAll(num(chats.length))}
+          </Button>
+        )}
 
-      {open && <ChatView key={open.id} chat={open} />}
-    </section>
+        {open && <ChatView key={open.id} chat={open} />}
+      </CardContent>
+    </Card>
   )
 }
 

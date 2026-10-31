@@ -80,7 +80,7 @@ const en = {
   } as Record<string, string>,
   start: {
     title: "Move WhatsApp chats from Android to iPhone",
-    lead: "This wizard checks both phones' backups so the transfer can be built for your exact setup. It only reads: nothing is written to either phone or to any backup.",
+    lead: "This wizard moves one Android WhatsApp account's chats into WhatsApp on your iPhone, without erasing the iPhone. Your backups are only read; the iPhone is written to once, at the end, when you choose to restore.",
     needTitle: "You'll need",
     needs: [
       "The Android phone, with WhatsApp and the chats you want to move.",
@@ -94,6 +94,8 @@ const en = {
       "Back up the iPhone, so the wizard can see how WhatsApp stores your current account.",
       "Add the Android number to WhatsApp on the iPhone as a second account.",
       "Back up the iPhone again. Comparing the two backups shows exactly where the new account's chats will go.",
+      "Convert the Android chats and look through a preview of the result.",
+      "Write a new copy of the iPhone backup with the chats in it, then restore it onto the iPhone.",
     ],
     privateTitle: "What stays private",
     privateLead: "Nothing leaves this computer.",
@@ -612,7 +614,7 @@ const zh: Messages = {
   },
   start: {
     title: "把 WhatsApp 聊天从安卓手机转移到 iPhone",
-    lead: "这个向导会检查两部手机的备份，以便根据你的具体情况来实现转移。它只读取数据：不会向任何一部手机或任何备份写入内容。",
+    lead: "这个向导会把一个安卓 WhatsApp 账号的聊天转移到 iPhone 上的 WhatsApp，无需抹掉 iPhone。你的备份只会被读取；只有在最后你选择恢复时，才会写入一次 iPhone。",
     needTitle: "你需要",
     needs: [
       "安卓手机，装有 WhatsApp 和你要转移的聊天。",
@@ -626,6 +628,8 @@ const zh: Messages = {
       "备份 iPhone，让向导了解 WhatsApp 如何存储你当前的账号。",
       "在 iPhone 的 WhatsApp 中把安卓手机的号码添加为第二个账号。",
       "再次备份 iPhone。比较两次备份，就能准确看出新账号的聊天会存放在哪里。",
+      "转换安卓聊天，并查看结果的预览。",
+      "写入一份包含这些聊天的 iPhone 备份新副本，然后把它恢复到 iPhone。",
     ],
     privateTitle: "哪些内容保持私密",
     privateLead: "任何内容都不会离开这台电脑。",

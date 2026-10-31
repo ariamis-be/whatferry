@@ -60,7 +60,7 @@ export function WriteStep({ overview, refresh, go }: StepProps) {
         <p className="text-sm text-muted-foreground">{t.write.untouched}</p>
         <p className="text-sm">
           {t.write.previewFirst}{" "}
-          <Button variant="link" className="h-auto p-0" onClick={() => go("convert")}>
+          <Button variant="link" className="h-auto p-0 underline" onClick={() => go("convert")}>
             {t.write.openPreview}
           </Button>
         </p>
