@@ -117,6 +117,14 @@ export function AndroidStep({ overview, refresh }: StepProps) {
     <>
       <PageHeader title={t.android.title} lead={t.android.lead} />
 
+      {overview.state.direction === "to-android" && (
+        <Alert>
+          <Info />
+          <AlertTitle>{t.android.toAndroidTitle}</AlertTitle>
+          <AlertDescription>{t.android.toAndroidBody}</AlertDescription>
+        </Alert>
+      )}
+
       <AndroidAccounts overview={overview} refresh={refresh} />
 
       <Section n={1} title={t.android.makeTitle}>

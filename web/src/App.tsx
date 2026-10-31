@@ -24,7 +24,7 @@ import { ResultsStep } from "@/steps/results"
 import { StartStep } from "@/steps/start"
 import { WriteStep } from "@/steps/write"
 import { applyTheme, followSystem, type Theme } from "@/theme"
-import { STEPS, type StepId } from "@/wizard"
+import { stepsFor, type StepId } from "@/wizard"
 
 function isDone(id: StepId, s: State) {
   switch (id) {
@@ -92,7 +92,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
       .then((o) => {
         setOverview(o)
         // A saved step that's locked now (a backup checked again since) opens on what it waits for.
-        const saved = STEPS.find((s) => s === o.state.step)
+        const saved = stepsFor(o.state.direction).find((s) => s === o.state.step)
         if (saved) setCurrent(blockedBy(saved, o.state) ?? saved)
       })
       .catch((e: Error) => setError(e.message))
@@ -106,10 +106,13 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
   }, [])
 
   const state = overview?.state ?? {}
-  const index = STEPS.indexOf(current)
+  const steps = stepsFor(state.direction)
+  // iPhone -> Android ends by copying onto the phone, not restoring an iPhone.
+  const stepName = (s: StepId) => (s === "restore" && state.direction === "to-android" ? t.steps.copy : t.steps[s])
+  const index = Math.max(0, steps.indexOf(current))
   const props = overview ? { overview, refresh, go } : null
-  const back = STEPS.slice(0, index).filter((s) => !isSkipped(s, state)).at(-1) ?? null
-  const next = STEPS.slice(index + 1).find((s) => !isSkipped(s, state)) ?? null
+  const back = steps.slice(0, index).filter((s) => !isSkipped(s, state)).at(-1) ?? null
+  const next = steps.slice(index + 1).find((s) => !isSkipped(s, state)) ?? null
   const nextBlocker = next ? blockedBy(next, state) : null
 
   return (
@@ -174,14 +177,15 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                 </DropdownMenu>
               </div>
             </div>
-            <nav aria-label={t.stepOf(index + 1, STEPS.length)} className="pb-3">
+            <nav aria-label={t.stepOf(index + 1, steps.length)} className="pb-3">
               <ol className="flex gap-1.5">
-                {STEPS.map((step, i) => {
+                {steps.map((step, i) => {
                   const done = isDone(step, state)
                   const skipped = isSkipped(step, state)
                   const active = step === current
                   const blocker = active ? null : blockedBy(step, state)
-                  const label = t.stepLabel(i + 1, t.steps[step], done)
+                  const name = stepName(step)
+                  const label = t.stepLabel(i + 1, name, done)
                   return (
                     <li key={step} className={cn("min-w-0 flex-1", active && "max-sm:flex-[3]")}>
                       <button
@@ -212,7 +216,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                           )}
                         >
                           {done ? <Check className="size-3 shrink-0" /> : <span className="tabular-nums">{i + 1}</span>}
-                          <span className={cn("truncate", !active && "max-sm:hidden")}>{t.steps[step]}</span>
+                          <span className={cn("truncate", !active && "max-sm:hidden")}>{name}</span>
                         </span>
                       </button>
                     </li>
@@ -234,7 +238,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
           {props && (
             <>
               <p className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                {t.stepOf(index + 1, STEPS.length)}
+                {t.stepOf(index + 1, steps.length)}
                 {/* With several Android accounts, every step says which one it's for. */}
                 {props.overview.android_accounts.length > 1 && current !== "start" && (
                   <span className="rounded-full bg-muted px-2 py-0.5 tracking-normal normal-case">

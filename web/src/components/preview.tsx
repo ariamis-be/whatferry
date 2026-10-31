@@ -18,8 +18,10 @@ const SHOWN = 60
  * chat's newest messages as the iPhone will show them. Names and message
  * text come from the local server on request and are never saved.
  */
-export function ConversionPreview({ madeAt }: { madeAt: string }) {
+export function ConversionPreview({ madeAt, toAndroid = false }: { madeAt: string; toAndroid?: boolean }) {
   const { t } = useI18n()
+  // Where the moved messages come from, as the texts name it.
+  const from = toAndroid ? t.preview.iphone : t.preview.android
   const [found, setFound] = useState<PreviewChats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<"android" | "all">("android")
@@ -56,14 +58,14 @@ export function ConversionPreview({ madeAt }: { madeAt: string }) {
           {t.preview.title}
         </CardTitle>
         <CardDescription>
-          {t.preview.totals(num(found.totals.new), num(found.totals.joined), num(found.totals.unchanged), num(found.totals.moved))}
+          {t.preview.totals(num(found.totals.new), num(found.totals.joined), num(found.totals.unchanged), num(found.totals.moved), from)}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Tabs value={filter} onValueChange={(v) => setFilter(v as "android" | "all")}>
             <TabsList>
-              <TabsTrigger value="android">{t.preview.fromAndroid}</TabsTrigger>
+              <TabsTrigger value="android">{t.preview.fromSource(from)}</TabsTrigger>
               <TabsTrigger value="all">{t.preview.all}</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -99,7 +101,7 @@ export function ConversionPreview({ madeAt }: { madeAt: string }) {
                     <ChangeBadge change={c.change} />
                   </span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {t.preview.chatLine(num(c.moved), num(c.messages), day(c.first), day(c.last))}
+                    {t.preview.chatLine(num(c.moved), num(c.messages), day(c.first), day(c.last), from)}
                   </span>
                 </span>
               </button>
@@ -112,7 +114,7 @@ export function ConversionPreview({ madeAt }: { madeAt: string }) {
           </Button>
         )}
 
-        {open && <ChatView key={open.id} chat={open} />}
+        {open && <ChatView key={open.id} chat={open} from={from} />}
       </CardContent>
     </Card>
   )
@@ -125,7 +127,7 @@ function ChangeBadge({ change }: { change: ChatChange }) {
   return <Badge variant="outline">{t.preview.change.unchanged}</Badge>
 }
 
-function ChatView({ chat }: { chat: PreviewChat }) {
+function ChatView({ chat, from }: { chat: PreviewChat; from: string }) {
   const { t } = useI18n()
   const [messages, setMessages] = useState<PreviewMessage[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -150,19 +152,19 @@ function ChatView({ chat }: { chat: PreviewChat }) {
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
         <span className="text-sm font-medium">{chat.name}</span>
         <ChangeBadge change={chat.change} />
-        <span className="text-xs text-muted-foreground">{t.preview.newest(num(chat.messages))}</span>
+        <span className="text-xs text-muted-foreground">{t.preview.newest(num(chat.messages), from)}</span>
       </div>
       <div className="max-h-[32rem] space-y-1.5 overflow-y-auto px-3 pb-3">
         <ErrorNotice message={error} />
         {!messages && !error && <Busy>{t.common.loading}</Busy>}
-        {messages?.map((m) => <Bubble key={m.id} m={m} group={chat.group} />)}
+        {messages?.map((m) => <Bubble key={m.id} m={m} group={chat.group} from={from} />)}
         <div ref={end} />
       </div>
     </div>
   )
 }
 
-function Bubble({ m, group }: { m: PreviewMessage; group: boolean }) {
+function Bubble({ m, group, from }: { m: PreviewMessage; group: boolean; from: string }) {
   const { t } = useI18n()
   if (m.kind === "system") {
     return <p className="py-1 text-center text-xs text-muted-foreground">{m.text || t.preview.kinds.system}</p>
@@ -187,7 +189,7 @@ function Bubble({ m, group }: { m: PreviewMessage; group: boolean }) {
         )}
         {m.text && <p className="break-words whitespace-pre-wrap">{m.text}</p>}
         <p className="mt-0.5 flex items-center justify-end gap-1.5 text-[0.7rem] text-muted-foreground">
-          {m.moved && <span>{t.preview.androidMark}</span>}
+          {m.moved && <span>{from}</span>}
           {when(m.at)}
         </p>
       </div>

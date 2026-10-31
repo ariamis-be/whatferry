@@ -33,9 +33,11 @@ export function WriteStep({ overview, refresh, go }: StepProps) {
     )
   }
 
+  // iPhone -> Android writes the Android backup again, under its 64-digit key.
+  const toAndroid = converted.direction === "to-android"
   // The backup the conversion came from, as the wizard checked it.
   const source = [state.after, state.before].find((e) => e?.folder === converted.backup)
-  const encrypted = source?.report.device.encrypted ?? true
+  const encrypted = toAndroid || (source?.report.device.encrypted ?? true)
 
   async function write() {
     setBusy(true)
@@ -52,11 +54,13 @@ export function WriteStep({ overview, refresh, go }: StepProps) {
 
   return (
     <>
-      <PageHeader title={t.write.title} lead={t.write.lead} />
+      <PageHeader title={t.write.title} lead={toAndroid ? t.write.leadToAndroid : t.write.lead} />
 
       <Section n={1} title={t.write.fromTitle}>
-        <p className="text-sm">{t.write.from(source ? when(source.report.device.backup_date) : "?")}</p>
-        <Path>{converted.backup}</Path>
+        <p className="text-sm">
+          {toAndroid ? t.write.fromAndroid : t.write.from(source ? when(source.report.device.backup_date) : "?")}
+        </p>
+        <Path>{toAndroid ? converted.android_source : converted.backup}</Path>
         <p className="text-sm text-muted-foreground">{t.write.untouched}</p>
         <p className="text-sm">
           {t.write.previewFirst}{" "}
@@ -66,18 +70,19 @@ export function WriteStep({ overview, refresh, go }: StepProps) {
         </p>
       </Section>
 
-      <Section n={2} title={t.write.passTitle}>
+      <Section n={2} title={toAndroid ? t.write.keyTitle : t.write.passTitle}>
         {encrypted ? (
           <div className="grid gap-2">
-            <Label htmlFor="pass-write">{t.backup.passLabel}</Label>
+            <Label htmlFor="pass-write">{toAndroid ? t.write.keyLabel : t.backup.passLabel}</Label>
             <Input
               id="pass-write"
               type="password"
               autoComplete="off"
+              className={toAndroid ? "font-mono" : undefined}
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">{t.backup.passHint}</p>
+            <p className="text-xs text-muted-foreground">{toAndroid ? t.write.keyHint : t.backup.passHint}</p>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">{t.write.noPass}</p>
@@ -91,7 +96,7 @@ export function WriteStep({ overview, refresh, go }: StepProps) {
           />
           <span className="grid gap-1">
             <span className="text-sm">{t.write.skipLabel}</span>
-            <span className="text-xs text-muted-foreground">{t.write.skipNote}</span>
+            <span className="text-xs text-muted-foreground">{toAndroid ? t.write.skipNoteToAndroid : t.write.skipNote}</span>
           </span>
         </Label>
       </Section>
@@ -102,7 +107,7 @@ export function WriteStep({ overview, refresh, go }: StepProps) {
           <Alert>
             <TriangleAlert />
             <AlertTitle>{t.write.changedTitle}</AlertTitle>
-            <AlertDescription>{t.write.changedBody}</AlertDescription>
+            <AlertDescription>{toAndroid ? t.write.changedBodyToAndroid : t.write.changedBody}</AlertDescription>
           </Alert>
         )}
         {busy && <Busy>{t.write.working}</Busy>}
@@ -134,7 +139,11 @@ function WriteResult({ entry }: { entry: WrittenEntry }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <Path>{entry.folder}</Path>
-        <p className="text-sm">{t.write.added(num(r.added_files), size(r.added_bytes), num(r.verified_files))}</p>
+        <p className="text-sm">
+          {entry.direction === "to-android"
+            ? t.write.addedToAndroid(size(r.backup_bytes ?? 0), num(r.media_files ?? 0))
+            : t.write.added(num(r.added_files ?? 0), size(r.added_bytes ?? 0), num(r.verified_files ?? 0))}
+        </p>
       </CardContent>
     </Card>
   )

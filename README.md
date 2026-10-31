@@ -3,7 +3,8 @@
 Move WhatsApp chats from an Android phone to an iPhone that is already set
 up, without Move to iOS and without erasing the iPhone. It is built for an
 iPhone that already runs one WhatsApp account and will add the Android one as
-its second.
+its second. It also works the other way, from an iPhone to an Android phone
+(see [iPhone to Android](#iphone-to-android)).
 
 It never changes a backup you made: it writes a new one beside it. The only
 thing it writes to a phone is that new backup, restored over USB when you ask
@@ -21,9 +22,8 @@ and confirm.
 4. That edited backup is restored to the same iPhone. The other account's
    files are restored as the backup had them, never edited.
 
-All four steps are built. The conversion is checked against real data and
-the written backup by an independent reader; the restore onto a real iPhone
-is the step still to be tried.
+All four steps are built and have carried a real account (its full history,
+media included) onto a real iPhone.
 
 ## Setup
 
@@ -175,6 +175,52 @@ would refuse it anyway; `com.apple.fmip`/`IsAssociated` says so beforehand).
 With Stolen Device Protection on, iOS only lets Find My be turned off after
 it (Settings → Face ID & Passcode), which away from a familiar location
 means an hour's Security Delay.
+
+## iPhone to Android
+
+The same steps the other way round; the wizard's Start page picks the
+direction.
+
+1. **iPhone:** an encrypted Finder backup, checked as before. Its chats are
+   read, and its photos, videos and voice notes are taken out of it.
+2. **Android:** WhatsApp signed in to the number being moved, then its
+   end-to-end encrypted backup (`msgstore.db.crypt15`, with the 64-digit key),
+   checked as before. That backup is the template: WhatsApp's own database for
+   the account, of the version on the phone.
+3. **Convert:** the iPhone history is merged into a copy of it, rows filled
+   the way WhatsApp for Android writes them (measured on a real
+   database), media laid out under `Media/WhatsApp Images/Sent/…` and the rest.
+   New files say `WF` where WhatsApp says `WA` (`IMG-20261025-WF0001.jpg`), so
+   they can't share a name with a file WhatsApp made; WhatsApp finds media by
+   the database's path, not the name. The same preview shows the result.
+4. **Write:** the merged database is encrypted like WhatsApp's backup, with
+   the original's header and a fresh IV (never the original's: that would
+   reuse an AES-GCM nonce under the same key), then decrypted again and
+   compared. The same-source guard applies.
+5. **Copy:** with WhatsApp's storage cleared on the phone, the backup and
+   media go into WhatsApp's folder over adb. The phone's own backup is kept
+   under a new name, and nothing is copied at all if any media name is
+   already taken there. Then WhatsApp is opened, the number verified, and the
+   backup restored with the key, as WhatsApp's own restore.
+
+```sh
+whatferry android convert <ios run>/…/ChatStorage.sqlite <android run>/msgstore.db \
+  --backup <iphone backup> --account-folder data/<id>
+whatferry android write ~/whatferry-android/msgstore.db.crypt15 <convert run folder>
+whatferry android push <the WhatsApp folder `android write` printed>
+```
+
+Only the main WhatsApp folder and `accounts/<n>/` folders the phone lists
+are written to. Not yet tried end to end on a real Android phone.
+
+## Compatibility
+
+Before converting, both databases are checked for every table and column
+the conversion reads or writes; anything missing stops it with the list,
+instead of a failure half-way. The versions are compared with the ones
+whatferry was measured on (WhatsApp for iOS database model 2.12.14; WhatsApp
+for Android 2.26.41, database version 1): another version still converts,
+with a note on the Convert page to look through the preview first.
 
 ## The same steps on the command line
 

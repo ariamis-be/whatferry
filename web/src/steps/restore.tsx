@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useI18n } from "@/i18n"
+import { AndroidCopyStep } from "@/steps/android-copy"
 import type { StepProps } from "@/wizard"
 
 function findPhone(): Promise<RestoreStatus> {
@@ -19,7 +20,23 @@ function findPhone(): Promise<RestoreStatus> {
   }))
 }
 
-export function RestoreStep({ overview, refresh, go }: StepProps) {
+/** Onto the phone: an iPhone restore, or for iPhone -> Android a copy onto the Android phone. */
+export function RestoreStep(props: StepProps) {
+  const { t } = useI18n()
+  const state = props.overview.state
+  if (state.direction !== "to-android") return <IphoneRestoreStep {...props} />
+  if (state.written) return <AndroidCopyStep {...props} />
+  return (
+    <>
+      <PageHeader title={t.copy.title} lead={t.restore.needWrite} />
+      <Button variant="outline" onClick={() => props.go("write")}>
+        {t.restore.goWrite}
+      </Button>
+    </>
+  )
+}
+
+function IphoneRestoreStep({ overview, refresh, go }: StepProps) {
   const { t } = useI18n()
   const state = overview.state
   const written = state.written

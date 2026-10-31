@@ -141,7 +141,7 @@ def check_android(path: Path, app_version: str | None = None, needs: dict = ANDR
         result.missing = _missing(db, needs)
         user_version = db.execute("PRAGMA user_version").fetchone()[0]
     app = ".".join((app_version or "").split(".")[:3]) or None
-    result.version = f"database {user_version}" + (f", WhatsApp {app_version}" if app_version else "")
+    result.version = (f"WhatsApp {app_version}, " if app_version else "") + f"database version {user_version}"
     result.tested = user_version in TESTED["android"] and (app is None or app in TESTED["android_app"])
     if "table message" in result.missing:
         result.note = "not a WhatsApp msgstore database"

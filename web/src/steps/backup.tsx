@@ -29,6 +29,7 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
   const { t } = useI18n()
   const first = role === "before"
   const state = overview.state
+  const toAndroid = state.direction === "to-android"
   const checked = state[role]
   const [listing, setListing] = useState<Listing | null>(null)
   const [folder, setFolder] = useState("")
@@ -180,8 +181,9 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
         <Button variant={checked ? "outline" : "default"} disabled={!chosen || busy !== null} onClick={inspect}>
           {checked ? t.backup.checkAgain : t.backup.check[role]}
         </Button>
-        {checked && <BackupResult entry={checked} first={first} />}
-        {first && checked && <DestinationChoice overview={overview} refresh={refresh} />}
+        {/* iPhone -> Android has no second backup to compare with, and no question of where chats go. */}
+        {checked && <BackupResult entry={checked} first={first && !toAndroid} />}
+        {first && checked && !toAndroid && <DestinationChoice overview={overview} refresh={refresh} />}
       </div>
     </>
   )

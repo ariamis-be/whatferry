@@ -101,13 +101,29 @@ export interface State {
   before?: IosEntry
   after?: IosEntry
   destination?: Destination
+  direction?: Direction
   converted?: ConvertedEntry
   written?: WrittenEntry
   restored?: RestoredEntry
 }
 
+export type Direction = "to-iphone" | "to-android"
+
+export interface Compatibility {
+  kind: string
+  ok: boolean
+  tested: boolean
+  version: string | null
+  note: string | null
+}
+
+/** Either direction's report: Android -> iPhone counts android_messages, iPhone -> Android iphone_messages. */
 export interface ConvertReport {
-  android_messages: number
+  direction?: "iphone-to-android"
+  android_messages?: number
+  iphone_messages?: number
+  checks_before?: Record<string, unknown>
+  compatibility?: Compatibility[]
   converted: Record<string, number>
   skipped: Record<string, number>
   already_there: number
@@ -118,7 +134,7 @@ export interface ConvertReport {
   media_rows: number
   media_files_copied: number
   media_files_missing: number
-  not_converted_yet: Record<string, number>
+  not_converted_yet?: Record<string, number>
   checks: Record<string, unknown>
 }
 
@@ -129,18 +145,27 @@ export interface ConvertedEntry {
   media: string | null
   made_at: string
   report: ConvertReport
+  direction?: Direction
+  // iPhone -> Android: the msgstore.db.crypt15 the conversion is written back like.
+  android_source?: string
 }
 
 export interface WrittenEntry {
   folder: string
   from: string
   made_at: string
+  direction?: Direction
   report: {
-    encrypted: boolean
-    added_files: number
-    added_bytes: number
-    verified_files: number
     source_checked: boolean
+    // Android -> iPhone
+    encrypted?: boolean
+    added_files?: number
+    added_bytes?: number
+    verified_files?: number
+    // iPhone -> Android
+    backup_bytes?: number
+    media_files?: number
+    verified?: boolean
   }
 }
 
@@ -148,6 +173,27 @@ export interface RestoredEntry {
   folder: string
   phone: string | null
   restored_at: string
+  // iPhone -> Android: where on the phone it went, and the phone's own backup kept.
+  root?: string
+  kept?: string | null
+  media_files?: number
+}
+
+export interface AndroidPhone {
+  serial: string
+  model: string | null
+  ready: boolean
+  advice: string | null
+  folders?: string[]
+  error?: string
+}
+
+export interface AndroidPhones {
+  direction: "to-android"
+  adb: string | null
+  devices: AndroidPhone[]
+  error?: string | null
+  suggested_folder: string
 }
 
 export interface ConvertTarget {
@@ -168,11 +214,16 @@ export interface MediaFolder {
 }
 
 export interface ConvertOptions {
+  direction: Direction
   backup: string
   backup_checked_at: string
-  second_backup: boolean
   targets: ConvertTarget[]
-  media: MediaFolder[]
+  // Android -> iPhone
+  second_backup?: boolean
+  media?: MediaFolder[]
+  // iPhone -> Android: media come out of the iPhone backup, which may need its passphrase.
+  encrypted?: boolean
+  android_ready?: boolean
 }
 
 export interface ConnectedIphone {

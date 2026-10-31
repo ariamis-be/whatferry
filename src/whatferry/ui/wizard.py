@@ -682,7 +682,7 @@ def summary_text(state: dict) -> str:
     The iPhone's first backup once, then each Android account with where it
     goes and, when made, the second iPhone backup that goes with it.
     """
-    lines = ["whatferry discovery summary", ""]
+    lines = ["whatferry summary", f"Direction: {'iPhone -> Android' if direction(state) == 'to-android' else 'Android -> iPhone'}", ""]
     if state.get("before"):
         lines += _iphone_lines("iPhone, first backup", state["before"])
     # Without accounts kept apart (one account, or none checked yet), what's
@@ -702,7 +702,7 @@ def summary_text(state: dict) -> str:
         if account.get("after"):
             lines += [""] + _iphone_lines("  iPhone, second backup for this account", account["after"])
         lines.append("")
-    if len(lines) == 2:
+    if len(lines) == 3:
         lines.append("Nothing checked yet.")
     # WhatsApp names folders after phone numbers; the shape survives without them.
     return _LONG_NUMBER.sub("<number>", "\n".join(lines).rstrip() + "\n")
