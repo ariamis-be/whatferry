@@ -69,7 +69,8 @@ def _parser() -> argparse.ArgumentParser:
                                    "(keeps what's there)")
     au.add_argument("folder", type=Path, help="the WhatsApp folder `whatferry android write` printed")
     au.add_argument("--serial", help="which phone, when more than one is connected")
-    au.add_argument("--into", default=adb.WHATSAPP_ROOT, help=f"WhatsApp folder on the phone (default: {adb.WHATSAPP_ROOT})")
+    au.add_argument("--into", default=adb.WHATSAPP_ROOT, help=f"WhatsApp folder on the phone: the main one or an accounts/<n> one; "
+                                                          f"WhatsApp Business isn't supported (default: {adb.WHATSAPP_ROOT})")
     au.set_defaults(run=_android_push)
 
     i = sides.add_parser("ios", help="the iPhone backup").add_subparsers(required=True, metavar="command")
@@ -308,11 +309,11 @@ def _android_write(args) -> int:
 
 
 def _android_push(args) -> int:
-    tool = adb.find_adb()
-    if tool is None:
-        raise adb.AdbError("adb isn't installed: see `whatferry android phone`")
-    ready = [d for d in adb.devices(tool) if d.ready]
-    serial = args.serial or (ready[0].serial if len(ready) == 1 else None)
+    tool = _adb_tool()
+    ready = [d.serial for d in adb.devices(tool) if d.ready]
+    if args.serial and args.serial not in ready:
+        raise adb.AdbError(f"phone {args.serial} isn't ready: run `whatferry android phone` to see why")
+    serial = args.serial or (ready[0] if len(ready) == 1 else None)
     if serial is None:
         raise adb.AdbError("connect one phone with USB debugging on, or pick one with --serial")
     result = adb.push(tool, serial, args.into, args.folder)

@@ -257,6 +257,9 @@ elif args[:3] == ["-s", "PHONE1", "shell"]:
     sys.exit(subprocess.run(["sh", "-c", local(args[3])]).returncode)
 elif args[:3] == ["-s", "PHONE1", "push"]:
     src, dest = args[3], local(args[4])
+    if os.environ.get("FAKE_PUSH_FAILS") and os.environ["FAKE_PUSH_FAILS"] in args[4]:
+        print("adb: error: device disconnected", file=sys.stderr)
+        sys.exit(1)
     if os.path.isdir(src):
         shutil.copytree(src, dest)
     else:
@@ -307,9 +310,35 @@ def test_push_changes_nothing_when_a_name_is_taken(phone, converted):
     (whatsapp / "Media" / clash).parent.mkdir(parents=True, exist_ok=True)
     (whatsapp / "Media" / clash).write_bytes(b"the phone's own photo")
     before = {p: p.read_bytes() for p in whatsapp.rglob("*") if p.is_file()}
-    with pytest.raises(adb.AdbError, match="nothing was changed"):
+    with pytest.raises(adb.AdbError, match=r"already has 1 file\(s\) .*\(such as WhatsApp [^)]+\); nothing was changed"):
         adb.push(tool, "PHONE1", adb.WHATSAPP_ROOT, folder)
     assert {p: p.read_bytes() for p in whatsapp.rglob("*") if p.is_file()} == before
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake adb is a script with a shebang")
+def test_a_failed_backup_copy_puts_the_phones_own_back(phone, converted, monkeypatch):
+    tool, whatsapp = phone
+    reference, run = converted
+    _, folder = android_writer.write_backup(reference, KeyFactory.from_hex(KEY), run)
+    monkeypatch.setenv("FAKE_PUSH_FAILS", "msgstore.db.crypt15")
+    with pytest.raises(adb.AdbError, match="device disconnected.*back in place"):
+        adb.push(tool, "PHONE1", adb.WHATSAPP_ROOT, folder)
+    assert (whatsapp / "Databases" / "msgstore.db.crypt15").read_bytes() == b"the phone's own backup"
+    assert [p.name for p in (whatsapp / "Databases").iterdir()] == ["msgstore.db.crypt15"]
+    assert not list(whatsapp.glob(".whatferry-*")), "the staging folder is removed"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake adb is a script with a shebang")
+def test_a_failed_media_copy_changes_nothing(phone, converted, monkeypatch):
+    tool, whatsapp = phone
+    reference, run = converted
+    _, folder = android_writer.write_backup(reference, KeyFactory.from_hex(KEY), run)
+    before = {p: p.read_bytes() for p in whatsapp.rglob("*") if p.is_file()}
+    monkeypatch.setenv("FAKE_PUSH_FAILS", ".whatferry-")
+    with pytest.raises(adb.AdbError, match="device disconnected"):
+        adb.push(tool, "PHONE1", adb.WHATSAPP_ROOT, folder)
+    assert {p: p.read_bytes() for p in whatsapp.rglob("*") if p.is_file()} == before
+    assert not list(whatsapp.glob(".whatferry-*"))
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="the fake adb is a script with a shebang")

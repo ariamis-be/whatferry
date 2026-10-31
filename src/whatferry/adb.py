@@ -39,6 +39,13 @@ BACKUP_GLOBS = (
 
 TIMEOUT = 30
 PULL_TIMEOUT = 600
+# Copies over USB, and moves on the phone's storage, get this much longer
+# per byte on top of PULL_TIMEOUT: a slow cable does about 5 MB/s.
+SLOW_BYTES_PER_SECOND = 5_000_000
+
+
+def _timeout_for(size: int) -> int:
+    return PULL_TIMEOUT + size // SLOW_BYTES_PER_SECOND
 
 # A phone says what it can do in `adb devices`: only "device" can be used.
 STATES = {
@@ -191,10 +198,14 @@ def pull(adb: Path, serial: str, remote: str, dest_folder: Path | None = None) -
     target = folder / backup.local_name
     partial = folder / f".{backup.local_name}.part"
     partial.unlink(missing_ok=True)
-    result = _run(adb, "-s", serial, "pull", remote, str(partial), timeout=PULL_TIMEOUT)
+    result = _run(adb, "-s", serial, "pull", remote, str(partial), timeout=_timeout_for(backup.size))
     if result.returncode != 0 or not partial.exists():
         partial.unlink(missing_ok=True)
         raise AdbError(f"copying failed: {(result.stderr or result.stdout).strip() or 'adb gave no reason'}")
+    if (got := partial.stat().st_size) != backup.size:
+        partial.unlink()
+        raise AdbError(f"the copy is incomplete ({got} of {backup.size} bytes): let WhatsApp finish its backup, "
+                       "then copy again")
     partial.chmod(0o600)
     os.replace(partial, target)
     return target
@@ -217,7 +228,9 @@ def push(adb: Path, serial: str, root: str, folder: Path) -> dict:
 
     Nothing on the phone is replaced: a backup already there is kept under a
     new name (WhatsApp only restores msgstore.db.crypt15), and media files
-    are copied without overwriting any file of the same name.
+    are copied without overwriting any file of the same name. If a step
+    fails, what changed so far is undone where it can be, and the error says
+    what is left.
     """
     if root not in whatsapp_folders(adb, serial):
         raise AdbError("that isn't one of the phone's WhatsApp folders (list them again)")
@@ -231,33 +244,65 @@ def push(adb: Path, serial: str, root: str, folder: Path) -> dict:
     _shell(adb, serial, f"mkdir -p {q(root + '/Databases')} {q(root + '/Media')}")
     media = folder / "Media"
     files = [p for p in media.rglob("*") if p.is_file()] if media.is_dir() else []
+    size = sum(p.stat().st_size for p in files)
     staging = f"{root}/.whatferry-{stamp}"
+    phone_media = q(root + "/Media")
     if files:
         # Media first, into a staging folder: if the phone already has a file
         # under one of these names, stop before anything on it has changed.
-        _push(adb, serial, media, staging)
-        clashes = _shell(adb, serial, f"cd {q(staging)} && find . -type f | while read -r f; do "
-                                      f"[ -e {q(root + '/Media')}/\"$f\" ] && echo \"$f\"; done; true").split()
+        try:
+            _push(adb, serial, media, staging, _timeout_for(size))
+            clashes = _shell(adb, serial, f"cd {q(staging)} && find . -type f | while IFS= read -r f; do "
+                                          f"[ -e {phone_media}/\"$f\" ] && echo \"$f\"; done; true").splitlines()
+        except AdbError:
+            _remove_quietly(adb, serial, staging)
+            raise
         if clashes:
-            _shell(adb, serial, f"rm -rf {q(staging)}")
+            _remove_quietly(adb, serial, staging)
             raise AdbError(f"the phone already has {len(clashes)} file(s) under names the conversion uses "
                            f"(such as {clashes[0].removeprefix('./')}); nothing was changed")
+        # Then moved, not copied, into Media: the same storage, so each file
+        # is only renamed, however large the folder is.
+        try:
+            _shell(adb, serial, f"cd {q(staging)} && find . -type f | while IFS= read -r f; do "
+                                f"mkdir -p {phone_media}/\"$(dirname \"$f\")\" && "
+                                f"mv -n \"$f\" {phone_media}/\"$f\" || exit 1; done", timeout=_timeout_for(size))
+        except AdbError as e:
+            _remove_quietly(adb, serial, staging)
+            raise AdbError(f"{e} (some media files may already be in {root}/Media; "
+                           "the phone's backup is unchanged)") from None
+        _remove_quietly(adb, serial, staging)
     answer = _shell(adb, serial, f"if [ -e {q(remote)} ]; then mv {q(remote)} {q(kept)} && echo kept; fi")
-    _push(adb, serial, backup, remote)
-    if files:
-        _shell(adb, serial, f"cp -R {q(staging)}/. {q(root + '/Media')}/ && rm -rf {q(staging)}")
+    try:
+        _push(adb, serial, backup, remote, _timeout_for(backup.stat().st_size))
+    except AdbError as e:
+        if "kept" not in answer:
+            raise
+        try:
+            _shell(adb, serial, f"rm -f {q(remote)} && mv {q(kept)} {q(remote)}")
+        except AdbError:
+            raise AdbError(f"{e} (the phone's own backup is kept as {kept}: "
+                           "rename it back to msgstore.db.crypt15)") from None
+        raise AdbError(f"{e} (the phone's own backup is back in place)") from None
     return {"root": root, "kept": kept if "kept" in answer else None, "media_files": len(files)}
 
 
-def _shell(adb: Path, serial: str, command: str) -> str:
-    result = _run(adb, "-s", serial, "shell", command)
+def _remove_quietly(adb: Path, serial: str, remote: str) -> None:
+    try:
+        _shell(adb, serial, f"rm -rf {shlex.quote(remote)}")
+    except AdbError:
+        pass
+
+
+def _shell(adb: Path, serial: str, command: str, timeout: int = TIMEOUT) -> str:
+    result = _run(adb, "-s", serial, "shell", command, timeout=timeout)
     if result.returncode != 0:
         raise AdbError(f"the phone refused: {(result.stderr or result.stdout).strip() or 'adb gave no reason'}")
     return result.stdout
 
 
-def _push(adb: Path, serial: str, local: Path, remote: str) -> None:
-    result = _run(adb, "-s", serial, "push", str(local), remote, timeout=PULL_TIMEOUT)
+def _push(adb: Path, serial: str, local: Path, remote: str, timeout: int = PULL_TIMEOUT) -> None:
+    result = _run(adb, "-s", serial, "push", str(local), remote, timeout=timeout)
     if result.returncode != 0:
         raise AdbError(f"copying to the phone failed: {(result.stderr or result.stdout).strip() or 'adb gave no reason'}")
 

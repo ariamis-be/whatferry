@@ -40,6 +40,8 @@ elif args[:3] == ["-s", "1A2B3C4D5E6F70", "pull"]:
     remote, local = args[3], args[4]
     with open(local, "wb") as f:
         f.write(("contents of " + remote).encode())
+        if not os.environ.get("FAKE_ADB_SHORT"):
+            f.truncate(state["files"][remote][0])
     print(f"{{remote}}: 1 file pulled")
 else:
     print("unexpected", args, file=sys.stderr)
@@ -115,12 +117,21 @@ def test_pull_into_a_private_folder(fake_adb, tmp_path):
     remote = "/sdcard/Android/media/com.whatsapp/WhatsApp/accounts/1001/Databases/msgstore.db.crypt15"
     target = adb.pull(fake_adb, "1A2B3C4D5E6F70", remote, tmp_path / "out")
     assert target == tmp_path / "out" / "whatsapp-account-1001-msgstore.db.crypt15"
-    assert target.read_bytes() == f"contents of {remote}".encode()
+    assert target.read_bytes().startswith(f"contents of {remote}".encode())
+    assert target.stat().st_size == PHONE[remote][0]
     assert stat.S_IMODE(target.stat().st_mode) == 0o600
     assert stat.S_IMODE(target.parent.stat().st_mode) == 0o700
     assert not list(target.parent.glob(".*.part"))
     # Again: replaces the earlier copy.
     assert adb.pull(fake_adb, "1A2B3C4D5E6F70", remote, tmp_path / "out") == target
+
+
+def test_a_short_pull_is_refused(fake_adb, tmp_path, monkeypatch):
+    remote = "/sdcard/Android/media/com.whatsapp/WhatsApp/accounts/1001/Databases/msgstore.db.crypt15"
+    monkeypatch.setenv("FAKE_ADB_SHORT", "1")
+    with pytest.raises(adb.AdbError, match="incomplete"):
+        adb.pull(fake_adb, "1A2B3C4D5E6F70", remote, tmp_path / "out")
+    assert not any((tmp_path / "out").iterdir())
 
 
 @pytest.mark.parametrize("remote", ["/sdcard/DCIM/Camera/IMG_0001.jpg", "/data/data/com.whatsapp/files/key",
