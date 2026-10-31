@@ -12,7 +12,8 @@ import os
 import sys
 from pathlib import Path
 
-from whatferry import adb, android, android_writer, backup_writer, convert, ios, restore, sqlite_summary, to_android, workdir
+from whatferry import (adb, android, android_writer, backup_writer, compat, convert, ios, restore, schema, sqlite_summary,
+                       to_android, workdir)
 from whatferry.ios_backup import (Backup, BackupError, WrongPassphrase, backup_roots, device_info, find_backup,
                                   how_to_back_up, list_backups)
 
@@ -22,7 +23,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.run(args)
     except (android.DecryptError, BackupError, adb.AdbError, convert.ConvertError, backup_writer.WriteError,
-            restore.RestoreError, android_writer.AndroidWriteError, FileNotFoundError) as e:
+            restore.RestoreError, android_writer.AndroidWriteError, schema.SchemaError, FileNotFoundError) as e:
         print(f"whatferry: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
@@ -102,6 +103,17 @@ def _parser() -> argparse.ArgumentParser:
                                                "(e.g. ~/whatferry-android/media/account-1001)")
     c.add_argument("--account-folder", help="data/<id> folder of a second iPhone account (omit for the main one)")
     c.set_defaults(run=_convert)
+
+    s = sides.add_parser("schema", help="WhatsApp's database layouts whatferry knows").add_subparsers(
+        required=True, metavar="command")
+    sc = s.add_parser("check", help="how a database's layout differs from the closest known one")
+    sc.add_argument("db", type=Path, help="a ChatStorage.sqlite or decrypted msgstore.db")
+    sc.add_argument("--all", action="store_true", help="list the harmless changes too")
+    sc.set_defaults(run=_schema_check)
+    sa = s.add_parser("capture", help="record a database's layout among the known ones (after a WhatsApp update)")
+    sa.add_argument("db", type=Path, help="a ChatStorage.sqlite or decrypted msgstore.db")
+    sa.add_argument("--app-version", help="the WhatsApp version that made it (Android: from `whatferry android inspect`)")
+    sa.set_defaults(run=_schema_capture)
 
     u = sides.add_parser("ui", help="open the step-by-step wizard in your browser")
     u.add_argument("--port", type=int, default=0, help="port on 127.0.0.1 (default: any free one)")
@@ -216,6 +228,50 @@ def _print_compatibility(report) -> None:
     for c in report.compatibility:
         if c.get("note"):
             print(f"  note ({c['kind']}): {c['note']}")
+    for column, value in report.filled.items():
+        print(f"  new column {column} filled with {value!r}, as WhatsApp's own rows have it")
+
+
+# Each direction's columns and written tables, per kind of database.
+SCHEMA_USES = {
+    "ios": [("Android -> iPhone", compat.IOS_WRITE, True), ("iPhone -> Android", compat.IOS_READ, False)],
+    "android": [("Android -> iPhone", compat.ANDROID_READ, False), ("iPhone -> Android", compat.ANDROID_WRITE, True)],
+}
+
+
+def _schema_check(args) -> int:
+    snap = schema.capture(args.db)
+    print(f"{snap['kind']} database, version {snap['version']}, {len(snap['tables'])} tables, "
+          f"layout {schema.fingerprint(snap)}")
+    worst = 0
+    for direction, uses, writes in SCHEMA_USES[snap["kind"]]:
+        closest, changes = schema.closest(snap, uses, set(uses) if writes else set())
+        if closest is None:
+            print(f"  {direction}: no known layout to compare with")
+            worst = max(worst, 1)
+            continue
+        same = "same as" if not changes else "closest to"
+        apps = ", ".join(s["app"] or "an unrecorded app version" for s in closest["seen"])
+        print(f"  {direction}: {same} {closest['fingerprint']} (seen with {apps})")
+        harmless = [c for c in changes if c.level == schema.HARMLESS]
+        for change in changes if args.all else [c for c in changes if c.level != schema.HARMLESS]:
+            print(f"    {change.level:<8} {change.what}")
+        if harmless and not args.all:
+            print(f"    and {len(harmless)} harmless (--all lists them)")
+        levels = {c.level for c in changes}
+        worst = max(worst, 2 if schema.STOP in levels else 1 if schema.REVIEW in levels else 0)
+    print({0: "Nothing that matters changed.", 1: "Converts, but look through the preview before writing.",
+           2: "whatferry refuses this database until the stop items are handled."}[worst])
+    return 1 if worst == 2 else 0
+
+
+def _schema_capture(args) -> int:
+    snap = schema.capture(args.db)
+    path, new = schema.save(snap, args.app_version)
+    print(f"{'New layout' if new else 'Known layout'} {schema.fingerprint(snap)}: {path}")
+    if new:
+        print("Note what changed in schemas/CHANGES.md (`whatferry schema check` on the same file lists it).")
+    return 0
 
 
 def _android_convert(args) -> int:

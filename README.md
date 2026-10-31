@@ -217,10 +217,43 @@ are written to. Not yet tried end to end on a real Android phone.
 
 Before converting, both databases are checked for every table and column
 the conversion reads or writes; anything missing stops it with the list,
-instead of a failure half-way. The versions are compared with the ones
-whatferry was measured on (WhatsApp for iOS database model 2.12.14; WhatsApp
-for Android 2.26.41, database version 1): another version still converts,
-with a note on the Convert page to look through the preview first.
+instead of a failure half-way.
+
+Then the whole layout is compared with the snapshots whatferry was measured
+on, kept in [`src/whatferry/schemas/`](src/whatferry/schemas/): tables,
+columns with their types, NOT NULL and defaults, indexes, triggers, views,
+the iPhone's Core Data entities and the database version, and nothing the
+database stores. Today that is WhatsApp for iOS database model 2.12.14 and
+WhatsApp for Android 2.26.41 (database version 1). Matching goes by layout,
+not app version: WhatsApp ships every week, and most releases leave the
+database alone. Each difference from the closest snapshot is sorted:
+
+- **harmless**: a table or column the conversion doesn't use, a new table.
+  It converts as usual.
+- **review**: a table the conversion writes gained a column, an index or a
+  new default, or the database version moved. It converts, with a note on
+  the Convert page to look through the preview first.
+- **stop**: a column or table the conversion uses is gone, or a table it
+  writes gained a NOT NULL column with no default, a unique index or a
+  trigger, or an entity it writes was removed. It refuses, naming the change.
+
+A column on a table the conversion writes that no snapshot has is filled
+with the value WhatsApp's own rows in that database agree on (at least 90%
+of 10 or more rows); if they don't agree, it keeps its default. The report
+lists every column filled this way. That covers the usual "new flag column"
+release without a code change.
+
+### After a WhatsApp update
+
+The routine is in [`src/whatferry/schemas/CHANGES.md`](src/whatferry/schemas/CHANGES.md):
+make a fresh backup on each phone, then
+
+```sh
+whatferry schema check <ChatStorage.sqlite or msgstore.db>     # what changed, sorted
+whatferry schema capture <db> --app-version <version>           # record it
+```
+
+and note the change in that file.
 
 ## The same steps on the command line
 

@@ -35,7 +35,7 @@ from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Callable
 
-from whatferry import compat, sqlite_summary, workdir
+from whatferry import compat, schema, sqlite_summary, workdir
 from whatferry.convert import APPLE_EPOCH, ConvertError, compatible
 
 # iPhone ZMESSAGETYPE -> Android message_type (convert.TYPES, the other way round).
@@ -110,6 +110,8 @@ class Report:
     account_folder: str | None = None
     direction: str = "iphone-to-android"
     compatibility: list[dict] = field(default_factory=list)
+    # Columns whatferry doesn't know, filled with the value WhatsApp's own rows agree on.
+    filled: dict[str, object] = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -139,10 +141,13 @@ class Target:
         # can't share a name with a file WhatsApp made (it finds media by file_path).
         self.names = {PurePosixPath(r[0]).name for r in self.db.execute(
             "SELECT file_path FROM message_media WHERE file_path IS NOT NULL")}
+        # Columns newer than whatferry's snapshots, filled the way WhatsApp's own rows are.
+        known = schema.known_columns("android")
+        self.fill = {t: schema.neighbour_values(self.db, t, known.get(t)) for t, cols in self.columns.items() if cols}
 
     def insert(self, table: str, values: dict) -> int:
         """Insert what this WhatsApp version has columns for; returns the new row id."""
-        values = {k: v for k, v in values.items() if k in self.columns[table]}
+        values = {k: v for k, v in (self.fill.get(table, {}) | values).items() if k in self.columns[table]}
         cols = ", ".join(values)
         marks = ", ".join("?" for _ in values)
         return self.db.execute(f"INSERT INTO {table} ({cols}) VALUES ({marks})", list(values.values())).lastrowid
@@ -181,6 +186,7 @@ def convert(ios_db: Path, android_db: Path, media: MediaReader | None, account_f
         report.checks_before = check(before)
     source = Source(ios_db)
     target = Target(merged)
+    report.filled = {f"{t}.{c}": v for t, values in target.fill.items() for c, v in values.items()}
     with closing(source.db), closing(target.db):
         target.db.execute("BEGIN")
         chats = _chats(source, target, report)

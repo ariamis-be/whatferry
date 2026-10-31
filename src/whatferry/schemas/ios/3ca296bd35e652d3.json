@@ -1,0 +1,1627 @@
+{
+ "entities": {
+  "WABlackListItem": 1,
+  "WAChatProperties": 2,
+  "WAChatPushConfig": 3,
+  "WAChatSession": 4,
+  "WAGroupInfo": 5,
+  "WAGroupMember": 6,
+  "WAGroupMembersChange": 7,
+  "WAMediaItem": 8,
+  "WAMessage": 9,
+  "WAMessageDataItem": 10,
+  "WAMessageInfo": 11,
+  "WAProfilePictureItem": 12,
+  "WAProfilePushName": 13,
+  "WAVCardMention": 14,
+  "WAZ1PaymentTransaction": 15
+ },
+ "fingerprint": "3ca296bd35e652d3",
+ "indexes": {
+  "WhatsApp_WAMessage_customIndex_1": {
+   "sql": "CREATE INDEX WhatsApp_WAMessage_customIndex_1 ON ZWAMESSAGE (ZCHATSESSION COLLATE BINARY ASC, ZMEDIASECTIONID COLLATE BINARY ASC, ZSORT COLLATE BINARY ASC, ZMESSAGEERRORSTATUS COLLATE BINARY ASC, ZFLAGS COLLATE BINARY ASC, ZMESSAGETYPE COLLATE BINARY ASC, ZCHILDMESSAGESDELIVEREDCOUNT COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "ZWACHATPROPERTIES_ZCHATSESSION_INDEX": {
+   "sql": "CREATE INDEX ZWACHATPROPERTIES_ZCHATSESSION_INDEX ON ZWACHATPROPERTIES (ZCHATSESSION)",
+   "table": "ZWACHATPROPERTIES",
+   "unique": false
+  },
+  "ZWACHATSESSION_ZGROUPINFO_INDEX": {
+   "sql": "CREATE INDEX ZWACHATSESSION_ZGROUPINFO_INDEX ON ZWACHATSESSION (ZGROUPINFO)",
+   "table": "ZWACHATSESSION",
+   "unique": false
+  },
+  "ZWACHATSESSION_ZLASTMESSAGE_INDEX": {
+   "sql": "CREATE INDEX ZWACHATSESSION_ZLASTMESSAGE_INDEX ON ZWACHATSESSION (ZLASTMESSAGE)",
+   "table": "ZWACHATSESSION",
+   "unique": false
+  },
+  "ZWACHATSESSION_ZPROPERTIES_INDEX": {
+   "sql": "CREATE INDEX ZWACHATSESSION_ZPROPERTIES_INDEX ON ZWACHATSESSION (ZPROPERTIES)",
+   "table": "ZWACHATSESSION",
+   "unique": false
+  },
+  "ZWAGROUPINFO_ZCHATSESSION_INDEX": {
+   "sql": "CREATE INDEX ZWAGROUPINFO_ZCHATSESSION_INDEX ON ZWAGROUPINFO (ZCHATSESSION)",
+   "table": "ZWAGROUPINFO",
+   "unique": false
+  },
+  "ZWAGROUPINFO_ZLASTMESSAGEOWNER_INDEX": {
+   "sql": "CREATE INDEX ZWAGROUPINFO_ZLASTMESSAGEOWNER_INDEX ON ZWAGROUPINFO (ZLASTMESSAGEOWNER)",
+   "table": "ZWAGROUPINFO",
+   "unique": false
+  },
+  "ZWAGROUPMEMBER_ZCHATSESSION_INDEX": {
+   "sql": "CREATE INDEX ZWAGROUPMEMBER_ZCHATSESSION_INDEX ON ZWAGROUPMEMBER (ZCHATSESSION)",
+   "table": "ZWAGROUPMEMBER",
+   "unique": false
+  },
+  "ZWAGROUPMEMBER_ZRECENTGROUPCHAT_INDEX": {
+   "sql": "CREATE INDEX ZWAGROUPMEMBER_ZRECENTGROUPCHAT_INDEX ON ZWAGROUPMEMBER (ZRECENTGROUPCHAT)",
+   "table": "ZWAGROUPMEMBER",
+   "unique": false
+  },
+  "ZWAMEDIAITEM_ZMESSAGE_INDEX": {
+   "sql": "CREATE INDEX ZWAMEDIAITEM_ZMESSAGE_INDEX ON ZWAMEDIAITEM (ZMESSAGE)",
+   "table": "ZWAMEDIAITEM",
+   "unique": false
+  },
+  "ZWAMESSAGEDATAITEM_ZMESSAGE_INDEX": {
+   "sql": "CREATE INDEX ZWAMESSAGEDATAITEM_ZMESSAGE_INDEX ON ZWAMESSAGEDATAITEM (ZMESSAGE)",
+   "table": "ZWAMESSAGEDATAITEM",
+   "unique": false
+  },
+  "ZWAMESSAGEINFO_ZMESSAGE_INDEX": {
+   "sql": "CREATE INDEX ZWAMESSAGEINFO_ZMESSAGE_INDEX ON ZWAMESSAGEINFO (ZMESSAGE)",
+   "table": "ZWAMESSAGEINFO",
+   "unique": false
+  },
+  "ZWAMESSAGE_ZCHATSESSION_INDEX": {
+   "sql": "CREATE INDEX ZWAMESSAGE_ZCHATSESSION_INDEX ON ZWAMESSAGE (ZCHATSESSION)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "ZWAMESSAGE_ZGROUPMEMBER_INDEX": {
+   "sql": "CREATE INDEX ZWAMESSAGE_ZGROUPMEMBER_INDEX ON ZWAMESSAGE (ZGROUPMEMBER)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "ZWAMESSAGE_ZLASTSESSION_INDEX": {
+   "sql": "CREATE INDEX ZWAMESSAGE_ZLASTSESSION_INDEX ON ZWAMESSAGE (ZLASTSESSION)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "ZWAMESSAGE_ZMEDIAITEM_INDEX": {
+   "sql": "CREATE INDEX ZWAMESSAGE_ZMEDIAITEM_INDEX ON ZWAMESSAGE (ZMEDIAITEM)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "ZWAMESSAGE_ZMESSAGEINFO_INDEX": {
+   "sql": "CREATE INDEX ZWAMESSAGE_ZMESSAGEINFO_INDEX ON ZWAMESSAGE (ZMESSAGEINFO)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "ZWAMESSAGE_ZPARENTMESSAGE_INDEX": {
+   "sql": "CREATE INDEX ZWAMESSAGE_ZPARENTMESSAGE_INDEX ON ZWAMESSAGE (ZPARENTMESSAGE)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "ZWAVCARDMENTION_ZMEDIAITEM_INDEX": {
+   "sql": "CREATE INDEX ZWAVCARDMENTION_ZMEDIAITEM_INDEX ON ZWAVCARDMENTION (ZMEDIAITEM)",
+   "table": "ZWAVCARDMENTION",
+   "unique": false
+  },
+  "Z_WAChatSession_byContactJIDIndex": {
+   "sql": "CREATE INDEX Z_WAChatSession_byContactJIDIndex ON ZWACHATSESSION (ZCONTACTJID COLLATE BINARY ASC)",
+   "table": "ZWACHATSESSION",
+   "unique": false
+  },
+  "Z_WAChatSession_byIdentityVerificationEpochIndex": {
+   "sql": "CREATE INDEX Z_WAChatSession_byIdentityVerificationEpochIndex ON ZWACHATSESSION (ZIDENTITYVERIFICATIONEPOCH COLLATE BINARY ASC)",
+   "table": "ZWACHATSESSION",
+   "unique": false
+  },
+  "Z_WAChatSession_byIdentityVerificationStateIndex": {
+   "sql": "CREATE INDEX Z_WAChatSession_byIdentityVerificationStateIndex ON ZWACHATSESSION (ZIDENTITYVERIFICATIONSTATE COLLATE BINARY ASC)",
+   "table": "ZWACHATSESSION",
+   "unique": false
+  },
+  "Z_WAChatSession_byLastMessageDateIndex": {
+   "sql": "CREATE INDEX Z_WAChatSession_byLastMessageDateIndex ON ZWACHATSESSION (ZLASTMESSAGEDATE COLLATE BINARY ASC)",
+   "table": "ZWACHATSESSION",
+   "unique": false
+  },
+  "Z_WAChatSession_byRemovedIndex": {
+   "sql": "CREATE INDEX Z_WAChatSession_byRemovedIndex ON ZWACHATSESSION (ZREMOVED COLLATE BINARY ASC)",
+   "table": "ZWACHATSESSION",
+   "unique": false
+  },
+  "Z_WAChatSession_bySessionTypeIndex": {
+   "sql": "CREATE INDEX Z_WAChatSession_bySessionTypeIndex ON ZWACHATSESSION (ZSESSIONTYPE COLLATE BINARY ASC)",
+   "table": "ZWACHATSESSION",
+   "unique": false
+  },
+  "Z_WAChatSession_bySpotlightStatusIndex": {
+   "sql": "CREATE INDEX Z_WAChatSession_bySpotlightStatusIndex ON ZWACHATSESSION (ZSPOTLIGHTSTATUS COLLATE BINARY ASC)",
+   "table": "ZWACHATSESSION",
+   "unique": false
+  },
+  "Z_WAGroupMember_byMemberJIDIndex": {
+   "sql": "CREATE INDEX Z_WAGroupMember_byMemberJIDIndex ON ZWAGROUPMEMBER (ZMEMBERJID COLLATE BINARY ASC)",
+   "table": "ZWAGROUPMEMBER",
+   "unique": false
+  },
+  "Z_WAGroupMembersChange_byChangeDateIndex": {
+   "sql": "CREATE INDEX Z_WAGroupMembersChange_byChangeDateIndex ON ZWAGROUPMEMBERSCHANGE (ZCHANGEDATE COLLATE BINARY ASC)",
+   "table": "ZWAGROUPMEMBERSCHANGE",
+   "unique": false
+  },
+  "Z_WAGroupMembersChange_byChangeTypeIndex": {
+   "sql": "CREATE INDEX Z_WAGroupMembersChange_byChangeTypeIndex ON ZWAGROUPMEMBERSCHANGE (ZCHANGETYPE COLLATE BINARY ASC)",
+   "table": "ZWAGROUPMEMBERSCHANGE",
+   "unique": false
+  },
+  "Z_WAGroupMembersChange_byGroupJIDIndex": {
+   "sql": "CREATE INDEX Z_WAGroupMembersChange_byGroupJIDIndex ON ZWAGROUPMEMBERSCHANGE (ZGROUPJID COLLATE BINARY ASC)",
+   "table": "ZWAGROUPMEMBERSCHANGE",
+   "unique": false
+  },
+  "Z_WAMediaItem_byCloudStatusIndex": {
+   "sql": "CREATE INDEX Z_WAMediaItem_byCloudStatusIndex ON ZWAMEDIAITEM (ZCLOUDSTATUS COLLATE BINARY ASC)",
+   "table": "ZWAMEDIAITEM",
+   "unique": false
+  },
+  "Z_WAMediaItem_byVCardNameIndex": {
+   "sql": "CREATE INDEX Z_WAMediaItem_byVCardNameIndex ON ZWAMEDIAITEM (ZVCARDNAME COLLATE BINARY ASC)",
+   "table": "ZWAMEDIAITEM",
+   "unique": false
+  },
+  "Z_WAMessageDataItem_compoundIndex": {
+   "sql": "CREATE INDEX Z_WAMessageDataItem_compoundIndex ON ZWAMESSAGEDATAITEM (ZCHATJID COLLATE BINARY ASC, ZTYPE COLLATE BINARY ASC, ZSECTIONID COLLATE BINARY ASC, ZDATE COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGEDATAITEM",
+   "unique": false
+  },
+  "Z_WAMessageDataItem_compoundIndex1": {
+   "sql": "CREATE INDEX Z_WAMessageDataItem_compoundIndex1 ON ZWAMESSAGEDATAITEM (ZSENDERJID COLLATE BINARY ASC, ZTYPE COLLATE BINARY ASC, ZSECTIONID COLLATE BINARY ASC, ZDATE COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGEDATAITEM",
+   "unique": false
+  },
+  "Z_WAMessage_byDocIDIndex": {
+   "sql": "CREATE INDEX Z_WAMessage_byDocIDIndex ON ZWAMESSAGE (ZDOCID COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_byMessageDateIndex": {
+   "sql": "CREATE INDEX Z_WAMessage_byMessageDateIndex ON ZWAMESSAGE (ZMESSAGEDATE COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_byMessageErrorStatusIndex": {
+   "sql": "CREATE INDEX Z_WAMessage_byMessageErrorStatusIndex ON ZWAMESSAGE (ZMESSAGEERRORSTATUS COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_byMessageStatusIndex": {
+   "sql": "CREATE INDEX Z_WAMessage_byMessageStatusIndex ON ZWAMESSAGE (ZMESSAGESTATUS COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_byMessageTypeIndex": {
+   "sql": "CREATE INDEX Z_WAMessage_byMessageTypeIndex ON ZWAMESSAGE (ZMESSAGETYPE COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_bySortIndex": {
+   "sql": "CREATE INDEX Z_WAMessage_bySortIndex ON ZWAMESSAGE (ZSORT COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_byStanzaIDIndex": {
+   "sql": "CREATE INDEX Z_WAMessage_byStanzaIDIndex ON ZWAMESSAGE (ZSTANZAID COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_byStarredIndex": {
+   "sql": "CREATE INDEX Z_WAMessage_byStarredIndex ON ZWAMESSAGE (ZSTARRED COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_compoundIndex": {
+   "sql": "CREATE INDEX Z_WAMessage_compoundIndex ON ZWAMESSAGE (ZCHATSESSION COLLATE BINARY ASC, ZSORT COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_compoundIndex1": {
+   "sql": "CREATE INDEX Z_WAMessage_compoundIndex1 ON ZWAMESSAGE (ZCHATSESSION COLLATE BINARY ASC, ZMEDIASECTIONID COLLATE BINARY ASC, ZSORT COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_compoundIndex2": {
+   "sql": "CREATE INDEX Z_WAMessage_compoundIndex2 ON ZWAMESSAGE (ZCHATSESSION COLLATE BINARY ASC, ZSTARRED COLLATE BINARY ASC, ZMESSAGEDATE COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_compoundIndex3": {
+   "sql": "CREATE INDEX Z_WAMessage_compoundIndex3 ON ZWAMESSAGE (ZDATAITEMVERSION COLLATE BINARY ASC, ZMESSAGEDATE COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAMessage_compoundIndex4": {
+   "sql": "CREATE INDEX Z_WAMessage_compoundIndex4 ON ZWAMESSAGE (ZSPOTLIGHTSTATUS COLLATE BINARY ASC, ZMESSAGEDATE COLLATE BINARY ASC)",
+   "table": "ZWAMESSAGE",
+   "unique": false
+  },
+  "Z_WAProfilePictureItem_byJidIndex": {
+   "sql": "CREATE INDEX Z_WAProfilePictureItem_byJidIndex ON ZWAPROFILEPICTUREITEM (ZJID COLLATE BINARY ASC)",
+   "table": "ZWAPROFILEPICTUREITEM",
+   "unique": false
+  },
+  "Z_WAProfilePushName_byJidIndex": {
+   "sql": "CREATE INDEX Z_WAProfilePushName_byJidIndex ON ZWAPROFILEPUSHNAME (ZJID COLLATE BINARY ASC)",
+   "table": "ZWAPROFILEPUSHNAME",
+   "unique": false
+  },
+  "Z_WAVCardMention_byDateIndex": {
+   "sql": "CREATE INDEX Z_WAVCardMention_byDateIndex ON ZWAVCARDMENTION (ZDATE COLLATE BINARY ASC)",
+   "table": "ZWAVCARDMENTION",
+   "unique": false
+  },
+  "Z_WAVCardMention_byWhatsAppIDIndex": {
+   "sql": "CREATE INDEX Z_WAVCardMention_byWhatsAppIDIndex ON ZWAVCARDMENTION (ZWHATSAPPID COLLATE BINARY ASC)",
+   "table": "ZWAVCARDMENTION",
+   "unique": false
+  },
+  "Z_WAZ1PaymentTransaction_byCredentialIdIndex": {
+   "sql": "CREATE INDEX Z_WAZ1PaymentTransaction_byCredentialIdIndex ON ZWAZ1PAYMENTTRANSACTION (ZCREDENTIALID COLLATE BINARY ASC)",
+   "table": "ZWAZ1PAYMENTTRANSACTION",
+   "unique": false
+  },
+  "Z_WAZ1PaymentTransaction_byMessageStanzaIdIndex": {
+   "sql": "CREATE INDEX Z_WAZ1PaymentTransaction_byMessageStanzaIdIndex ON ZWAZ1PAYMENTTRANSACTION (ZMESSAGESTANZAID COLLATE BINARY ASC)",
+   "table": "ZWAZ1PAYMENTTRANSACTION",
+   "unique": false
+  },
+  "Z_WAZ1PaymentTransaction_byStatusIndex": {
+   "sql": "CREATE INDEX Z_WAZ1PaymentTransaction_byStatusIndex ON ZWAZ1PAYMENTTRANSACTION (ZSTATUS COLLATE BINARY ASC)",
+   "table": "ZWAZ1PAYMENTTRANSACTION",
+   "unique": false
+  },
+  "Z_WAZ1PaymentTransaction_byTransactionIdIndex": {
+   "sql": "CREATE INDEX Z_WAZ1PaymentTransaction_byTransactionIdIndex ON ZWAZ1PAYMENTTRANSACTION (ZTRANSACTIONID COLLATE BINARY ASC)",
+   "table": "ZWAZ1PAYMENTTRANSACTION",
+   "unique": false
+  },
+  "Z_WAZ1PaymentTransaction_byTypeAndStatusIndex": {
+   "sql": "CREATE INDEX Z_WAZ1PaymentTransaction_byTypeAndStatusIndex ON ZWAZ1PAYMENTTRANSACTION (ZTYPE COLLATE BINARY ASC, ZSTATUS COLLATE BINARY ASC)",
+   "table": "ZWAZ1PAYMENTTRANSACTION",
+   "unique": false
+  },
+  "Z_WAZ1PaymentTransaction_byTypeIndex": {
+   "sql": "CREATE INDEX Z_WAZ1PaymentTransaction_byTypeIndex ON ZWAZ1PAYMENTTRANSACTION (ZTYPE COLLATE BINARY ASC)",
+   "table": "ZWAZ1PAYMENTTRANSACTION",
+   "unique": false
+  }
+ },
+ "kind": "ios",
+ "seen": [
+  {
+   "app": null,
+   "captured": "2026-10-25"
+  }
+ ],
+ "tables": {
+  "ZWABLACKLISTITEM": {
+   "columns": {
+    "ZJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWACHATPROPERTIES": {
+   "columns": {
+    "ZALERTS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZCHATSESSION": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZENABLED": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMUTEDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZSOUNDNAME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWACHATPUSHCONFIG": {
+   "columns": {
+    "ZALERTS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZMUTEDUNTIL": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZRINGTONE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSOUND": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWACHATSESSION": {
+   "columns": {
+    "ZARCHIVED": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZCONTACTABID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZCONTACTIDENTIFIER": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZCONTACTJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZETAG": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZFLAGS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZGROUPINFO": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZHIDDEN": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZIDENTITYVERIFICATIONEPOCH": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZIDENTITYVERIFICATIONSTATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZLASTMESSAGE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZLASTMESSAGEDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZLASTMESSAGETEXT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZLOCATIONSHARINGENDDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZMESSAGECOUNTER": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZPARTNERNAME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZPROPERTIES": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZREMOVED": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZSAVEDINPUT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSESSIONTYPE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZSPOTLIGHTSTATUS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZUNREADCOUNT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAGROUPINFO": {
+   "columns": {
+    "ZCHATSESSION": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZCREATIONDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZCREATORJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZLASTMESSAGEOWNER": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZOWNERJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZPICTUREID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZPICTUREPATH": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSOURCEJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSTATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZSUBJECTOWNERJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSUBJECTTIMESTAMP": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAGROUPMEMBER": {
+   "columns": {
+    "ZCHATSESSION": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZCONTACTABID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZCONTACTIDENTIFIER": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZCONTACTNAME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZFIRSTNAME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZISACTIVE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZISADMIN": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMEMBERJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZRECENTGROUPCHAT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZSENDERKEYSENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAGROUPMEMBERSCHANGE": {
+   "columns": {
+    "ZCHANGEDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZCHANGETYPE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZGROUPJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZMEMBERJIDS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZPHASHBEFORECHANGE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAMEDIAITEM": {
+   "columns": {
+    "ZASPECTRATIO": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "FLOAT"
+    },
+    "ZAUTHORNAME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZCLOUDSTATUS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZCOLLECTIONNAME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZFILESIZE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZHACCURACY": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "FLOAT"
+    },
+    "ZLATITUDE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "FLOAT"
+    },
+    "ZLONGITUDE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "FLOAT"
+    },
+    "ZMEDIAKEY": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "BLOB"
+    },
+    "ZMEDIALOCALPATH": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZMEDIAORIGIN": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMEDIAURL": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZMEDIAURLDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZMESSAGE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMETADATA": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "BLOB"
+    },
+    "ZMOVIEDURATION": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZTHUMBNAILLOCALPATH": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZTITLE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZVCARDNAME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZVCARDSTRING": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZXMPPTHUMBPATH": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAMESSAGE": {
+   "columns": {
+    "ZCHATSESSION": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZCHILDMESSAGESDELIVEREDCOUNT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZCHILDMESSAGESPLAYEDCOUNT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZCHILDMESSAGESREADCOUNT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZDATAITEMVERSION": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZDOCID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZENCRETRYCOUNT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZFILTEREDRECIPIENTCOUNT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZFLAGS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZFROMJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZGROUPEVENTTYPE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZGROUPMEMBER": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZISFROMME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZLASTSESSION": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMEDIAITEM": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMEDIASECTIONID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZMESSAGEDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZMESSAGEERRORSTATUS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMESSAGEINFO": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMESSAGESTATUS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMESSAGETYPE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZPARENTMESSAGE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZPHASH": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZPUSHNAME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSENTDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZSORT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZSPOTLIGHTSTATUS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZSTANZAID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSTARRED": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZTEXT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZTOJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAMESSAGEDATAITEM": {
+   "columns": {
+    "ZCHATJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZCONTENT1": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZCONTENT2": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZINDEX": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMATCHEDTEXT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZMESSAGE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZOWNSTHUMBNAIL": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZSECTIONID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSENDERJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSUMMARY": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZTHUMBNAILPATH": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZTITLE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZTYPE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAMESSAGEINFO": {
+   "columns": {
+    "ZMESSAGE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZRECEIPTINFO": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "BLOB"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAPROFILEPICTUREITEM": {
+   "columns": {
+    "ZJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZPATH": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZPICTUREID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZREQUESTDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAPROFILEPUSHNAME": {
+   "columns": {
+    "ZJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZPUSHNAME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAVCARDMENTION": {
+   "columns": {
+    "ZDATE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZISFROMME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZMEDIAITEM": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZSENDERJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZTRUSTEDWHENINDEXED": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZWHATSAPPID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "ZWAZ1PAYMENTTRANSACTION": {
+   "columns": {
+    "ZAMOUNT_1000": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZBANKTRANSACTIONID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZCREDENTIALID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZCURRENCY": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZERRORCODE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZGROUPJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZMESSAGESTANZAID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZMETADATA": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "BLOB"
+    },
+    "ZRECEIVERJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSENDERJID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZSTATUS": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "ZTIMESTAMP": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "TIMESTAMP"
+    },
+    "ZTRANSACTIONID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "ZTYPE": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_OPT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_PK": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "Z_METADATA": {
+   "columns": {
+    "Z_PLIST": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "BLOB"
+    },
+    "Z_UUID": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR(255)"
+    },
+    "Z_VERSION": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    }
+   }
+  },
+  "Z_MODELCACHE": {
+   "columns": {
+    "Z_CONTENT": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "BLOB"
+    }
+   }
+  },
+  "Z_PRIMARYKEY": {
+   "columns": {
+    "Z_ENT": {
+     "default": null,
+     "notnull": false,
+     "pk": true,
+     "type": "INTEGER"
+    },
+    "Z_MAX": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    },
+    "Z_NAME": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "VARCHAR"
+    },
+    "Z_SUPER": {
+     "default": null,
+     "notnull": false,
+     "pk": false,
+     "type": "INTEGER"
+    }
+   }
+  }
+ },
+ "triggers": {},
+ "version": "2.12.14",
+ "views": []
+}

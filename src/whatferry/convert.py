@@ -36,7 +36,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-from whatferry import compat, sqlite_summary, workdir
+from whatferry import compat, schema, sqlite_summary, workdir
 
 APPLE_EPOCH = 978307200
 
@@ -97,6 +97,8 @@ class Report:
     account_folder: str | None = None
     # Both databases checked against what whatferry was measured on (compat.py).
     compatibility: list[dict] = field(default_factory=list)
+    # Columns whatferry doesn't know, filled with the value WhatsApp's own rows agree on.
+    filled: dict[str, object] = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -176,6 +178,10 @@ class Target:
         self.members = {(r["ZCHATSESSION"], r["ZMEMBERJID"]): r["Z_PK"]
                         for r in self.db.execute("SELECT Z_PK, ZCHATSESSION, ZMEMBERJID FROM ZWAGROUPMEMBER")}
         self.stanzas = {(r[0], r[1]) for r in self.db.execute("SELECT ZCHATSESSION, ZSTANZAID FROM ZWAMESSAGE")}
+        # Columns newer than whatferry's snapshots, filled the way WhatsApp's own rows are.
+        known = schema.known_columns("ios")
+        self.fill = {t: schema.neighbour_values(self.db, t, known.get(t))
+                     for t in ("ZWACHATSESSION", "ZWAMESSAGE", "ZWAMEDIAITEM", "ZWAGROUPMEMBER", "ZWAGROUPINFO")}
 
     def pk(self, entity: str) -> int:
         value = self.next_pk[entity]
@@ -183,6 +189,7 @@ class Target:
         return value
 
     def insert(self, table: str, values: dict) -> None:
+        values = self.fill.get(table, {}) | values
         cols = ", ".join(values)
         marks = ", ".join("?" for _ in values)
         self.db.execute(f"INSERT INTO {table} ({cols}) VALUES ({marks})", list(values.values()))
@@ -201,6 +208,7 @@ def convert(android_db: Path, ios_db: Path, media_root: Path | None, account_fol
                     account_folder=account_folder, compatibility=checked)
     android = Android(android_db)
     target = Target(merged)
+    report.filled = {f"{t}.{c}": v for t, values in target.fill.items() for c, v in values.items()}
     # Files land where the account keeps them: data/<id>/Message/Media for a
     # further account, Message/Media for the main one.
     media_out = out / (account_folder or "") / "Message" / "Media"
