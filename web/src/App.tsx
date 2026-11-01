@@ -192,10 +192,10 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                         type="button"
                         onClick={() => go(step)}
                         disabled={blocker !== null}
-                        title={blocker ? t.nav.first(t.steps[blocker]) : undefined}
+                        title={blocker ? t.nav.first(stepName(blocker)) : undefined}
                         aria-current={active ? "step" : undefined}
                         aria-label={
-                          skipped ? `${label} (${t.stepSkipped})` : blocker ? `${label} (${t.nav.first(t.steps[blocker])})` : label
+                          skipped ? `${label} (${t.stepSkipped})` : blocker ? `${label} (${t.nav.first(stepName(blocker))})` : label
                         }
                         className="group flex w-full flex-col gap-2 rounded-sm py-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
@@ -272,7 +272,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                 )}
                 {next && (
                   <div className="flex items-center gap-3">
-                    {nextBlocker && <span className="text-sm text-muted-foreground">{t.nav.first(t.steps[nextBlocker])}</span>}
+                    {nextBlocker && <span className="text-sm text-muted-foreground">{t.nav.first(stepName(nextBlocker))}</span>}
                     <Button
                       size="lg"
                       variant={current === "start" || (current === "account" && state.destination) || isDone(current, state) || isSkipped(current, state) ? "default" : "outline"}

@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react"
 import { CircleCheck, Eye, EyeOff, FileUp, Info, RefreshCw, TriangleAlert } from "lucide-react"
 
-import { api, day, runJob, size, when, type AndroidEntry, type Candidate } from "@/api"
+import { api, day, num, runJob, size, when, type AndroidEntry, type Candidate } from "@/api"
 import { Busy, Disclosure, ErrorNotice, Instructions, PageHeader, Path, Section, StatGrid } from "@/components/bits"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -297,7 +297,7 @@ function AndroidResult({ entry }: { entry: AndroidEntry }) {
                 {Object.entries(r.jid_servers).map(([server, n]) => (
                   <TableRow key={server}>
                     <TableCell className="font-mono text-xs">{server}</TableCell>
-                    <TableCell className="text-right tabular-nums">{n.toLocaleString()}</TableCell>
+                    <TableCell className="text-right tabular-nums">{num(n)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

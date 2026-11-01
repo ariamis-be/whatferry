@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Check, Copy, RotateCcw } from "lucide-react"
 
 import { api } from "@/api"
-import { Disclosure, PageHeader, Section } from "@/components/bits"
+import { Disclosure, ErrorNotice, PageHeader, Section } from "@/components/bits"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useI18n } from "@/i18n"
@@ -12,6 +12,7 @@ export function ResultsStep({ overview, refresh, go }: StepProps) {
   const { t } = useI18n()
   const [text, setText] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let live = true
@@ -24,15 +25,25 @@ export function ResultsStep({ overview, refresh, go }: StepProps) {
   }, [])
 
   async function copy() {
-    await navigator.clipboard.writeText(text ?? "")
+    setError(null)
+    try {
+      await navigator.clipboard.writeText(text ?? "")
+    } catch (e) {
+      return setError((e as Error).message)
+    }
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   async function startOver() {
     if (!confirm(t.results.confirmReset)) return
-    await api("POST", "/api/reset", {})
-    await refresh()
+    setError(null)
+    try {
+      await api("POST", "/api/reset", {})
+      await refresh()
+    } catch (e) {
+      return setError((e as Error).message)
+    }
     go("start")
   }
 
@@ -57,6 +68,7 @@ export function ResultsStep({ overview, refresh, go }: StepProps) {
           {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
           {copied ? t.results.copied : t.results.copy}
         </Button>
+        <ErrorNotice message={error} />
       </div>
 
       <Section title={t.results.nextTitle}>

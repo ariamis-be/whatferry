@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { GitMerge, Info, TriangleAlert } from "lucide-react"
 
 import { api, num, type Destination, type DestinationHint } from "@/api"
+import { ErrorNotice } from "@/components/bits"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -71,11 +72,16 @@ export function DestinationChoice({ overview, refresh }: Pick<StepProps, "overvi
   const { t } = useI18n()
   const hint = overview.destination_hint
   const saved = overview.state.destination
-  const [choice, setChoice] = useState<Destination | undefined>(saved ?? hint?.suggested)
+  // What was clicked, until the server has it: then what it saved, else the suggestion.
+  const [picked, setPicked] = useState<Destination | undefined>()
+  const [error, setError] = useState<string | null>(null)
+  const choice = picked ?? saved ?? hint?.suggested
+  const pickedRef = useRef(false)
 
-  // The suggestion counts as chosen until changed, so Continue just works.
+  // The suggestion counts as chosen until changed, so Continue just works;
+  // never over a choice made meanwhile.
   useEffect(() => {
-    if (hint && !saved) {
+    if (hint && !saved && !pickedRef.current) {
       api("POST", "/api/destination", { choice: hint.suggested }).then(refresh).catch(() => {})
     }
   }, [hint, saved, refresh])
@@ -83,13 +89,17 @@ export function DestinationChoice({ overview, refresh }: Pick<StepProps, "overvi
   if (!hint) return null
 
   async function pick(value: string) {
-    setChoice(value as Destination)
+    pickedRef.current = true
+    setPicked(value as Destination)
+    setError(null)
     try {
       await api("POST", "/api/destination", { choice: value })
       await refresh()
-    } catch {
-      // The radio keeps showing what was picked.
+    } catch (e) {
+      setError((e as Error).message)
     }
+    // Back to what the server holds: the new choice once saved, the old one if not.
+    setPicked(undefined)
   }
 
   // Folders already tied to a known account are shown with it, not again.
@@ -135,6 +145,7 @@ export function DestinationChoice({ overview, refresh }: Pick<StepProps, "overvi
             </Label>
           ))}
         </RadioGroup>
+        <ErrorNotice message={error} />
         {choice === "second" && hint.full && (
           <Alert>
             <TriangleAlert />

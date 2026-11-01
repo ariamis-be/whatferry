@@ -42,8 +42,6 @@ export function AndroidCopyStep({ overview, refresh }: StepProps) {
     const ready = found.devices.filter((d) => d.ready)
     const phone = ready.length === 1 ? ready[0] : undefined
     setSerial((s) => s || phone?.serial || "")
-    const folders = phone?.folders ?? []
-    setFolder((f) => f || (folders.includes(found.suggested_folder) ? found.suggested_folder : (folders[0] ?? "")))
   }, [])
 
   useEffect(() => {
@@ -61,12 +59,19 @@ export function AndroidCopyStep({ overview, refresh }: StepProps) {
 
   if (!written) return null
   const phone = status?.devices.find((d) => d.serial === serial)
+  // Only ever one of this phone's own folders: a choice made for another phone doesn't carry over.
+  const folders = phone?.folders ?? []
+  const target = folders.includes(folder)
+    ? folder
+    : folders.includes(status?.suggested_folder ?? "")
+      ? (status?.suggested_folder ?? "")
+      : (folders[0] ?? "")
 
   async function copy() {
     setBusy(true)
     setError(null)
     try {
-      await runJob("/api/restore", { confirmed: true, serial, folder })
+      await runJob("/api/restore", { confirmed: true, serial, folder: target })
       await refresh()
     } catch (e) {
       setError((e as Error).message)
@@ -117,11 +122,11 @@ export function AndroidCopyStep({ overview, refresh }: StepProps) {
           </RadioGroup>
         )}
         <ErrorNotice message={status?.error ?? phone?.error} />
-        {phone?.folders && phone.folders.length > 1 && (
+        {folders.length > 1 && (
           <div className="space-y-2">
             <p className="text-sm">{t.copy.whichFolder}</p>
-            <RadioGroup value={folder} onValueChange={setFolder} aria-label={t.copy.whichFolder}>
-              {phone.folders.map((f) => (
+            <RadioGroup value={target} onValueChange={setFolder} aria-label={t.copy.whichFolder}>
+              {folders.map((f) => (
                 <Label key={f} htmlFor={`folder-${f}`} className={OPTION}>
                   <RadioGroupItem value={f} id={`folder-${f}`} className="mt-0.5" />
                   <Path className="text-foreground">{f}</Path>
@@ -145,7 +150,7 @@ export function AndroidCopyStep({ overview, refresh }: StepProps) {
       <div className="space-y-4">
         <ErrorNotice message={error} />
         {busy && <Busy>{t.copy.working}</Busy>}
-        <Button disabled={!phone?.ready || !folder || !cleared || busy} onClick={copy}>
+        <Button disabled={!phone?.ready || !target || !cleared || busy} onClick={copy}>
           {state.restored ? t.copy.again : t.copy.run}
         </Button>
         {state.restored && (

@@ -304,7 +304,7 @@ function ConvertResult({ entry, toAndroid }: { entry: ConvertedEntry; toAndroid:
             <TriangleAlert />
             <AlertTitle>{t.convert.checksFailed}</AlertTitle>
             <AlertDescription>
-              {[`integrity: ${String(r.checks.integrity)}`, ...problems.map(([k, v]) => `${k}: ${num(v as number)}`)].join(" · ")}
+              {[t.convert.integrity(String(r.checks.integrity)),...problems.map(([k, v]) => `${k}: ${num(v as number)}`)].join(" · ")}
             </AlertDescription>
           </Alert>
         )}

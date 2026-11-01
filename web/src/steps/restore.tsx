@@ -12,6 +12,12 @@ import { useI18n } from "@/i18n"
 import { AndroidCopyStep } from "@/steps/android-copy"
 import type { StepProps } from "@/wizard"
 
+/** iOS names have a curly ’ ("Anna’s iPhone") most keyboards don't type: ' counts the same, as does case. */
+function sameName(typed: string, name: string) {
+  const plain = (s: string) => s.normalize("NFKC").replace(/[‘’]/g, "'").trim().toLowerCase()
+  return plain(typed) === plain(name)
+}
+
 function findPhone(): Promise<RestoreStatus> {
   return api<RestoreStatus>("GET", "/api/restore/status").catch((e: Error) => ({
     phones: [],
@@ -82,7 +88,7 @@ function IphoneRestoreStep({ overview, refresh, go }: StepProps) {
   const name = phone ? (phone.name || phone.udid.slice(-6)) : ""
   const phoneReady = Boolean(phone?.paired && phone.find_my === false)
   const busy = progress !== null
-  const canRestore = phoneReady && name !== "" && typed.trim() === name && (!encrypted || Boolean(passphrase)) && !busy
+  const canRestore = phoneReady && name !== "" && sameName(typed, name) && (!encrypted || Boolean(passphrase)) && !busy
 
   async function run() {
     setProgress(0)

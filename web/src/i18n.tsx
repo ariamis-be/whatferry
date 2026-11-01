@@ -458,6 +458,7 @@ const en = {
     doneLine: (at: string) => `Converted ${at}.`,
     checksClean: "The merged database passed every consistency check.",
     checksFailed: "The merged database failed a consistency check",
+    integrity: (result: string) => `integrity: ${result}`,
     skipped: (n: string) =>
       `${n} event${n === "1" ? "" : "s"} WhatsApp keeps differently on each phone (system notices, calls, polls and the like) ${n === "1" ? "is" : "are"} left out.`,
     notYet: (what: string, n: string) => `${what}: ${n}, not carried over yet (the messages themselves are).`,
@@ -1060,6 +1061,7 @@ const zh: Messages = {
     doneLine: (at) => `转换于 ${at}。`,
     checksClean: "合并后的数据库通过了所有一致性检查。",
     checksFailed: "合并后的数据库未通过一致性检查",
+    integrity: (result) => `完整性：${result}`,
     skipped: (n) => `有 ${n} 个在两种手机上保存方式不同的事件（系统通知、通话、投票等）未包含在内。`,
     notYet: (what, n) => `${what}：${n} 条，暂未转移（消息本身已转移）。`,
   },

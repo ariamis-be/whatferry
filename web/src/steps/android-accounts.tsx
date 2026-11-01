@@ -1,6 +1,8 @@
+import { useState } from "react"
 import { Check } from "lucide-react"
 
 import { api, num } from "@/api"
+import { ErrorNotice } from "@/components/bits"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,11 +13,17 @@ import type { StepProps } from "@/wizard"
 export function AndroidAccounts({ overview, refresh }: Pick<StepProps, "overview" | "refresh">) {
   const { t } = useI18n()
   const accounts = overview.android_accounts
+  const [error, setError] = useState<string | null>(null)
   if (accounts.length === 0) return null
 
   async function select(key: string) {
-    await api("POST", "/api/android/select", { key })
-    await refresh()
+    setError(null)
+    try {
+      await api("POST", "/api/android/select", { key })
+      await refresh()
+    } catch (e) {
+      setError((e as Error).message)
+    }
   }
 
   return (
@@ -54,6 +62,7 @@ export function AndroidAccounts({ overview, refresh }: Pick<StepProps, "overview
             </li>
           ))}
         </ul>
+        <ErrorNotice message={error} />
       </CardContent>
     </Card>
   )
