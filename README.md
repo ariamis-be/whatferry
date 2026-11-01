@@ -121,7 +121,10 @@ Converted: text, images, videos, audio and voice notes, documents, GIFs,
 stickers, locations, contact cards, deleted-message placeholders. Not yet:
 quoted replies, reactions, polls, calls, system notices (all counted in the
 report). Left empty, pending a test on a phone: the search index ID
-(ZDOCID), media download keys and the ZMETADATA thumbnail blob.
+(ZDOCID), media download keys and the ZMETADATA thumbnail blob. Search in
+WhatsApp on the iPhone may not find the moved messages until it rebuilds its
+own index: that index uses a tokenizer only the app has, so whatferry can't
+add to it.
 
 ## Writing the result into a backup
 

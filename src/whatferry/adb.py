@@ -107,7 +107,10 @@ class Device:
 
 
 def devices(adb: Path) -> list[Device]:
-    out = _run(adb, "devices", "-l").stdout
+    result = _run(adb, "devices", "-l")
+    if result.returncode != 0:
+        raise AdbError(f"adb couldn't list phones: {(result.stderr or result.stdout).strip() or 'no reason given'}")
+    out = result.stdout
     found = []
     for line in out.splitlines()[1:]:
         if not line.strip() or line.startswith("*"):
@@ -172,8 +175,13 @@ def phone_backups(adb: Path, serial: str) -> list[PhoneBackup]:
     """Every WhatsApp chat backup on the phone, newest first."""
     # stat on globs the phone's own shell expands; folders that don't exist
     # just print nothing.
-    command = "stat -c '%s|%Y|%n' " + " ".join(BACKUP_GLOBS) + " 2>/dev/null"
-    out = _run(adb, "-s", serial, "shell", command).stdout
+    # `; true`: stat fails for globs that match nothing, which is fine; a
+    # failure of adb itself (the phone gone) still shows.
+    command = "stat -c '%s|%Y|%n' " + " ".join(BACKUP_GLOBS) + " 2>/dev/null; true"
+    result = _run(adb, "-s", serial, "shell", command)
+    if result.returncode != 0:
+        raise AdbError(f"the phone didn't answer: {(result.stderr or result.stdout).strip() or 'adb gave no reason'}")
+    out = result.stdout
     found = []
     for line in out.splitlines():
         parts = line.strip().split("|", 2)
