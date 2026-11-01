@@ -12,14 +12,20 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+from wa_crypt_tools.lib.db.db14 import Database14
 from wa_crypt_tools.lib.db.dbfactory import DatabaseFactory
+from wa_crypt_tools.lib.key.key15 import Key15
 from wa_crypt_tools.lib.key.keyfactory import KeyFactory
 
 from whatferry import sqlite_summary, workdir
 
 # wa-crypt-tools logs freely, including a "your phone number ends with" line;
-# whatferry reports what it needs itself.
-logging.getLogger("wa_crypt_tools").setLevel(logging.CRITICAL)
+# whatferry reports what it needs itself. Even CRITICAL lines would reach
+# stderr through Python's last-resort handler, so nothing gets through.
+_library_log = logging.getLogger("wa_crypt_tools")
+_library_log.setLevel(logging.CRITICAL + 1)
+_library_log.addHandler(logging.NullHandler())
+_library_log.propagate = False
 
 
 class DecryptError(Exception):
@@ -59,7 +65,16 @@ def decrypt(encrypted: Path, key) -> tuple[bytes, BackupHeader]:
             db = DatabaseFactory.from_file(f)
         except Exception as e:
             raise DecryptError(f"{encrypted.name} is not a WhatsApp crypt14/15 backup: {e}") from e
-        payload = db.decrypt(key, f.read())
+        if db is None:
+            raise DecryptError(f"{encrypted.name} is not a WhatsApp crypt14/15 backup")
+        if isinstance(db, Database14) and isinstance(key, Key15):
+            raise DecryptError(f"{encrypted.name} is a crypt14 backup: its key only exists on a rooted phone, "
+                               "not as the 64-digit key. Turn on the end-to-end encrypted backup with the "
+                               "64-digit key and back up again to get a .crypt15 file")
+        try:
+            payload = db.decrypt(key, f.read())
+        except Exception as e:  # noqa: BLE001 - the library's own errors for a header it misread
+            raise DecryptError(f"{encrypted.name} couldn't be decrypted: {e}") from e
     # The factory keeps the parsed header's info (BackupExpiry) in db.props;
     # crypt12 backups have none.
     props = getattr(db, "props", None)

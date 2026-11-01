@@ -48,10 +48,12 @@ def check_same_source(reference: Path, key, convert_run: Path) -> None:
     """Refuse an Android backup other than the one the conversion merged into."""
     try:
         made_from = json.loads((convert_run / "report.json").read_text())
-    except FileNotFoundError:
-        raise AndroidWriteError(f"{convert_run} has no conversion report: convert again") from None
+    except (OSError, ValueError):
+        raise AndroidWriteError(f"{convert_run} has no readable conversion report: convert again") from None
     if made_from.get("direction") != "iphone-to-android":
         raise AndroidWriteError(f"{convert_run} is an Android -> iPhone conversion")
+    if not made_from.get("source_sha256"):
+        raise AndroidWriteError("this conversion doesn't record which Android backup it was made from: convert again")
     plain, _ = android.decrypt(reference, key)
     if hashlib.sha256(plain).hexdigest() != made_from.get("source_sha256"):
         raise AndroidWriteError("this Android backup isn't the one the conversion was made from: check the newest "

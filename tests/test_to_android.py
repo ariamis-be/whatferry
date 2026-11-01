@@ -4,8 +4,11 @@ import json
 import sqlite3
 import stat
 import sys
+from collections import Counter
 from contextlib import closing
+from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from wa_crypt_tools.lib.key.keyfactory import KeyFactory
@@ -159,6 +162,56 @@ def test_existing_messages_are_recognised_and_history_sorts_before_them(iphone, 
     assert report.checks["duplicate sort ids"] == 0 and report.checks["sort out of time order"] == 0
 
 
+def test_a_linked_devices_jid_row_doesnt_hide_the_chat(iphone, tmp_path):
+    """WhatsApp keeps a jid row per linked device of a contact; the chat is on the device-0 one."""
+    ios_db, media = iphone
+    template = make_sqlite(tmp_path / "template.db", TEMPLATE + """
+        INSERT INTO jid (_id, user, server, agent, device, type, raw_string)
+          VALUES (50, '32470000111', 's.whatsapp.net', 0, 0, 0, NULL), (52, '32470000111', 's.whatsapp.net', 0, 3, 0, NULL);
+        INSERT INTO chat (_id, jid_row_id, hidden) VALUES (60, 50, 0);
+    """)
+    report, run = to_android.convert(ios_db, template, media)
+    assert report.chats_matched == 1 and report.chats_created == 1  # the contact matched, the group created
+    assert rows(run / "files" / "msgstore.db", "SELECT count(*) FROM chat WHERE jid_row_id = 52") == [(0,)]
+
+
+def test_an_iphone_chat_named_by_privacy_id_finds_the_chat_on_the_number(iphone, tmp_path):
+    ios_db, media = iphone
+    with closing(sqlite3.connect(ios_db)) as db:
+        db.execute("UPDATE ZWACHATSESSION SET ZCONTACTJID = '999111@lid' "
+                   "WHERE ZCONTACTJID = '32470000111@s.whatsapp.net'")
+        db.commit()
+    template = make_sqlite(tmp_path / "template.db", TEMPLATE + """
+        INSERT INTO jid (_id, user, server, agent, device, type, raw_string)
+          VALUES (50, '32470000111', 's.whatsapp.net', 0, 0, 0, NULL), (51, '999111', 'lid', 0, 0, 18, NULL);
+        INSERT INTO jid_map VALUES (51, 50, 1);
+        INSERT INTO chat (_id, jid_row_id, hidden) VALUES (60, 50, 0);
+    """)
+    report, _ = to_android.convert(ios_db, template, media)
+    assert report.chats_matched == 1 and report.chats_created == 1
+
+
+def test_new_sort_ids_never_reuse_another_chats(iphone, tmp_path):
+    """An existing chat whose sort ids run above every row id: new rows must not land on them."""
+    ios_db, media = iphone
+    template = make_sqlite(tmp_path / "template.db", TEMPLATE + f"""
+        INSERT INTO jid (_id, user, server, agent, device, type, raw_string)
+          VALUES (80, '32470000777', 's.whatsapp.net', 0, 0, 0, NULL);
+        INSERT INTO chat (_id, jid_row_id, hidden) VALUES (90, 80, 0);
+        INSERT INTO message (_id, chat_row_id, from_me, key_id, timestamp, message_type, text_data, sort_id)
+          VALUES (1, 90, 1, 'other', {T0}, 0, 'x', 2), (2, 90, 1, 'other2', {T0 + 1}, 0, 'y', 3);
+    """)
+    report, _ = to_android.convert(ios_db, template, media)
+    assert report.checks["duplicate sort ids"] == 0
+
+
+def test_voice_note_week_folders_use_the_weeks_own_year(tmp_path):
+    # Midday on 2027-01-01, in ISO week 53 of 2026 in every time zone.
+    ms = int(datetime(2027, 1, 1, 12, tzinfo=UTC).timestamp() * 1000)
+    rel = to_android._place(SimpleNamespace(names=set()), b"OggS", 2, 0, ms, ".opus", None, tmp_path, Counter())
+    assert rel == "Media/WhatsApp Voice Notes/202653/PTT-20270101-WF0001.opus"
+
+
 def test_a_database_missing_a_column_is_refused(iphone, tmp_path):
     ios_db, media = iphone
     template = make_sqlite(tmp_path / "template.db", TEMPLATE.replace("received_timestamp INTEGER,", ""))
@@ -208,6 +261,13 @@ def test_writer_refuses_another_backup_unless_told(converted, tmp_path):
     assert not report.source_checked
     with pytest.raises(android.DecryptError):
         android_writer.write_backup(reference, KeyFactory.from_hex(OTHER_KEY), run)
+
+
+def test_writer_refuses_a_damaged_report(converted):
+    reference, run = converted
+    (run / "report.json").write_text('{"cut sh')
+    with pytest.raises(AndroidWriteError, match="no readable conversion report"):
+        android_writer.write_backup(reference, KeyFactory.from_hex(KEY), run)
 
 
 def test_writer_refuses_a_forward_conversion(converted, tmp_path):

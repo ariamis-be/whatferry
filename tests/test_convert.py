@@ -182,6 +182,18 @@ def test_group_senders_are_matched_by_privacy_id_or_added(converted):
     assert (sent["ZTOJID"], sent["ZGROUPMEMBER"]) == ("120363000@g.us", None)
 
 
+def test_history_goes_to_the_live_chat_not_a_deleted_one(inputs):
+    """A deleted session for the group, made after the live one, is passed over."""
+    android, ios, media = inputs
+    with closing(sqlite3.connect(ios)) as db:
+        db.execute("INSERT INTO ZWACHATSESSION (Z_PK, Z_ENT, ZSESSIONTYPE, ZCONTACTJID, ZPARTNERNAME, ZREMOVED) "
+                   "VALUES (9, 4, 1, '120363000@g.us', 'Family', 1)")
+        db.commit()
+    _, run = convert.convert(android, ios, media, ACCOUNT)
+    with closing(sqlite3.connect(run / "files" / "ChatStorage.sqlite")) as db:
+        assert one(db, "SELECT ZCHATSESSION FROM ZWAMESSAGE WHERE ZSTANZAID = 'k-g1'")[0] == 1
+
+
 def test_history_sorts_before_what_the_account_already_had(converted):
     _, _, db = converted
     order = [r[0] for r in db.execute("SELECT ZSTANZAID FROM ZWAMESSAGE WHERE ZCHATSESSION = 1 ORDER BY ZSORT")]

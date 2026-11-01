@@ -4,6 +4,7 @@ import sys
 import zlib
 
 import pytest
+from wa_crypt_tools.lib.db.db14 import Database14
 from wa_crypt_tools.lib.db.db15 import Database15
 from wa_crypt_tools.lib.key.keyfactory import KeyFactory
 from wa_crypt_tools.lib.props import Props
@@ -74,6 +75,22 @@ def test_wrong_key_is_refused_not_written(msgstore, tmp_path, private_home):
     with pytest.raises(android.DecryptError, match="key does not match"):
         android.inspect(backup, android.parse_key(OTHER_KEY))
     assert not list(private_home.glob("*/msgstore.db"))
+
+
+def test_a_crypt14_backup_with_the_64_digit_key_says_why(tmp_path, monkeypatch):
+    backup = tmp_path / "msgstore.db.crypt14"
+    backup.write_bytes(b"a crypt14 file")
+    monkeypatch.setattr(android.DatabaseFactory, "from_file", staticmethod(lambda f: Database14()))
+    with pytest.raises(android.DecryptError, match="crypt14 backup: its key only exists on a rooted phone"):
+        android.decrypt(backup, android.parse_key(KEY))
+
+
+def test_a_header_the_library_cant_place_is_a_decrypt_error(tmp_path, monkeypatch):
+    backup = tmp_path / "msgstore.db.crypt15"
+    backup.write_bytes(b"not a backup")
+    monkeypatch.setattr(android.DatabaseFactory, "from_file", staticmethod(lambda f: None))
+    with pytest.raises(android.DecryptError, match="not a WhatsApp crypt14/15 backup"):
+        android.decrypt(backup, android.parse_key(KEY))
 
 
 @pytest.mark.parametrize("text", ["", "123", "g" * 64, KEY + "0"])

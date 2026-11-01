@@ -7,6 +7,7 @@ profile's own access list, which by default admits only that user (and
 administrators), so the default location under the profile stays private.
 """
 
+import hashlib
 import os
 import re
 import sys
@@ -73,6 +74,16 @@ def open_private(path: Path) -> BinaryIO:
 def write_private(path: Path, data: bytes) -> None:
     with open_private(path) as f:
         f.write(data)
+
+
+def copy_private(source: Path, path: Path) -> str:
+    """Copy a file into a new owner-only one, in chunks; returns the SHA-256 of what was copied."""
+    digest = hashlib.sha256()
+    with source.open("rb") as src, open_private(path) as out:
+        while chunk := src.read(1 << 20):
+            digest.update(chunk)
+            out.write(chunk)
+    return digest.hexdigest()
 
 
 def replace_private(path: Path, data: bytes) -> None:

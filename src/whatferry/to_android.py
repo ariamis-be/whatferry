@@ -130,9 +130,14 @@ class Target:
         self.columns = {t: {r[1] for r in self.db.execute(f"PRAGMA table_info('{t}')")}
                         for t in ("message", "chat", "jid", "message_media", "message_location", "message_vcard",
                                   "group_participant_user", "jid_map")}
-        self.jids = {(r["user"], r["server"]): r["_id"] for r in self.db.execute("SELECT _id, user, server FROM jid")}
+        # One row per person or group: WhatsApp also keeps a row per linked
+        # device (agent or device not 0) for the same user, which no chat uses.
+        device = " AND ".join(f"coalesce({c}, 0) = 0" for c in ("agent", "device") if c in self.columns["jid"])
+        self.jids = {(r["user"], r["server"]): r["_id"] for r in self.db.execute(
+            f"SELECT _id, user, server FROM jid {'WHERE ' + device if device else ''} ORDER BY _id DESC")}
         self.lid_of = {phone: lid for lid, phone in self.db.execute("SELECT lid_row_id, jid_row_id FROM jid_map")} \
             if self.columns["jid_map"] else {}
+        self.phone_of = {lid: phone for phone, lid in self.lid_of.items()}
         self.chats = {r["jid_row_id"]: r["_id"] for r in self.db.execute("SELECT _id, jid_row_id FROM chat")}
         self.keys = {(r[0], r[1], r[2]) for r in self.db.execute("SELECT chat_row_id, from_me, key_id FROM message")}
         self.members = {(r[0], r[1]) for r in self.db.execute(
@@ -165,7 +170,7 @@ class Source:
     """Read-side helpers over the iPhone account's ChatStorage.sqlite."""
 
     def __init__(self, path: Path):
-        self.db = sqlite3.connect(f"file:{path.resolve()}?mode=ro&immutable=1", uri=True)
+        self.db = sqlite3.connect(sqlite_summary.read_only_uri(path), uri=True)
         self.db.row_factory = sqlite3.Row
         self.members = {r["Z_PK"]: r["ZMEMBERJID"] for r in self.db.execute("SELECT Z_PK, ZMEMBERJID FROM ZWAGROUPMEMBER")}
 
@@ -179,8 +184,7 @@ def convert(ios_db: Path, android_db: Path, media: MediaReader | None, account_f
     out = run / "files"
     out.mkdir(mode=0o700)
     merged = out / "msgstore.db"
-    workdir.write_private(merged, android_db.read_bytes())
-    report = Report(output=str(run), source_sha256=hashlib.sha256(android_db.read_bytes()).hexdigest(),
+    report = Report(output=str(run), source_sha256=workdir.copy_private(android_db, merged),
                     account_folder=account_folder, compatibility=checked)
     with sqlite_summary.open_read_only(android_db) as before:
         report.checks_before = check(before)
@@ -213,8 +217,11 @@ def _chats(source: Source, target: Target, report: Report) -> dict[int, int]:
             continue
         group = jid.endswith("@g.us")
         jid_row = target.jid(jid)
+        # The chat may be kept under the person's number or their privacy ID
+        # (@lid), and the iPhone may name it by either.
         lid_row = target.lid_of.get(jid_row)
-        existing = target.chats.get(jid_row) or (target.chats.get(lid_row) if lid_row else None)
+        phone_row = target.phone_of.get(jid_row)
+        existing = next((target.chats[r] for r in (jid_row, lid_row, phone_row) if r and r in target.chats), None)
         if existing:
             if existing not in out.values():
                 report.chats_matched += 1
@@ -335,11 +342,12 @@ def _media(target: Target, m, row: int, chat: int, kind: int, from_me: int, ms: 
 def _place(target: Target, data: bytes, kind: int, from_me: int, ms: int, suffix: str, title: str | None, out: Path,
            numbers: dict) -> str:
     """Write one file where WhatsApp for Android keeps it; returns its file_path."""
-    day = datetime.fromtimestamp(ms / 1000, UTC)
+    # WhatsApp names files by the phone's own date: this computer's time zone stands in for it.
+    day = datetime.fromtimestamp(ms / 1000, UTC).astimezone()
     folder, prefix, default = VOICE if kind == 2 and suffix == ".opus" else FOLDERS[kind]
     parts = [folder]
     if prefix == "PTT":
-        parts.append(day.strftime("%Y%V"))  # voice notes go in week folders
+        parts.append(day.strftime("%G%V"))  # voice notes go in ISO week folders: the week's own year
     elif from_me:
         parts.append("Sent")
     if kind == 9 and title and PurePosixPath(title).name == title and not title.startswith("."):
@@ -367,14 +375,21 @@ def _place(target: Target, data: bytes, kind: int, from_me: int, ms: int, suffix
 def _resort(target: Target, chats: list[int]) -> None:
     """sort_id orders a chat's messages: renumber each touched chat by time, reusing its own numbers.
 
-    The chat's existing sort ids and the new rows' ids together are handed out
-    again in time order, so they stay unique across chats and the history
-    lands in place even when it's older than what the chat already has.
+    The chat's existing sort ids, and for each new row a number above every
+    sort id and row id in the database, are handed out again in time order:
+    they stay unique across chats, and the history lands in place even when
+    it's older than what the chat already has.
     """
+    fresh = target.db.execute("SELECT max(coalesce(max(sort_id), 0), max(_id)) FROM message").fetchone()[0] or 0
     for chat in chats:
         rows = target.db.execute("SELECT _id, sort_id FROM message WHERE chat_row_id = ? ORDER BY timestamp, _id",
                                  (chat,)).fetchall()
-        pool = sorted(r["sort_id"] if r["sort_id"] else r["_id"] for r in rows)
+        pool = []
+        for r in rows:
+            if not r["sort_id"]:
+                fresh += 1
+            pool.append(r["sort_id"] or fresh)
+        pool.sort()
         target.db.executemany("UPDATE message SET sort_id = ? WHERE _id = ?",
                               [(sort, r["_id"]) for sort, r in zip(pool, rows)])
 

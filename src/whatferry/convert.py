@@ -121,7 +121,7 @@ class Android:
     """Read-side helpers over a decrypted msgstore.db."""
 
     def __init__(self, path: Path):
-        self.db = sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True)
+        self.db = sqlite3.connect(sqlite_summary.read_only_uri(path), uri=True)
         self.db.row_factory = sqlite3.Row
         self.jids = {r["_id"]: r for r in self.db.execute("SELECT _id, user, server, raw_string FROM jid")}
         self.lid_to_phone = dict(self.db.execute("SELECT lid_row_id, jid_row_id FROM jid_map")) \
@@ -174,7 +174,11 @@ class Target:
                         for name, table in (("WAChatSession", "ZWACHATSESSION"), ("WAMessage", "ZWAMESSAGE"),
                                             ("WAMediaItem", "ZWAMEDIAITEM"), ("WAGroupMember", "ZWAGROUPMEMBER"),
                                             ("WAGroupInfo", "ZWAGROUPINFO"))}
-        self.sessions = {r["ZCONTACTJID"]: r["Z_PK"] for r in self.db.execute("SELECT Z_PK, ZCONTACTJID FROM ZWACHATSESSION")}
+        # A JID can have a deleted or hidden session left beside the live one:
+        # listed first, so the live one is the one kept.
+        self.sessions = {r["ZCONTACTJID"]: r["Z_PK"] for r in self.db.execute(
+            "SELECT Z_PK, ZCONTACTJID FROM ZWACHATSESSION "
+            "ORDER BY coalesce(ZREMOVED, 0) DESC, coalesce(ZHIDDEN, 0) DESC, Z_PK")}
         self.members = {(r["ZCHATSESSION"], r["ZMEMBERJID"]): r["Z_PK"]
                         for r in self.db.execute("SELECT Z_PK, ZCHATSESSION, ZMEMBERJID FROM ZWAGROUPMEMBER")}
         self.stanzas = {(r[0], r[1]) for r in self.db.execute("SELECT ZCHATSESSION, ZSTANZAID FROM ZWAMESSAGE")}
@@ -203,8 +207,7 @@ def convert(android_db: Path, ios_db: Path, media_root: Path | None, account_fol
     out = run / "files"
     out.mkdir(mode=0o700)
     merged = out / "ChatStorage.sqlite"
-    workdir.write_private(merged, ios_db.read_bytes())
-    report = Report(output=str(run), source_sha256=hashlib.sha256(ios_db.read_bytes()).hexdigest(),
+    report = Report(output=str(run), source_sha256=workdir.copy_private(ios_db, merged),
                     account_folder=account_folder, compatibility=checked)
     android = Android(android_db)
     target = Target(merged)
@@ -237,7 +240,7 @@ def _sessions(android: Android, target: Target, report: Report) -> dict[int, int
     chats = android.db.execute(
         "SELECT c._id, c.jid_row_id, c.subject, c.archived, c.created_timestamp FROM chat c "
         f"WHERE EXISTS (SELECT 1 FROM message m WHERE m.chat_row_id = c._id AND m.message_type IN ({kinds}) "
-        "AND m.key_id IS NOT NULL AND m.timestamp > 0)").fetchall()
+        "AND coalesce(m.key_id, '') != '' AND m.timestamp > 0)").fetchall()
     for chat in chats:
         jid = android.jid(chat["jid_row_id"])
         if jid is None or jid.endswith("@broadcast"):
@@ -471,7 +474,8 @@ def check(db: sqlite3.Connection) -> dict[str, object]:
             "WHEN 'WAMessage' THEN (SELECT max(Z_PK) FROM ZWAMESSAGE) "
             "WHEN 'WAChatSession' THEN (SELECT max(Z_PK) FROM ZWACHATSESSION) "
             "WHEN 'WAMediaItem' THEN (SELECT max(Z_PK) FROM ZWAMEDIAITEM) "
-            "WHEN 'WAGroupMember' THEN (SELECT max(Z_PK) FROM ZWAGROUPMEMBER) ELSE 0 END"),
+            "WHEN 'WAGroupMember' THEN (SELECT max(Z_PK) FROM ZWAGROUPMEMBER) "
+            "WHEN 'WAGroupInfo' THEN (SELECT max(Z_PK) FROM ZWAGROUPINFO) ELSE 0 END"),
         "messages": one("SELECT count(*) FROM ZWAMESSAGE"),
         "chats": one("SELECT count(*) FROM ZWACHATSESSION"),
         "first message": _date(one("SELECT min(ZMESSAGEDATE) FROM ZWAMESSAGE WHERE ZMESSAGEDATE > 0")),
