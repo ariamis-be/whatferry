@@ -89,6 +89,17 @@ def test_contacts_never_pass_for_accounts(tmp_path):
         assert secret not in text
 
 
+def test_a_further_account_without_its_folder_has_no_chats(tmp_path):
+    """Its data/<id>/ folder isn't in the backup: the main account's chats aren't its."""
+    fake = FakeBackup(tmp_path / "UDID")
+    store, _ = chat_storage(tmp_path / "ChatStorage.sqlite", messages=1)
+    fake.add(SHARED, "ChatStorage.sqlite", store)
+    fake.add(SHARED, PREFS, shared_prefs(f"{OWN_NUMBER}@s.whatsapp.net",
+                                         LastOwnJabberID_0A1B2C3D=f"{SECOND_NUMBER}@s.whatsapp.net"))
+    report, _ = ios.inspect(Backup(fake.folder))
+    assert [(a.main, a.folder, a.has_chats) for a in report.accounts] == [(True, None, True), (False, None, False)]
+
+
 def test_number_without_lid_database(tmp_path):
     fake = FakeBackup(tmp_path / "UDID")
     fake.add(SHARED, PREFS, shared_prefs(f"{OWN_NUMBER}@s.whatsapp.net"))

@@ -38,7 +38,8 @@ from iphone_backup_decrypt import EncryptedBackup
 from iphone_backup_decrypt.exceptions import IncorrectPassphraseError
 
 from whatferry import ios, workdir
-from whatferry.ios_backup import FILE, FOLDER, Backup, BackupError, WrongPassphrase, device_info
+from whatferry.ios_backup import FILE, FOLDER, Backup, BackupError, WrongPassphrase, decrypt_file, device_info
+from whatferry.sqlite_summary import read_only_uri
 
 BLOCK = 16
 CHUNK = 1 << 20
@@ -106,22 +107,23 @@ class WriteReport:
 
 
 class BackupWriter:
-    """Changes to a copy of a backup. Use as a context manager; commit() writes the index."""
+    """Changes to a copy of a backup. Use as a context manager; commit() writes the index.
+
+    A copy left without a commit, by an error or a missing commit(), is
+    deleted on leaving: its files would be under new keys its index doesn't
+    have, a folder that looks like a backup and can't be read.
+    """
 
     def __init__(self, source: Path, target: Path, passphrase: str | None = None):
         if not (source / "Manifest.db").exists():
             raise BackupError(f"{source} is not a backup folder (no Manifest.db)")
-        clone_folder(source, target)
-        self.folder = target
         self.passphrase = passphrase
-        self.encrypted = device_info(target).encrypted
-        self.report = WriteReport(folder=str(target), encrypted=self.encrypted)
-        self._work = workdir.new_run("backup-index")
-        self._index = self._work / "Manifest.db"
+        self.encrypted = device_info(source).encrypted
         if self.encrypted:
+            # Unlocked on the original, so a wrong passphrase stops before anything is copied.
             if passphrase is None:
                 raise BackupError("this backup is encrypted: a passphrase is needed")
-            reader = EncryptedBackup(backup_directory=str(target), passphrase=passphrase)
+            reader = EncryptedBackup(backup_directory=str(source), passphrase=passphrase)
             try:
                 reader._read_and_unlock_keybag()
             except IncorrectPassphraseError:
@@ -129,10 +131,20 @@ class BackupWriter:
             self.class_keys = dict(reader.keybag.classes_keys)
             wrapped = reader._manifest_plist["ManifestKey"]
             self.manifest_key = reader.keybag.unwrap_key_for_class(struct.unpack("<l", wrapped[:4])[0], wrapped[4:])
-            workdir.write_private(self._index, decrypt((target / "Manifest.db").read_bytes(), self.manifest_key))
-        else:
-            workdir.write_private(self._index, (target / "Manifest.db").read_bytes())
-        self.db = sqlite3.connect(self._index)
+        clone_folder(source, target)
+        self.folder = target
+        self.committed = False
+        self.report = WriteReport(folder=str(target), encrypted=self.encrypted)
+        self._work = workdir.new_run("backup-index")
+        self._index = self._work / "Manifest.db"
+        try:
+            index = (target / "Manifest.db").read_bytes()
+            workdir.write_private(self._index, decrypt(index, self.manifest_key) if self.encrypted else index)
+            self.db = sqlite3.connect(self._index)
+        except BaseException:
+            shutil.rmtree(self._work, ignore_errors=True)
+            shutil.rmtree(target, ignore_errors=True)
+            raise
         self._written: dict[str, Path] = {}  # fileID -> the plain file it must decrypt to
 
     def __enter__(self):
@@ -141,6 +153,8 @@ class BackupWriter:
     def __exit__(self, *exc):
         self.db.close()
         shutil.rmtree(self._work, ignore_errors=True)
+        if not self.committed:
+            shutil.rmtree(self.folder, ignore_errors=True)
         return False
 
     # Entries
@@ -176,7 +190,8 @@ class BackupWriter:
         root["Size"] = data_size
         now = int(time.time())
         root["LastModified"] = root["LastStatusChange"] = now
-        if not self.encrypted:
+        if not self.encrypted or data_size == 0:
+            # iOS stores an empty file as an empty file, with no key.
             root.pop("EncryptionKey", None)
             return None
         protection = root.get("ProtectionClass", 3)
@@ -198,11 +213,21 @@ class BackupWriter:
     def _write_data(self, fid: str, source: Path, key: bytes | None) -> int:
         target = self.folder / fid[:2] / fid
         target.parent.mkdir(exist_ok=True)
-        data = source.read_bytes()
         target.unlink(missing_ok=True)  # never write through into a clone's shared blocks
-        target.write_bytes(encrypt(data, key) if key else data)
+        # In chunks: a chat database or a video can be gigabytes. CBC carries
+        # on from one chunk to the next, as long as each is whole blocks.
+        cipher = AES.new(key, AES.MODE_CBC, iv=b"\0" * BLOCK) if key else None
+        size = 0
+        with source.open("rb") as src, target.open("wb") as out:
+            while chunk := src.read(CHUNK):
+                size += len(chunk)
+                if cipher and len(chunk) < CHUNK:
+                    chunk = pad(chunk)
+                out.write(cipher.encrypt(chunk) if cipher else chunk)
+            if cipher and size % CHUNK == 0:
+                out.write(cipher.encrypt(pad(b"")))
         self._written[fid] = source
-        return len(data)
+        return size
 
     def replace(self, domain: str, path: str, source: Path) -> None:
         row = self._entry(domain, path)
@@ -262,10 +287,12 @@ class BackupWriter:
         self.db.execute("PRAGMA journal_mode = DELETE")
         self.db.close()
         index = self._index.read_bytes()
-        (self.folder / "Manifest.db").unlink()
-        (self.folder / "Manifest.db").write_bytes(encrypt(index, self.manifest_key) if self.encrypted else index)
+        # In one step: the copy never has half an index.
+        workdir.replace_private(self.folder / "Manifest.db",
+                                encrypt(index, self.manifest_key) if self.encrypted else index)
         self.db = sqlite3.connect(self._index)
         self.verify()
+        self.committed = True
         return self.report
 
     def verify(self) -> None:
@@ -277,12 +304,16 @@ class BackupWriter:
             for fid, source in self._written.items():
                 if fid not in rows:
                     raise WriteError(f"{fid} missing from the written index")
-                data = reader._decrypt_inner_file(file_id=fid, file_bplist=rows[fid])
+                stored = self.folder / fid[:2] / fid
+                if source.stat().st_size == 0:
+                    data = stored.read_bytes()
+                else:
+                    data = decrypt_file(reader, self.folder, fid, rows[fid])
                 if data != source.read_bytes():
                     raise WriteError(f"{fid} doesn't read back as written")
                 self.report.verified_files += 1
         else:
-            with closing(sqlite3.connect(f"file:{self.folder / 'Manifest.db'}?mode=ro", uri=True)) as db:
+            with closing(sqlite3.connect(read_only_uri(self.folder / "Manifest.db"), uri=True)) as db:
                 ids = {r[0] for r in db.execute("SELECT fileID FROM Files")}
             for fid, source in self._written.items():
                 if fid not in ids or (self.folder / fid[:2] / fid).read_bytes() != source.read_bytes():
@@ -348,16 +379,20 @@ def write_conversion(source: Path, passphrase: str | None, convert_run: Path, ac
         check_same_source(source, passphrase, convert_run, account_folder)
     run = workdir.new_run("backup")
     target = target or run / source.name
-    with BackupWriter(source, target, passphrase) as writer:
-        writer.replace(SHARED_DOMAIN, f"{prefix}ChatStorage.sqlite", merged)
-        # The merged database is whole: an old write-ahead log left beside it
-        # would be replayed over it on the phone.
-        for suffix in ("-wal", "-shm"):
-            writer.remove(SHARED_DOMAIN, f"{prefix}ChatStorage.sqlite{suffix}")
-        media = files / (account_folder or "") / "Message" / "Media"
-        for path in sorted(p for p in media.rglob("*") if p.is_file()) if media.is_dir() else []:
-            writer.add(SHARED_DOMAIN, f"{prefix}Message/Media/{path.relative_to(media).as_posix()}", path)
-        report = writer.commit()
+    try:
+        with BackupWriter(source, target, passphrase) as writer:
+            writer.replace(SHARED_DOMAIN, f"{prefix}ChatStorage.sqlite", merged)
+            # The merged database is whole: an old write-ahead log left beside it
+            # would be replayed over it on the phone.
+            for suffix in ("-wal", "-shm"):
+                writer.remove(SHARED_DOMAIN, f"{prefix}ChatStorage.sqlite{suffix}")
+            media = files / (account_folder or "") / "Message" / "Media"
+            for path in sorted(p for p in media.rglob("*") if p.is_file()) if media.is_dir() else []:
+                writer.add(SHARED_DOMAIN, f"{prefix}Message/Media/{path.relative_to(media).as_posix()}", path)
+            report = writer.commit()
+    except BaseException:
+        shutil.rmtree(run, ignore_errors=True)
+        raise
     report.source_checked = check_source
     workdir.write_private(run / "write-report.json", json.dumps(report.as_dict(), indent=2).encode())
     return report, target

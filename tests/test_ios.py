@@ -1,14 +1,19 @@
+import dataclasses
 import hashlib
+import plistlib
 import shutil
 import sqlite3
+import stat
 from contextlib import closing
+from pathlib import Path
 
 import pytest
 
 from conftest import FakeBackup, make_sqlite
+from encrypted_backup import make_encrypted_backup
 from whatferry import ios
 from whatferry.cli import main
-from whatferry.ios_backup import Backup, BackupError
+from whatferry.ios_backup import Backup, BackupError, list_backups
 
 SHARED = "AppDomainGroup-group.net.whatsapp.WhatsApp.shared"
 APP = "AppDomain-net.whatsapp.WhatsApp"
@@ -148,3 +153,41 @@ def test_file_ids_match_the_ios_scheme(backup):
     shutil.rmtree(backup.folder / entry.file_id[:2])
     with pytest.raises(FileNotFoundError):
         Backup(backup.folder).read(entry)
+
+
+def test_databases_differing_only_in_case_are_both_kept(backup, tmp_path):
+    other = make_sqlite(tmp_path / "other.sqlite", "CREATE TABLE t (x); INSERT INTO t VALUES (1);")
+    backup.add(SHARED, "Stats.sqlite", other.read_bytes())
+    backup.add(SHARED, "stats.sqlite", other.read_bytes())
+    report, _ = ios.inspect(Backup(backup.folder))
+    assert {d.path for d in report.databases} >= {"Stats.sqlite", "stats.sqlite"}
+
+
+def test_a_malformed_file_id_is_never_followed(backup):
+    entry = next(e for e in Backup(backup.folder).entries() if e.path == "ChatStorage.sqlite")
+    with pytest.raises(BackupError, match="malformed file ID"):
+        Backup(backup.folder).read(dataclasses.replace(entry, file_id="../../../etc/passwd"))
+
+
+def test_one_damaged_backup_doesnt_hide_the_others(backup, tmp_path):
+    damaged = backup.copy(tmp_path / "00008140-BBBB")
+    (damaged.folder / "Info.plist").write_bytes(b"bplist00 cut short")
+    listed = {folder.name: info for folder, info in list_backups([tmp_path])}
+    assert listed["00008140-AAAA"].name == "Test iPhone" and listed["00008140-BBBB"].name is None
+
+
+def test_an_encrypted_backups_index_is_decrypted_privately(tmp_path, private_home):
+    folder = make_encrypted_backup(tmp_path / "00008140-CCCC", "pw", {(SHARED, "x"): b"x"})
+    backup = Backup(folder, "pw")
+    temporary = Path(backup._encrypted._temporary_folder)
+    assert temporary.parent == private_home / "tmp"
+    assert stat.S_IMODE(temporary.parent.stat().st_mode) == 0o700
+
+
+def test_a_damaged_keybag_is_a_backup_error(tmp_path):
+    folder = make_encrypted_backup(tmp_path / "00008140-DDDD", "pw", {(SHARED, "x"): b"x"})
+    manifest = plistlib.loads((folder / "Manifest.plist").read_bytes())
+    del manifest["BackupKeyBag"]
+    (folder / "Manifest.plist").write_bytes(plistlib.dumps(manifest))
+    with pytest.raises(BackupError, match="can't open the backup"):
+        Backup(folder, "pw")

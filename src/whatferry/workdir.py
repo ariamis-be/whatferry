@@ -53,6 +53,15 @@ def new_run(kind: str) -> Path:
     return run
 
 
+def private_temp() -> Path:
+    """An owner-only folder for a library's temporary files, in place of the system's shared one."""
+    folder = home() / "tmp"
+    folder.mkdir(parents=True, exist_ok=True)
+    home().chmod(0o700)
+    folder.chmod(0o700)
+    return folder
+
+
 def open_private(path: Path) -> BinaryIO:
     """A new file only the owner can read, open for binary writing.
 

@@ -157,9 +157,11 @@ def _accounts(backup: Backup, by_key: dict, extracted: dict, folders: list[Accou
             return None
         number = own.group(1)
         lid, country = _lid_and_country(lid_db, number)
+        # A further account whose data/<id>/ folder isn't in the backup has no chats here.
+        has_chats = ((SHARED_DOMAIN, CHAT_STORAGE) in extracted if main
+                     else bool(folder and folder.has_chat_database))
         return Account(id_ends=lid[-2:] if lid else None, number_ends=number[-4:], country=country, main=main,
-                       folder=folder.folder if folder else None,
-                       has_chats=folder.has_chat_database if folder else (SHARED_DOMAIN, CHAT_STORAGE) in extracted)
+                       folder=folder.folder if folder else None, has_chats=has_chats)
 
     found = [account(prefs.get("LastOwnJabberID"), True, None)]
     for key in sorted(k for k in prefs if isinstance(k, str)):
@@ -233,6 +235,12 @@ def _extract_database(backup: Backup, entry: Entry, data: bytes, by_key: dict, r
     """
     target = run / "files" / workdir.safe_relative(entry.domain) / workdir.safe_relative(entry.path)
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # The iPhone tells a.db from A.db; macOS and Windows disks don't, so the
+    # second of such a pair gets a number.
+    n = 1
+    while target.exists():
+        n += 1
+        target = target.with_name(f"{Path(entry.path).stem}-{n}{Path(entry.path).suffix}")
     workdir.write_private(target, data)
     for suffix in SIDECARS:
         sidecar = by_key.get((entry.domain, entry.path + suffix))

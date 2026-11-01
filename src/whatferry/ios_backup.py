@@ -10,19 +10,37 @@ here writes to a backup folder.
 
 import os
 import plistlib
+import re
 import sqlite3
 import sys
+import tempfile
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from iphone_backup_decrypt import EncryptedBackup
+from iphone_backup_decrypt import EncryptedBackup, iphone_backup, utils
 from iphone_backup_decrypt.exceptions import IncorrectPassphraseError
 from iphone_backup_decrypt.utils import FilePlist
 
 from whatferry import workdir
 from whatferry.sqlite_summary import read_only_uri
+
+
+class _PrivateTempfile:
+    """The library decrypts Manifest.db, the list of every file on the phone,
+    into tempfile.mkdtemp(): the system's shared temporary folder, where it
+    stays if the process dies. Its only use of tempfile; sent to whatferry's
+    private folder instead."""
+
+    @staticmethod
+    def mkdtemp() -> str:
+        return tempfile.mkdtemp(prefix="manifest-", dir=workdir.private_temp())
+
+
+iphone_backup.tempfile = _PrivateTempfile
+
+FILE_ID = re.compile(r"[0-9a-f]{40}")
 
 # Every WhatsApp container: the app, its shared group, extensions, and the
 # Business app (net.whatsapp.WhatsAppSMB).
@@ -78,11 +96,25 @@ def device_info(folder: Path) -> DeviceInfo:
 
 
 def _plist(path: Path) -> dict:
+    """A plist's contents; empty when it is missing or damaged (a backup Finder was still writing)."""
     try:
         with path.open("rb") as f:
-            return plistlib.load(f)
-    except FileNotFoundError:
+            data = plistlib.load(f)
+    except (OSError, plistlib.InvalidFileException, ValueError):
         return {}
+    return data if isinstance(data, dict) else {}
+
+
+def decrypt_file(reader: EncryptedBackup, folder: Path, file_id: str, bplist: bytes) -> bytes:
+    """One file of an encrypted backup, through an unlocked reader.
+
+    As the library's own _decrypt_inner_file does, without its INFO line on
+    stdout: iOS's recorded size is often off for live SQLite files.
+    """
+    meta = FilePlist(bplist)
+    key = reader.keybag.unwrap_key_for_class(meta.protection_class, meta.encryption_key)
+    data = Path(utils.backup_file_path(str(folder), file_id)).read_bytes()
+    return utils.remove_cbc_padding(utils.aes_decrypt_cbc(data=data, key=key))
 
 
 HOW_TO_BACK_UP = {
@@ -180,11 +212,13 @@ class Backup:
         if self.info.encrypted:
             if passphrase is None:
                 raise BackupError("this backup is encrypted: a passphrase is needed")
-            self._encrypted = EncryptedBackup(backup_directory=str(folder), passphrase=passphrase)
             try:
+                self._encrypted = EncryptedBackup(backup_directory=str(folder), passphrase=passphrase)
                 self._encrypted.test_decryption()
             except IncorrectPassphraseError:
                 raise WrongPassphrase("the backup passphrase is wrong") from None
+            except Exception as e:  # noqa: BLE001 - a damaged keybag or index: the library's own types
+                raise BackupError(f"can't open the backup in {folder}: {e!r}") from e
 
     def entries(self, domain_like: str = WHATSAPP_DOMAINS) -> list[Entry]:
         query = ("SELECT fileID, domain, relativePath, flags, file FROM Files "
@@ -208,5 +242,7 @@ class Backup:
             if entry.size == 0:
                 return b""
             # By file ID, not by path: a path lookup goes through SQL LIKE.
-            return self._encrypted._decrypt_inner_file(file_id=entry.file_id, file_bplist=entry.bplist)
+            return decrypt_file(self._encrypted, self.folder, entry.file_id, entry.bplist)
+        if not FILE_ID.fullmatch(entry.file_id):
+            raise BackupError(f"{entry.domain}/{entry.path} has a malformed file ID in Manifest.db")
         return (self.folder / entry.file_id[:2] / entry.file_id).read_bytes()

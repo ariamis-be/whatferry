@@ -97,6 +97,44 @@ def test_new_keys_are_fresh_and_per_file(backup, tmp_path):
 def test_wrong_passphrase(backup, tmp_path):
     with pytest.raises(WrongPassphrase):
         BackupWriter(backup, tmp_path / "out" / backup.name, "nope")
+    assert not (tmp_path / "out" / backup.name).exists(), "nothing is copied before the passphrase is right"
+
+
+def test_a_copy_left_without_a_commit_is_removed(backup, tmp_path):
+    f = tmp_path / "f"
+    f.write_bytes(b"x")
+    out = tmp_path / "out" / backup.name
+    with pytest.raises(RuntimeError):
+        with BackupWriter(backup, out, PASS) as w:
+            w.add(SHARED, "x/f", f)
+            raise RuntimeError("disk full")
+    assert not out.exists()
+
+
+def test_write_conversion_leaves_nothing_when_it_fails(backup, tmp_path, private_home):
+    run = tmp_path / "convert-run"
+    (run / "files").mkdir(parents=True)
+    (run / "files" / "ChatStorage.sqlite").write_bytes(b"merged")
+    with pytest.raises(WriteError, match="not a file"):
+        write_conversion(backup, PASS, run, "data/no-such-account", check_source=False)
+    assert not list(private_home.glob("*-backup*"))
+
+
+@pytest.mark.parametrize("size", [0, 1, backup_writer.CHUNK - 1, backup_writer.CHUNK, backup_writer.CHUNK + 17])
+def test_files_of_any_size_read_back(backup, tmp_path, size):
+    f = tmp_path / "f"
+    f.write_bytes(bytes(i % 251 for i in range(size)))
+    out = tmp_path / "out" / backup.name
+    with BackupWriter(backup, out, PASS) as w:
+        w.add(SHARED, "x/f", f)
+        assert w.commit().verified_files == 1
+    entry = next(e for e in Backup(out, PASS).entries() if e.path == "x/f")
+    assert Backup(out, PASS).read(entry) == f.read_bytes()
+    if size:
+        assert read(out, SHARED, "x/f") == f.read_bytes()
+    else:
+        root = plistlib.loads(entry.bplist)
+        assert "EncryptionKey" not in root["$objects"][root["$top"]["root"].data], "an empty file has no key, as on iOS"
 
 
 def test_target_must_not_exist(backup, tmp_path):
