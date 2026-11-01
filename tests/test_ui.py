@@ -256,16 +256,49 @@ def test_checking_before_again_clears_after(server, phone, tmp_path):
 
 
 def test_progress_survives_a_restart(server, private_home):
-    request(server, "POST", "/api/step", {"step": "account"})
-    status, _, data = request(server, "POST", "/api/checklist", {"item": "add-account", "done": True})
-    assert status == 200 and data["checklist"] == {"add-account": True}
-    again = Wizard(private_home).overview()["state"]
-    assert again["step"] == "account" and again["checklist"] == {"add-account": True}
+    assert request(server, "POST", "/api/step", {"step": "account"})[0] == 200
+    assert Wizard(private_home).overview()["state"]["step"] == "account"
 
 
-def test_unknown_step_and_item_are_refused(server):
+def test_unknown_step_is_refused(server):
     assert request(server, "POST", "/api/step", {"step": "nope"})[0] == 400
-    assert request(server, "POST", "/api/checklist", {"item": "nope", "done": True})[0] == 400
+
+
+@pytest.mark.parametrize("saved", [b"\xff\xfe not text", b"[1, 2]"])
+def test_an_unreadable_state_file_starts_afresh(private_home, saved):
+    private_home.mkdir(parents=True, exist_ok=True)
+    (private_home / "state.json").write_bytes(saved)
+    assert Wizard(private_home).overview()["state"] == {}
+
+
+def test_an_unexpected_error_still_answers(server, monkeypatch):
+    def broken():
+        raise RuntimeError("disk on fire")
+    monkeypatch.setattr(server.wizard, "convert_options", broken)
+    status, _, data = request(server, "GET", "/api/convert/options")
+    assert status == 500 and "disk on fire" in data["error"]
+
+
+def test_nothing_that_saves_runs_while_a_step_is_running(server):
+    started, release = threading.Event(), threading.Event()
+
+    def slow():
+        started.set()
+        release.wait(10)
+        return {}
+    first = server.wizard.jobs.start(slow)
+    started.wait(5)
+    assert server.wizard.jobs.busy()
+    status, _, data = request(server, "POST", "/api/convert", {"account_folder": None})
+    assert status == 400 and "still running" in data["error"]
+    for path, body in [("/api/android/select", {"key": "x"}), ("/api/direction", {"direction": "to-android"}),
+                       ("/api/destination", {"choice": "second"}), ("/api/reset", {})]:
+        status, _, data = request(server, "POST", path, body)
+        assert status == 400 and "still running" in data["error"], path
+    release.set()
+    assert wait(server, first)["status"] == "done"
+    assert "saves" not in wait(server, first)
+    assert request(server, "POST", "/api/reset", {})[0] == 200
 
 
 def test_settings_survive_a_restart_and_a_reset(server, private_home):

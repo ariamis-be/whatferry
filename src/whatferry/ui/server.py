@@ -19,6 +19,7 @@ import json
 import secrets
 import sys
 import threading
+import traceback
 import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -114,6 +115,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(e)})
             except (ValueError, KeyError, TypeError) as e:
                 return self._send_json(HTTPStatus.BAD_REQUEST, {"error": f"bad request: {e}"})
+            except Exception as e:  # noqa: BLE001 - shown to the person, logged in full
+                traceback.print_exc(file=sys.stderr)
+                return self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": f"unexpected error: {e!r}"})
         return self._send_text(HTTPStatus.NOT_FOUND, "not found")
 
     def _origins(self) -> tuple[str, ...]:
@@ -163,7 +167,7 @@ class Handler(BaseHTTPRequestHandler):
     def _phone_pull(self):
         body = self._read_json()
         wizard = self.server.wizard
-        job = wizard.jobs.start(lambda: wizard.phone_pull(body["serial"], body["path"]))
+        job = wizard.jobs.start(lambda: wizard.phone_pull(body["serial"], body["path"]), saves=False)
         self._send_json(HTTPStatus.ACCEPTED, {"job": job})
 
     def _ios_backups(self):
@@ -174,10 +178,6 @@ class Handler(BaseHTTPRequestHandler):
         wizard = self.server.wizard
         job = wizard.jobs.start(lambda: wizard.ios_inspect(body["folder"], body.get("passphrase"), body["role"]))
         self._send_json(HTTPStatus.ACCEPTED, {"job": job})
-
-    def _checklist(self):
-        body = self._read_json()
-        self._send_json(HTTPStatus.OK, {"checklist": self.server.wizard.set_checklist(body["item"], body["done"])})
 
     def _select_android(self):
         self.server.wizard.select_android(self._read_json()["key"])
@@ -307,7 +307,6 @@ ROUTES = {
     ("POST", "/api/android/phone/pull"): Handler._phone_pull,
     ("GET", "/api/ios/backups"): Handler._ios_backups,
     ("POST", "/api/ios/inspect"): Handler._ios_inspect,
-    ("POST", "/api/checklist"): Handler._checklist,
     ("POST", "/api/step"): Handler._step,
     ("POST", "/api/destination"): Handler._destination,
     ("POST", "/api/direction"): Handler._direction,

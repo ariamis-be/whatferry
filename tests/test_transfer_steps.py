@@ -133,13 +133,22 @@ def test_checking_a_backup_again_drops_the_transfer(wizard, monkeypatch, recheck
     assert bool(state.get("after")) == (recheck == "after"), "a new first backup drops the second"
 
 
-def test_preview_shows_what_the_iphone_will_have(wizard, tmp_path):
+def test_rechecking_the_first_backup_asks_the_destination_again(wizard):
+    wizard.set_destination("existing")
+    wizard.ios_inspect(wizard.state.get()["before"]["folder"], PASS, "before")
+    state = wizard.state.get()
+    assert not state.get("destination")
+    assert not any(a.get("destination") for a in state["accounts"].values())
+
+
+@pytest.mark.parametrize("account", [ACCOUNT, None], ids=["further account", "main account"])
+def test_preview_shows_what_the_iphone_will_have(wizard, tmp_path, account):
     media = tmp_path / "media"
     (media / "WhatsApp Images" / "Sent").mkdir(parents=True)
     (media / "WhatsApp Images" / "Sent" / "IMG-1.jpg").write_bytes(b"\xff\xd8 a jpeg")
     with pytest.raises(StepError, match="convert first"):
         wizard.preview_chats()
-    converted = wizard.make_conversion(ACCOUNT, str(media))
+    converted = wizard.make_conversion(account, str(media))
 
     found = wizard.preview_chats()
     chats = found["chats"]
@@ -274,6 +283,7 @@ def written(tmp_path):
     ({"udid": "00008160-9999"}, "connect the iPhone this backup is from"),
     ({"paired": False}, "isn't trusted"),
     ({"find_my": True}, "Find My is on"),
+    ({"find_my": None}, "didn't say whether Find My is off"),
 ])
 def test_restore_refuses(written, monkeypatch, phone, message):
     fake = FakePhone(monkeypatch, **phone)
@@ -287,6 +297,12 @@ def test_restore_needs_the_passphrase_of_an_encrypted_backup(written, monkeypatc
     with pytest.raises(RestoreError, match="passphrase"):
         restore.restore(written, None)
     assert fake.restored == []
+
+
+def test_a_typed_name_matches_without_the_curly_apostrophe():
+    assert restore.same_name(" Anna's iPhone\n", "Anna’s iPhone")
+    assert restore.same_name("Test iPhone", "Test iPhone")
+    assert not restore.same_name("Anna iPhone", "Anna’s iPhone")
 
 
 def test_restore_refuses_another_iphones_backup(written):

@@ -15,6 +15,7 @@ iOS refuses a restore while Find My is on, so that is checked first.
 
 import asyncio
 import plistlib
+import unicodedata
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
@@ -49,6 +50,13 @@ def iphones() -> list[Iphone]:
                            "on Linux, the usbmuxd package") from e
 
 
+def same_name(typed: str, name: str) -> bool:
+    """Whether a typed phone name is the phone's: iOS names have a curly ’ ("Anna’s iPhone") keyboards don't type."""
+    def plain(s: str) -> str:
+        return unicodedata.normalize("NFKC", s).replace("’", "'").replace("‘", "'").strip().casefold()
+    return plain(typed) == plain(name)
+
+
 def backup_udid(folder: Path) -> str:
     """The iPhone a backup belongs to: its folder name, as Finder names it."""
     if not (folder / "Manifest.plist").is_file() or not (folder / "Info.plist").is_file():
@@ -75,6 +83,9 @@ def restore(folder: Path, passphrase: str | None, progress: Callable[[float], No
     if phone.find_my:
         raise RestoreError("Find My is on: turn it off on the iPhone (Settings → your name → Find My → "
                            "Find My iPhone), then try again")
+    if phone.find_my is None:
+        raise RestoreError("the iPhone didn't say whether Find My is off: unlock it, keep it on the home screen, "
+                           "and try again")
     try:
         asyncio.run(_restore(folder.parent, udid, passphrase or "", progress))
     except Exception as e:  # noqa: BLE001 - the phone's own reason, passed on

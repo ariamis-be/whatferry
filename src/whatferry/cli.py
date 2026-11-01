@@ -424,7 +424,7 @@ def _ios_restore(args) -> int:
     name = phone.name if phone and phone.name else udid
     print(f"This replaces everything on {name} with the backup in {folder}.")
     print("Anything that reached the phone after that backup was made will be gone.")
-    if input(f"Type {name} to restore: ").strip() != name:
+    if not restore.same_name(input(f"Type {name} to restore: "), name):
         print("Not restored.")
         return 1
     last = -10.0

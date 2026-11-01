@@ -22,7 +22,6 @@ from whatferry.ios_backup import Backup, BackupError
 from whatferry.restore import RestoreError
 
 STEPS = ("start", "android", "before", "account", "after", "convert", "write", "restore", "done")
-CHECKLIST = ("add-account", "register-number", "leave-empty", "new-backup")
 
 # Where people usually put the Android file once it reaches the computer.
 CANDIDATE_FOLDERS = ("Downloads", "Desktop", "Documents", "whatferry-android", ".")
@@ -58,7 +57,9 @@ class State:
         self._lock = threading.Lock()
         try:
             self._data = json.loads(path.read_text())
-        except (FileNotFoundError, json.JSONDecodeError):
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            self._data = {}
+        if not isinstance(self._data, dict):
             self._data = {}
 
     def get(self) -> dict:
@@ -77,17 +78,33 @@ class State:
 
 
 class Jobs:
-    """Work that takes seconds to minutes, run off the request thread."""
+    """Work that takes seconds to minutes, run off the request thread.
+
+    A job that saves progress runs alone: one that finished while another
+    account or backup had been picked would save its result to the wrong one.
+    """
+
+    # Finished jobs kept for the page to read; older ones are forgotten.
+    KEEP_FINISHED = 50
 
     def __init__(self):
         self._jobs: dict[str, dict] = {}
         self._lock = threading.Lock()
 
-    def start(self, fn, *, progress: bool = False) -> str:
+    def busy(self) -> bool:
+        with self._lock:
+            return any(j["status"] == "running" and j["saves"] for j in self._jobs.values())
+
+    def start(self, fn, *, progress: bool = False, saves: bool = True) -> str:
         """Run fn in the background; with progress, fn gets a function to report a percentage through."""
         job_id = secrets.token_hex(8)
-        job = {"status": "running"}
+        job = {"status": "running", "saves": saves}
         with self._lock:
+            if saves and any(j["status"] == "running" and j["saves"] for j in self._jobs.values()):
+                raise StepError("another step is still running: wait for it to finish")
+            finished = [k for k, j in self._jobs.items() if j["status"] != "running"]
+            for k in finished[:max(0, len(finished) - self.KEEP_FINISHED)]:
+                del self._jobs[k]
             self._jobs[job_id] = job
 
         def report(percent: float) -> None:
@@ -112,7 +129,7 @@ class Jobs:
     def get(self, job_id: str) -> dict | None:
         with self._lock:
             job = self._jobs.get(job_id)
-            return copy.deepcopy(job) if job else None
+            return {k: v for k, v in copy.deepcopy(job).items() if k != "saves"} if job else None
 
 
 class Wizard:
@@ -160,7 +177,12 @@ class Wizard:
         saved = accounts.get(key, {})
         self.state.update(accounts=accounts, current=key, **{k: saved.get(k) for k in self.PER_ACCOUNT})
 
+    def _idle(self) -> None:
+        if self.jobs.busy():
+            raise StepError("a step is still running: wait for it to finish")
+
     def select_android(self, key: str) -> None:
+        self._idle()
         accounts = self._stash()
         if key not in accounts:
             raise StepError("no such Android account: check its backup first")
@@ -188,6 +210,7 @@ class Wizard:
             raise StepError(f"unknown direction {choice!r}")
         if direction(self.state.get()) == choice:
             return
+        self._idle()
         accounts = self._stash()
         for account in accounts.values():
             account.update(dict.fromkeys(self.LATER))
@@ -196,6 +219,7 @@ class Wizard:
     def set_destination(self, choice: str) -> None:
         if choice not in DESTINATIONS:
             raise StepError(f"unknown destination {choice!r}")
+        self._idle()
         self.state.update(destination=choice)
         self.state.update(accounts=self._stash())
 
@@ -280,11 +304,13 @@ class Wizard:
         if role == "before":
             snapshot = ios_backup.snapshot_manifest(path, self.home / "snapshots" / run.name)
             entry["snapshot"] = str(snapshot)
-            # Every account's second backup and transfer came from the old first backup.
+            # Every account's destination, second backup and transfer came
+            # from the old first backup: the destination is suggested afresh.
             accounts = self._stash()
             for account in accounts.values():
-                account.update(after=None, **dict.fromkeys(self.LATER))
-            self.state.update(before=entry, after=None, accounts=accounts or None, **dict.fromkeys(self.LATER))
+                account.update(destination=None, after=None, **dict.fromkeys(self.LATER))
+            self.state.update(before=entry, destination=None, after=None, accounts=accounts or None,
+                              **dict.fromkeys(self.LATER))
         else:
             old = Backup(Path(before["snapshot"]), passphrase or None)
             entry["diff"] = diff_summary(ios.diff(old, backup))
@@ -385,8 +411,9 @@ class Wizard:
         if converted.get("direction") == "to-android":
             return preview.AndroidPreview(run / "files" / "msgstore.db", Path(converted["android_db"]), names,
                                           run / "files")
-        return preview.Preview(run / "files" / ios.CHAT_STORAGE, ios_db, names,
-                               run / "files" / workdir.safe_relative(folder or ".") / "Message")
+        # Where convert placed the media: Message/ for the main account, data/<id>/Message/ for a further one.
+        account = workdir.safe_relative(folder) if folder else Path()
+        return preview.Preview(run / "files" / ios.CHAT_STORAGE, ios_db, names, run / "files" / account / "Message")
 
     def preview_chats(self) -> dict:
         chats = self._preview().chats()
@@ -473,14 +500,6 @@ class Wizard:
 
     # Progress
 
-    def set_checklist(self, item: str, done: bool) -> dict:
-        if item not in CHECKLIST:
-            raise StepError(f"unknown checklist item {item!r}")
-        checklist = self.state.get().get("checklist", {})
-        checklist[item] = bool(done)
-        self.state.update(checklist=checklist)
-        return checklist
-
     def set_step(self, step: str) -> None:
         if step not in STEPS:
             raise StepError(f"unknown step {step!r}")
@@ -488,6 +507,7 @@ class Wizard:
 
     def reset(self) -> None:
         """Forget progress; run folders and snapshots stay until deleted."""
+        self._idle()
         self.state.update(before=None, checklist=None, step=None, accounts=None, current=None,
                           **dict.fromkeys(self.PER_ACCOUNT))
 
