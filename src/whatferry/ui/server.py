@@ -179,6 +179,16 @@ class Handler(BaseHTTPRequestHandler):
         job = wizard.jobs.start(lambda: wizard.ios_inspect(body["folder"], body.get("passphrase"), body["role"]))
         self._send_json(HTTPStatus.ACCEPTED, {"job": job})
 
+    def _iphone_status(self):
+        self._send_json(HTTPStatus.OK, self.server.wizard.iphone_status())
+
+    def _backup_iphone(self):
+        body = self._read_json()
+        wizard = self.server.wizard
+        job = wizard.jobs.start(lambda progress: wizard.backup_iphone(body.get("passphrase"), body.get("again"),
+                                                                      body.get("udid"), progress), progress=True)
+        self._send_json(HTTPStatus.ACCEPTED, {"job": job})
+
     def _select_android(self):
         self.server.wizard.select_android(self._read_json()["key"])
         self._send_json(HTTPStatus.OK, {})
@@ -307,6 +317,8 @@ ROUTES = {
     ("POST", "/api/android/phone/pull"): Handler._phone_pull,
     ("GET", "/api/ios/backups"): Handler._ios_backups,
     ("POST", "/api/ios/inspect"): Handler._ios_inspect,
+    ("GET", "/api/ios/phone"): Handler._iphone_status,
+    ("POST", "/api/ios/backup"): Handler._backup_iphone,
     ("POST", "/api/step"): Handler._step,
     ("POST", "/api/destination"): Handler._destination,
     ("POST", "/api/direction"): Handler._direction,

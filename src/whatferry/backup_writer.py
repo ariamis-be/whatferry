@@ -77,16 +77,42 @@ def wrap(kek: bytes, key: bytes) -> bytes:
     return AES.new(kek, AES.MODE_KW).seal(key)
 
 
-def clone_folder(source: Path, target: Path) -> None:
-    """Copy a backup folder; on macOS an APFS clone, so no space or time is spent."""
+def clone_folder(source: Path, target: Path, platform: str = sys.platform) -> None:
+    """Copy a backup folder; a clone where the file system can, so no space or time is spent.
+
+    macOS clones on APFS (cp -c); Linux shares blocks on Btrfs and XFS
+    (cp --reflink=auto, a plain copy elsewhere). A full copy first checks
+    there is room for it, rather than failing half-way.
+    """
     if target.exists():
         raise WriteError(f"{target} already exists")
     target.parent.mkdir(parents=True, exist_ok=True)
-    if sys.platform == "darwin":
+    if platform == "darwin":
         if subprocess.run(["cp", "-cR", str(source), str(target)], capture_output=True).returncode == 0:
             return
         shutil.rmtree(target, ignore_errors=True)
+    needed = folder_size(source)
+    free = shutil.disk_usage(target.parent).free
+    if needed > free:
+        raise WriteError(f"the copy of the backup needs {needed / 1024 ** 3:.1f} GB and only "
+                         f"{free / 1024 ** 3:.1f} GB is free on that disk: free some space, or write elsewhere "
+                         "with --to")
+    if platform.startswith("linux") and shutil.which("cp"):
+        if subprocess.run(["cp", "-R", "--reflink=auto", str(source), str(target)],
+                          capture_output=True).returncode == 0:
+            return
+        shutil.rmtree(target, ignore_errors=True)
     shutil.copytree(source, target)
+
+
+def folder_size(folder: Path) -> int:
+    """The bytes of every file under a folder."""
+    return sum(f.stat().st_size for f in folder.rglob("*") if f.is_file())
+
+
+def copy_needs_space(platform: str = sys.platform) -> bool:
+    """Whether writing a backup makes a full copy of it (no clone on this system), as on Windows."""
+    return platform == "win32"
 
 
 @dataclass

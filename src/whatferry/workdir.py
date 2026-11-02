@@ -34,9 +34,9 @@ def default_home(platform: str = sys.platform, env=os.environ) -> Path:
     return Path(base) / "whatferry"
 
 
-def home() -> Path:
-    override = os.environ.get("WHATFERRY_HOME")
-    return Path(override).expanduser() if override else default_home()
+def home(platform: str = sys.platform, env=os.environ) -> Path:
+    override = env.get("WHATFERRY_HOME")
+    return Path(override).expanduser() if override else default_home(platform, env)
 
 
 def new_run(kind: str) -> Path:

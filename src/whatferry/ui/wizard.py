@@ -15,7 +15,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-from whatferry import (adb, android, android_writer, backup_writer, convert, ios, ios_backup, preview, restore,
+from whatferry import (adb, android, android_writer, backup_writer, convert, ios, ios_backup, iphone, preview, restore,
                        sqlite_summary, to_android, workdir)
 from whatferry.backup_writer import WriteError
 from whatferry.ios_backup import Backup, BackupError
@@ -287,9 +287,41 @@ class Wizard:
         except BackupError as e:
             listed, error = [], str(e)
         return {
-            "backups": [{"folder": str(folder), "id": folder.name, **vars(info)} for folder, info in listed],
+            # A WhatsApp-only backup can't be written into or restored: not offered.
+            "backups": [{"folder": str(folder), "id": folder.name, **vars(info)} for folder, info in listed
+                        if not iphone.is_whatsapp_only(folder)],
             "error": error,
         }
+
+    def iphone_status(self) -> dict:
+        """The iPhones connected by cable, and whether the one there encrypts its backups."""
+        try:
+            phones = iphone.iphones()
+        except RestoreError as e:
+            return {"phones": [], "encrypts": None, "error": str(e)}
+        paired = [p for p in phones if p.paired]
+        encrypts = None
+        if len(paired) == 1:
+            try:
+                encrypts = iphone.encrypts(paired[0])
+            except RestoreError:
+                pass
+        return {"phones": [p.as_dict() for p in phones], "encrypts": encrypts, "error": None}
+
+    def backup_iphone(self, passphrase: str | None, again: str | None, udid: str | None = None,
+                      progress=lambda _: None) -> dict:
+        """Back the iPhone up into whatferry's folder, turning encryption on first if it is off."""
+        if not passphrase:
+            raise StepError("type the backup passphrase first")
+        phone = iphone.find(udid, autopair=True)
+        turned_on = False
+        if not iphone.encrypts(phone):
+            if again != passphrase:
+                raise StepError("the two passphrases don't match")
+            iphone.turn_on_encryption(phone, passphrase)
+            turned_on = True
+        folder = iphone.backup(phone, passphrase, progress=progress)
+        return {"folder": str(folder), "id": folder.name, "phone": phone.name, "turned_on": turned_on}
 
     def ios_inspect(self, folder: str, passphrase: str | None, role: str) -> dict:
         if role not in ("before", "after"):

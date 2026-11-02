@@ -26,10 +26,17 @@ def test_default_home_per_platform(monkeypatch):
 
 
 def test_backup_roots_per_platform():
-    assert backup_roots("darwin", {}) == [Path.home() / "Library/Application Support/MobileSync/Backup"]
-    assert backup_roots("win32", {"USERPROFILE": "/u", "APPDATA": "/u/roam"}) == [
-        Path("/u/Apple/MobileSync/Backup"), Path("/u/roam/Apple Computer/MobileSync/Backup")]
-    assert backup_roots("linux", {}) == []
+    own = Path.home() / ".local" / "share" / "whatferry" / "backups"
+    assert backup_roots("darwin", {}) == [own, Path.home() / "Library/Application Support/MobileSync/Backup"]
+    assert backup_roots("win32", {"USERPROFILE": "/u", "APPDATA": "/u/roam", "LOCALAPPDATA": "/u/local"}) == [
+        Path("/u/local/whatferry/backups"), Path("/u/Apple/MobileSync/Backup"),
+        Path("/u/roam/Apple Computer/MobileSync/Backup")]
+    assert backup_roots("linux", {}) == [own]
+
+
+def test_whatferrys_own_backups_follow_its_home():
+    assert backup_roots("linux", {"WHATFERRY_HOME": "/kit"}) == [Path("/kit/backups")]
+    assert backup_roots("darwin", {"WHATFERRY_HOME": "/kit"})[0] == Path("/kit/backups")
 
 
 def test_backup_root_override_takes_several_folders():
@@ -61,7 +68,9 @@ def test_cli_lists_backups_from_the_override(tmp_path, monkeypatch, capsys):
 def test_cli_explains_how_to_back_up_when_none_found(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("WHATFERRY_BACKUP_ROOT", str(tmp_path / "empty"))
     assert main(["ios", "backups"]) == 0
-    assert "Encrypt local backup" in capsys.readouterr().out or sys.platform not in ("darwin", "win32")
+    out = capsys.readouterr().out
+    assert "whatferry ios backup" in out
+    assert ("Encrypt local backup" if sys.platform in ("darwin", "win32") else "idevicebackup2") in out
 
 
 def test_databases_open_from_folders_with_uri_characters(tmp_path):

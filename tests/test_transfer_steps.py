@@ -10,7 +10,7 @@ import pytest
 from conftest import make_sqlite
 from encrypted_backup import make_encrypted_backup
 from test_convert import ACCOUNT, ANDROID, IOS
-from whatferry import preview, restore
+from whatferry import iphone, preview, restore
 from whatferry.backup_writer import SHARED_DOMAIN as SHARED, WriteError
 from whatferry.cli import main
 from whatferry.ios_backup import Backup, WrongPassphrase
@@ -29,7 +29,7 @@ class FakePhone:
                                 "find_my": False} | phone))
         self.restored = []
 
-        async def listing():
+        async def listing(autopair=False):
             return [self.phone]
 
         async def run(backups, udid, passphrase, progress):
@@ -37,8 +37,8 @@ class FakePhone:
             progress(100.0)
             self.restored.append((backups, udid, passphrase))
 
-        monkeypatch.setattr(restore, "_list", listing)
-        monkeypatch.setattr(restore, "_restore", run)
+        monkeypatch.setattr(iphone, "_list", listing)
+        monkeypatch.setattr(iphone, "_restore", run)
 
 
 @pytest.fixture
@@ -318,7 +318,7 @@ def test_restore_passes_the_phones_reason_on(written, monkeypatch):
     async def refuses(*_):
         raise RuntimeError("MBErrorDomain/211: Find My iPhone must be turned off")
 
-    monkeypatch.setattr(restore, "_restore", refuses)
+    monkeypatch.setattr(iphone, "_restore", refuses)
     with pytest.raises(RestoreError, match="stopped the restore: MBErrorDomain/211"):
         restore.restore(written, PASS)
 

@@ -12,8 +12,8 @@ import os
 import sys
 from pathlib import Path
 
-from whatferry import (adb, android, android_writer, backup_writer, compat, convert, ios, restore, schema, sqlite_summary,
-                       to_android, workdir)
+from whatferry import (adb, android, android_writer, backup_writer, compat, convert, ios, iphone, restore, schema,
+                       sqlite_summary, to_android, workdir)
 from whatferry.ios_backup import (Backup, BackupError, WrongPassphrase, backup_roots, device_info, find_backup,
                                   how_to_back_up, list_backups)
 
@@ -76,6 +76,12 @@ def _parser() -> argparse.ArgumentParser:
     i = sides.add_parser("ios", help="the iPhone backup").add_subparsers(required=True, metavar="command")
     ib = i.add_parser("backups", help="list the iPhone backups on this computer")
     ib.set_defaults(run=_ios_backups)
+    ik = i.add_parser("backup", help="back up the iPhone connected by cable, encrypted, as Finder does")
+    ik.add_argument("--full", action="store_true", help="start over instead of updating the last backup")
+    ik.add_argument("--whatsapp-only", action="store_true",
+                    help="only WhatsApp's files: seconds instead of an hour, for `ios diff`; never restorable")
+    ik.add_argument("--udid", help="which iPhone, when more than one is connected")
+    ik.set_defaults(run=_ios_backup)
     ii = i.add_parser("inspect", help="map WhatsApp's files and databases in a backup")
     ii.add_argument("backup", help="backup folder, or its name as `whatferry ios backups` lists it")
     ii.set_defaults(run=_ios_inspect)
@@ -342,11 +348,65 @@ def _ios_backups(args) -> int:
         print(f"No backups found ({where}).")
         print(how_to_back_up())
         return 0
+    names = [folder.name for folder, _ in backups]
     for folder, info in backups:
         lock = "encrypted" if info.encrypted else "NOT encrypted"
-        print(f"{folder.name}  {info.name or '?'}  {info.model or '?'} iOS {info.ios_version or '?'}  "
-              f"{info.backup_date or '?'}  {lock}")
+        # The same phone backed up by whatferry and by Finder: the name alone picks whatferry's.
+        shown = folder if names.count(folder.name) > 1 else folder.name
+        only = "  WhatsApp only" if iphone.is_whatsapp_only(folder) else ""
+        print(f"{shown}  {info.name or '?'}  {info.model or '?'} iOS {info.ios_version or '?'}  "
+              f"{info.backup_date or '?'}  {lock}{only}")
     return 0
+
+
+def _ios_backup(args) -> int:
+    phone = iphone.find(args.udid, autopair=True)
+    name = phone.name or phone.udid
+    given = os.environ.get("WHATFERRY_BACKUP_PASSPHRASE")
+    if iphone.encrypts(phone):
+        passphrase = given or getpass.getpass(f"Backup passphrase of {name} (hidden): ")
+    else:
+        print(f"{name} doesn't encrypt its backups yet, and WhatsApp's chats are only in an encrypted one.")
+        passphrase = given or _new_passphrase()
+        print("Turning on encryption; if the iPhone asks for its passcode, enter it on the phone.")
+        iphone.turn_on_encryption(phone, passphrase)
+        print(f"{name} encrypts every backup from now on: this is the phone's own setting, and Finder shows "
+              "'Encrypt local backup' ticked. Keep the passphrase: no backup of this phone opens without it.")
+    kind = "a WhatsApp-only" if args.whatsapp_only else "a full" if args.full else "an updated"
+    print(f"Making {kind} backup of {name}; keep it connected and unlocked.")
+    folder = iphone.backup(phone, passphrase, full=args.full, whatsapp_only=args.whatsapp_only,
+                           progress=_progress_printer())
+    print(f"Backed up: {folder}")
+    if args.whatsapp_only:
+        print(f"Compare it with another backup: whatferry ios diff <earlier> {folder.name}")
+    else:
+        print(f"Next: whatferry ios inspect {folder.name}")
+    return 0
+
+
+def _new_passphrase() -> str:
+    for _ in range(3):
+        first = getpass.getpass("Choose a backup passphrase (hidden): ")
+        if not first:
+            print("The passphrase can't be empty.", file=sys.stderr)
+        elif getpass.getpass("Type it again: ") == first:
+            return first
+        else:
+            print("The two don't match, try again.", file=sys.stderr)
+    raise iphone.IphoneError("no passphrase chosen: encryption left off, nothing backed up")
+
+
+def _progress_printer():
+    """Prints a percentage every ten percent, and 100% once."""
+    last = -10.0
+
+    def progress(percent: float) -> None:
+        nonlocal last
+        if percent >= last + 10 or (percent >= 100 > last):
+            last = percent
+            print(f"  {percent:.0f}%", flush=True)
+
+    return progress
 
 
 def _ios_inspect(args) -> int:
@@ -401,6 +461,9 @@ def _ios_diff(args) -> int:
 def _ios_write(args) -> int:
     source = _open_backup(args.backup)  # checks the passphrase before anything is copied
     target = args.to / source.folder.name if args.to else None
+    if backup_writer.copy_needs_space():
+        print(f"Copying the backup first: that needs {_size(backup_writer.folder_size(source.folder))} free "
+              "(Windows can't clone it in place).")
     report, written = backup_writer.write_conversion(source.folder, source.passphrase, args.convert_run,
                                                      args.account_folder, target,
                                                      check_source=not args.skip_source_check)
@@ -427,15 +490,7 @@ def _ios_restore(args) -> int:
     if not restore.same_name(input(f"Type {name} to restore: "), name):
         print("Not restored.")
         return 1
-    last = -10.0
-
-    def progress(percent: float) -> None:
-        nonlocal last
-        if percent >= last + 10 or percent >= 100:
-            last = percent
-            print(f"  {percent:.0f}%")
-
-    restore.restore(folder, backup.passphrase, progress)
+    restore.restore(folder, backup.passphrase, _progress_printer())
     print(f"Restored. {name} restarts now; keep it connected until it shows the lock screen.")
     return 0
 

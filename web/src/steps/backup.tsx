@@ -63,6 +63,15 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
     findBackups().then(show)
   }
 
+  // A backup made from this page: listed, chosen, and its passphrase ready for the check.
+  function madeHere(made: string, pass: string) {
+    setPassphrase(pass)
+    findBackups().then((found) => {
+      show(found)
+      if (found.backups.some((b) => b.folder === made)) setFolder(made)
+    })
+  }
+
   if (!first && state.destination === "existing") {
     return (
       <>
@@ -104,8 +113,11 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
       <PageHeader title={t.backup.title[role]} lead={t.backup.lead[role]} />
 
       <Section n={1} title={t.backup.makeTitle[role]}>
-        <Instructions items={t.backup.make[platformOf(overview)]} />
+        <BackupNow onDone={madeHere} />
         {!first && <p className="text-sm text-muted-foreground">{t.backup.samePassphrase}</p>}
+        <Disclosure title={t.backup.now.byHand}>
+          <Instructions items={t.backup.make[platformOf(overview)]} />
+        </Disclosure>
       </Section>
 
       <Section n={2} title={t.backup.chooseTitle}>
@@ -186,6 +198,155 @@ export function BackupStep({ overview, refresh, go, role }: StepProps & { role: 
         {first && checked && !toAndroid && <DestinationChoice overview={overview} refresh={refresh} />}
       </div>
     </>
+  )
+}
+
+interface PhoneStatus {
+  phones: { udid: string; name: string | null; paired: boolean }[]
+  encrypts: boolean | null
+  error: string | null
+}
+
+function phoneStatus(): Promise<PhoneStatus> {
+  return api<PhoneStatus>("GET", "/api/ios/phone").catch((e: Error) => ({ phones: [], encrypts: null, error: e.message }))
+}
+
+/** Makes the backup over the cable, as Finder would: no Finder, Apple Devices app or Full Disk Access needed. */
+function BackupNow({ onDone }: { onDone: (folder: string, passphrase: string) => void }) {
+  const { t } = useI18n()
+  const [status, setStatus] = useState<PhoneStatus | null>(null)
+  const [pass, setPass] = useState("")
+  const [again, setAgain] = useState("")
+  const [progress, setProgress] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [made, setMade] = useState<{ folder: string; turned_on: boolean } | null>(null)
+
+  useEffect(() => {
+    let live = true
+    phoneStatus().then((found) => live && setStatus(found))
+    return () => {
+      live = false
+    }
+  }, [])
+
+  function look() {
+    setStatus(null)
+    phoneStatus().then(setStatus)
+  }
+
+  const phone = status?.phones.length === 1 ? status.phones[0] : null
+  const turnOn = status?.encrypts === false
+  const busy = progress !== null
+  const ready = phone !== null && pass !== "" && (!turnOn || again === pass) && !busy
+
+  async function run() {
+    if (!phone) return
+    setProgress(0)
+    setError(null)
+    setMade(null)
+    try {
+      const result = await runJob<{ folder: string; turned_on: boolean }>(
+        "/api/ios/backup",
+        { passphrase: pass, again: turnOn ? again : null, udid: phone.udid },
+        setProgress,
+      )
+      setMade(result)
+      onDone(result.folder, pass)
+      setAgain("")
+      look()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+    setProgress(null)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t.backup.now.title}</CardTitle>
+        <CardDescription>{t.backup.now.lead}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {status === null ? (
+          <Busy>{t.backup.now.looking}</Busy>
+        ) : (
+          <>
+            <ErrorNotice message={status.error} />
+            {status.phones.length === 0 && !status.error && <p className="text-sm">{t.backup.now.connect}</p>}
+            {status.phones.length > 1 && <p className="text-sm">{t.backup.now.onlyOne}</p>}
+            {phone && !phone.paired && <p className="text-sm">{t.backup.now.trust}</p>}
+            {phone && (
+              <p className="text-sm">
+                {t.backup.now.found(phone.name ?? t.backup.iphone)}
+                {status.encrypts === true && ` ${t.backup.now.encrypts}`}
+              </p>
+            )}
+            {turnOn && (
+              <Alert>
+                <Lock />
+                <AlertTitle>{t.backup.now.turnOnTitle}</AlertTitle>
+                <AlertDescription>{t.backup.now.turnOnBody}</AlertDescription>
+              </Alert>
+            )}
+            {phone && (
+              <div className="grid gap-2">
+                <Label htmlFor="backup-now-pass">{turnOn ? t.backup.now.choose : t.backup.passLabel}</Label>
+                <Input
+                  id="backup-now-pass"
+                  type="password"
+                  autoComplete="off"
+                  value={pass}
+                  onChange={(e) => setPass(e.target.value)}
+                />
+                {turnOn && (
+                  <>
+                    <Label htmlFor="backup-now-again">{t.backup.now.again}</Label>
+                    <Input
+                      id="backup-now-again"
+                      type="password"
+                      autoComplete="off"
+                      value={again}
+                      onChange={(e) => setAgain(e.target.value)}
+                    />
+                    {again !== "" && again !== pass && (
+                      <p className="text-xs text-destructive">{t.backup.now.mismatch}</p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        )}
+        <ErrorNotice message={error} />
+        {busy && (
+          <div className="space-y-2" role="status">
+            <Busy>{t.backup.now.working(progress ?? 0)}</Busy>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full bg-primary transition-[width]" style={{ width: `${progress ?? 0}%` }} />
+            </div>
+            <p className="text-xs text-muted-foreground">{t.backup.now.keepConnected}</p>
+          </div>
+        )}
+        {made && (
+          <Alert>
+            <CircleCheck />
+            <AlertTitle>{t.backup.now.done}</AlertTitle>
+            <AlertDescription className="space-y-1">
+              <Path>{made.folder}</Path>
+              {made.turned_on && <span className="block">{t.backup.now.turnedOn}</span>}
+            </AlertDescription>
+          </Alert>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button disabled={!ready} onClick={run}>
+            {t.backup.now.run}
+          </Button>
+          <Button variant="ghost" disabled={busy} onClick={look}>
+            <RefreshCw data-icon="inline-start" /> {t.backup.now.lookAgain}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

@@ -117,18 +117,19 @@ def decrypt_file(reader: EncryptedBackup, folder: Path, file_id: str, bplist: by
     return utils.remove_cbc_padding(utils.aes_decrypt_cbc(data=data, key=key))
 
 
-HOW_TO_BACK_UP = {
-    "darwin": "In Finder: select the iPhone, tick 'Encrypt local backup', then 'Back Up Now'.",
-    "win32": "In the Apple Devices app (or iTunes): select the iPhone, tick 'Encrypt local backup', "
+HOW_TO_BACK_UP = "Connect the iPhone with a cable, unlock it, and run `whatferry ios backup`."
+BY_HAND = {
+    "darwin": "Or in Finder: select the iPhone, tick 'Encrypt local backup', then 'Back Up Now'.",
+    "win32": "Or in the Apple Devices app (or iTunes): select the iPhone, tick 'Encrypt local backup', "
              "then 'Back Up Now'.",
 }
-HOW_TO_BACK_UP_ELSEWHERE = (
-    "With libimobiledevice: `idevicebackup2 encryption on` once, then `idevicebackup2 backup --full <folder>`; "
+BY_HAND_ELSEWHERE = (
+    "Or with libimobiledevice: `idevicebackup2 encryption on` once, then `idevicebackup2 backup --full <folder>`; "
     "set WHATFERRY_BACKUP_ROOT to that folder.")
 
 
 def how_to_back_up(platform: str = sys.platform) -> str:
-    return HOW_TO_BACK_UP.get(platform, HOW_TO_BACK_UP_ELSEWHERE)
+    return f"{HOW_TO_BACK_UP} {BY_HAND.get(platform, BY_HAND_ELSEWHERE)}"
 
 
 # What a later diff needs from a backup: the file list and, when encrypted,
@@ -153,22 +154,24 @@ def snapshot_manifest(folder: Path, dest: Path) -> Path:
 def backup_roots(platform: str = sys.platform, env=os.environ) -> list[Path]:
     """The folders that hold one sub-folder per backup, most likely first.
 
+    whatferry's own (<home>/backups, where `whatferry ios backup` writes)
+    comes first, then the one Finder, iTunes or the Apple Devices app uses.
     WHATFERRY_BACKUP_ROOT (several joined with the platform's path separator)
-    replaces the defaults; Linux has none, since idevicebackup2 writes
-    wherever it is told.
+    replaces them all.
     """
     if env.get("WHATFERRY_BACKUP_ROOT"):
         return [Path(p).expanduser() for p in env["WHATFERRY_BACKUP_ROOT"].split(os.pathsep) if p]
+    own = [workdir.home(platform, env) / "backups"]
     if platform == "darwin":
-        return [Path.home() / "Library" / "Application Support" / "MobileSync" / "Backup"]
+        return own + [Path.home() / "Library" / "Application Support" / "MobileSync" / "Backup"]
     if platform == "win32":
         profile = Path(env.get("USERPROFILE") or Path.home())
         appdata = Path(env.get("APPDATA") or profile / "AppData" / "Roaming")
         # The Apple Devices app and Microsoft Store iTunes use the first,
         # iTunes from apple.com the second.
-        return [profile / "Apple" / "MobileSync" / "Backup",
-                appdata / "Apple Computer" / "MobileSync" / "Backup"]
-    return []
+        return own + [profile / "Apple" / "MobileSync" / "Backup",
+                      appdata / "Apple Computer" / "MobileSync" / "Backup"]
+    return own
 
 
 def list_backups(roots: list[Path] | None = None) -> list[tuple[Path, DeviceInfo]]:

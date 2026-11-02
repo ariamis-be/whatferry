@@ -8,46 +8,28 @@ This talks to the phone through pymobiledevice3, which goes through usbmuxd:
 Apple's on macOS and Windows (it comes with Finder, and with the Apple
 Devices app or iTunes), the usbmuxd package on Linux. Only an iPhone this
 computer is already paired with ("Trust This Computer") is used; nothing here
-asks to pair.
+asks to pair. Finding the phone and the restore itself are in iphone.py.
 
 iOS refuses a restore while Find My is on, so that is checked first.
 """
 
-import asyncio
 import plistlib
 import unicodedata
-from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
 
+from whatferry import iphone
+from whatferry.iphone import Iphone, IphoneError
 
-class RestoreError(Exception):
-    """A restore can't start or didn't finish; the message says why."""
+# Kept under its old name: callers catch RestoreError.
+RestoreError = IphoneError
 
-
-@dataclass
-class Iphone:
-    udid: str
-    name: str | None
-    ios_version: str | None
-    # Paired with this computer: needed for a restore.
-    paired: bool
-    # None when the phone wouldn't say (not paired, or locked).
-    find_my: bool | None
-
-    def as_dict(self) -> dict:
-        return asdict(self)
+__all__ = ["Iphone", "RestoreError", "backup_udid", "iphones", "restore", "same_name"]
 
 
 def iphones() -> list[Iphone]:
-    """The iPhones connected by cable."""
-    try:
-        return asyncio.run(_list())
-    except RestoreError:
-        raise
-    except Exception as e:  # noqa: BLE001 - usbmuxd missing, a phone unplugged mid-way, ...
-        raise RestoreError(f"can't reach connected iPhones: {e}. On Windows, install Apple Devices (or iTunes); "
-                           "on Linux, the usbmuxd package") from e
+    """The iPhones connected by cable; nothing here asks one to pair."""
+    return iphone.iphones(autopair=False)
 
 
 def same_name(typed: str, name: str) -> bool:
@@ -61,6 +43,9 @@ def backup_udid(folder: Path) -> str:
     """The iPhone a backup belongs to: its folder name, as Finder names it."""
     if not (folder / "Manifest.plist").is_file() or not (folder / "Info.plist").is_file():
         raise RestoreError(f"{folder} isn't an iPhone backup")
+    if iphone.is_whatsapp_only(folder):
+        raise RestoreError(f"{folder.name} is a WhatsApp-only backup: it holds nothing else of the phone, so it is "
+                           "never restored")
     info = plistlib.loads((folder / "Info.plist").read_bytes())
     target = info.get("Target Identifier") or info.get("Unique Identifier")
     if target and target.upper() != folder.name.upper():
@@ -86,51 +71,5 @@ def restore(folder: Path, passphrase: str | None, progress: Callable[[float], No
     if phone.find_my is None:
         raise RestoreError("the iPhone didn't say whether Find My is off: unlock it, keep it on the home screen, "
                            "and try again")
-    try:
-        asyncio.run(_restore(folder.parent, udid, passphrase or "", progress))
-    except Exception as e:  # noqa: BLE001 - the phone's own reason, passed on
-        raise RestoreError(f"the iPhone stopped the restore: {e}") from e
+    iphone.restore(folder, udid, passphrase or "", progress)
     return phone
-
-
-# The two places that talk to the phone, kept apart so tests can stand in for it.
-
-async def _list() -> list[Iphone]:
-    from pymobiledevice3 import usbmux
-    from pymobiledevice3.lockdown import create_using_usbmux
-
-    found = []
-    for device in await usbmux.list_devices():
-        if device.connection_type != "USB":
-            continue
-        try:
-            lockdown = await create_using_usbmux(serial=device.serial, autopair=False)
-        except Exception:  # noqa: BLE001 - locked, or never trusted: listed, not usable
-            found.append(Iphone(device.serial, None, None, False, None))
-            continue
-        try:
-            try:
-                find_my = await lockdown.get_value(domain="com.apple.fmip", key="IsAssociated")
-            except Exception:  # noqa: BLE001
-                find_my = None
-            found.append(Iphone(lockdown.udid, lockdown.all_values.get("DeviceName"), lockdown.product_version,
-                                bool(lockdown.paired), None if find_my is None else bool(find_my)))
-        finally:
-            await lockdown.close()
-    return found
-
-
-async def _restore(backups: Path, udid: str, passphrase: str, progress: Callable[[float], None]) -> None:
-    from pymobiledevice3.lockdown import create_using_usbmux
-    from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
-
-    lockdown = await create_using_usbmux(serial=udid, autopair=False)
-    try:
-        async with Mobilebackup2Service(lockdown) as service:
-            # Everything, as Finder restores: system files and settings too.
-            # The backup was made from this phone shortly before, so that is
-            # the phone as it was then, with the converted chats added.
-            await service.restore(backup_directory=backups, source=udid, system=True, settings=True, reboot=True,
-                                  copy=False, remove=False, password=passphrase, progress_callback=progress)
-    finally:
-        await lockdown.close()

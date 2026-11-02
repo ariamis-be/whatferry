@@ -46,8 +46,8 @@ whatferry ui
 
 opens a step-by-step page in your browser that does everything below:
 finds the Android backup in Downloads (or takes it from a file picker),
-decrypts it with the key you type, lists the iPhone backups on this
-computer, checks the first one and keeps its file list, walks through adding
+decrypts it with the key you type, backs up the iPhone over the cable (or
+lists the backups Finder made), checks the first one and keeps its file list, walks through adding
 the second account, then compares the second backup with the first and points
 at the new account's chat database. Then it converts the chats into the
 iPhone account picked (suggesting the one on the Android number, and the
@@ -306,7 +306,30 @@ Put the key in a file only you can read, then:
 whatferry android inspect ~/whatferry-android/whatsapp-account-1001-msgstore.db.crypt15 --key-file key.txt
 ```
 
-**iPhone, before.** Make an encrypted backup:
+**iPhone, before.** Make an encrypted backup. Connect the iPhone with a
+cable, unlock it, and on any system:
+
+```sh
+whatferry ios backup
+```
+
+It finds the iPhone (asking it to trust this computer if it doesn't yet),
+and makes the same backup Finder makes, through the same service on the
+phone, into `<whatferry's folder>/backups/<id>`. When the phone doesn't
+encrypt its backups yet, it asks for a passphrase twice and turns encryption
+on: that is the phone's own setting, the one Finder's *Encrypt local backup*
+box shows. When it already encrypts, the passphrase is asked once and checked
+by opening the backup, before an update and after the backup. Later runs
+update the same folder, as Finder does; `--full` starts over. The wizard has
+the same as a *Back up now* button. No Finder, Apple Devices app or Full Disk
+Access is needed.
+
+`whatferry ios backup --whatsapp-only` keeps only WhatsApp's two containers.
+It takes seconds instead of an hour, which suits `ios diff`, and lands in
+`<id>-whatsapp`, replaced each time. It holds nothing else of the phone, so
+`ios restore` refuses it.
+
+Or by hand:
 
 | System | How | Where it lands |
 |---|---|---|
@@ -314,8 +337,15 @@ whatferry android inspect ~/whatferry-android/whatsapp-account-1001-msgstore.db.
 | Windows | Apple Devices app (or iTunes) → the iPhone → tick *Encrypt local backup* → *Back Up Now* | `%USERPROFILE%\Apple\MobileSync\Backup\<id>`, or `%APPDATA%\Apple Computer\MobileSync\Backup\<id>` for iTunes from apple.com |
 | Linux | libimobiledevice: `idevicebackup2 encryption on` once, then `idevicebackup2 backup --full <folder>` | `<folder>/<id>`; set `WHATFERRY_BACKUP_ROOT=<folder>` |
 
-`WHATFERRY_BACKUP_ROOT` works on every system and replaces the defaults
-(several folders: join them with `:`, or `;` on Windows).
+whatferry's own folder is listed first, then the system's. When both hold a
+backup of the same phone, `ios backups` shows full paths and the bare `<id>`
+picks whatferry's. `WHATFERRY_BACKUP_ROOT` works on every system and replaces
+them all (several folders: join them with `:`, or `;` on Windows).
+
+Writing a backup copies it first. macOS clones it on APFS, Linux shares
+blocks where the file system can (`cp --reflink=auto`), and elsewhere it is a
+full copy: whatferry checks there is room before starting, and on Windows
+says how much it needs.
 
 ```sh
 whatferry ios backups
@@ -365,8 +395,10 @@ mise exec -- uv run pytest
 
 The tests build a real `.crypt15` with wa-crypt-tools' own encryptor and an
 unencrypted Finder-format backup (Manifest.db, keyed-archiver file plists,
-hashed file names). Encrypted iPhone backups are read through
-iphone_backup_decrypt and are not covered by a fixture yet.
+hashed file names), and encrypted ones the way iOS encrypts them
+(`tests/encrypted_backup.py`). The iPhone itself is a stand-in: tests replace
+the functions in `iphone.py` that talk to it, and the stand-in's backup
+writes one of those folders.
 `tests/test_platforms.py` covers what differs by system: backup and data
 folders, file names Windows refuses, `file:` URIs for paths holding `#`, `?`
 or `%`, and byte-exact writes. CI runs the suite on macOS, Windows and Linux.
