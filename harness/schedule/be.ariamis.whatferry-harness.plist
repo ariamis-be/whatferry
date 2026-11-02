@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The monthly round trip on macOS: the 1st of each month at 03:00.
+     Replace __REPO__ with the repository's path, then:
+       cp harness/schedule/be.ariamis.whatferry-harness.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/be.ariamis.whatferry-harness.plist
+     A Mac asleep at 03:00 runs it when it wakes. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>be.ariamis.whatferry-harness</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd __REPO__ &amp;&amp; mise exec -- uv run python -m harness run roundtrip</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Day</key>
+    <integer>1</integer>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/tmp/whatferry-harness.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/whatferry-harness.log</string>
+</dict>
+</plist>

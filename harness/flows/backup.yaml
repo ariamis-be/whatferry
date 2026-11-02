@@ -1,0 +1,22 @@
+# Settings → Chats → Chat backup → Back up, and wait until it is done.
+# Google Drive may stay at Never: the local file is made either way.
+appId: com.whatsapp
+---
+- launchApp:
+    appId: com.whatsapp
+    stopApp: false
+- tapOn:
+    id: "com.whatsapp:id/menuitem_overflow"
+- tapOn: "(?i)^settings$"
+- tapOn: "(?i)^chats$"
+- tapOn: "(?i)^chat backup$"
+- tapOn: "(?i)^back up$"
+- extendedWaitUntil:
+    notVisible: "(?i)backing up.*|(?i)preparing.*"
+    timeout: 1800000
+- extendedWaitUntil:
+    visible: "(?i)^back up$"
+    timeout: 60000
+- back
+- back
+- back

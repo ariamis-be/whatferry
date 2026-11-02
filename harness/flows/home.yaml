@@ -1,0 +1,17 @@
+# WhatsApp is registered and on its chat list. Fails on any other screen,
+# which is how the harness learns B isn't registered on the Pixel.
+appId: com.whatsapp
+---
+- launchApp:
+    appId: com.whatsapp
+    stopApp: false
+- runFlow:
+    when:
+      visible: "(?i)not now|(?i)later|(?i)skip"
+    commands:
+      - tapOn: "(?i)not now|(?i)later|(?i)skip"
+- extendedWaitUntil:
+    visible:
+      id: "com.whatsapp:id/fab"
+    timeout: 30000
+- assertNotVisible: "(?i)agree and continue"

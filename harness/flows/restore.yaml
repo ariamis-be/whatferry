@@ -1,0 +1,37 @@
+# Register B and restore the backup whatferry pushed, typing the 64-digit key.
+# env: COUNTRY_CODE, PHONE (as register.yaml), KEY (64 digits)
+appId: com.whatsapp
+---
+- runFlow:
+    file: register.yaml
+    env:
+      RESTORE: "yes"
+- extendedWaitUntil:
+    visible: "(?i)restore backup|(?i)backup found"
+    timeout: 60000
+- tapOn: "(?i)^restore$"
+- extendedWaitUntil:
+    visible: "(?i)64-digit key"
+    timeout: 60000
+- tapOn:
+    id: "com.whatsapp:id/encryption_key_input"
+    optional: true
+- inputText: ${KEY}
+- tapOn: "(?i)^(next|done|restore)$"
+- extendedWaitUntil:
+    notVisible: "(?i)restoring.*"
+    timeout: 3600000
+- runFlow:
+    when:
+      visible: "(?i)^next$"
+    commands:
+      - tapOn: "(?i)^next$"
+- runFlow:
+    when:
+      visible: "(?i)profile info"
+    commands:
+      - tapOn:
+          id: "com.whatsapp:id/registration_name"
+      - eraseText: 30
+      - inputText: "B"
+      - tapOn: "(?i)^next$"

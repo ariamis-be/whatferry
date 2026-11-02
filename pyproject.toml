@@ -26,6 +26,10 @@ dev = [
     "pytest>=9.1.1",
 ]
 
+[tool.pytest.ini_options]
+# The harness (harness/, beside src/) is imported from the repository root; it isn't in the wheel.
+pythonpath = ["."]
+
 [tool.uv]
 # pyimg4 (through pymobiledevice3) pins pylzss 0.3.4, which has no Python 3.14
 # wheels and so needs a C compiler to install. 0.3.9 has wheels everywhere;

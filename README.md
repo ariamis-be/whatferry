@@ -403,4 +403,8 @@ writes one of those folders.
 folders, file names Windows refuses, `file:` URIs for paths holding `#`, `?`
 or `%`, and byte-exact writes. CI runs the suite on macOS, Windows and Linux.
 
+`harness/` is the monthly round trip on a fixed test kit (Android → iPhone →
+Android, each side verified). It isn't part of the package: see
+[`harness/README.md`](harness/README.md).
+
 wa-crypt-tools is GPL-3.0, so whatferry is too, if it is ever distributed.

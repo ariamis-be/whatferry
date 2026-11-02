@@ -1,0 +1,62 @@
+# Register B on a WhatsApp just cleared (or just installed). WhatsApp reads
+# the SMS code itself: B's SIM is in this phone. A backup on the phone is
+# skipped here; restore.yaml restores one when the harness wants that.
+# env: COUNTRY_CODE (digits, no +), PHONE (digits); RESTORE=yes stops at the restore screen
+appId: com.whatsapp
+env:
+  RESTORE: "no"
+---
+- launchApp:
+    appId: com.whatsapp
+    clearState: false
+- runFlow:
+    when:
+      visible:
+        id: "com.whatsapp:id/eula_accept"
+    commands:
+      - tapOn:
+          id: "com.whatsapp:id/eula_accept"
+- extendedWaitUntil:
+    visible:
+      id: "com.whatsapp:id/registration_phone"
+    timeout: 30000
+- tapOn:
+    id: "com.whatsapp:id/registration_cc"
+- eraseText: 6
+- inputText: ${COUNTRY_CODE}
+- tapOn:
+    id: "com.whatsapp:id/registration_phone"
+- eraseText: 20
+- inputText: ${PHONE}
+- tapOn:
+    id: "com.whatsapp:id/registration_submit"
+# "Is this the correct number?"
+- runFlow:
+    when:
+      visible: "(?i)^(yes|ok)$"
+    commands:
+      - tapOn: "(?i)^(yes|ok)$"
+# The code is read from the SMS; then the profile or the restore screen.
+- extendedWaitUntil:
+    visible: "(?i)profile info|(?i)restore backup|(?i)backup found"
+    timeout: 600000
+- runFlow:
+    when:
+      visible: "(?i)restore backup|(?i)backup found"
+      true: ${RESTORE != "yes"}
+    commands:
+      - tapOn: "(?i)^skip$"
+      - runFlow:
+          when:
+            visible: "(?i)^skip$"
+          commands:
+            - tapOn: "(?i)^skip$"
+- runFlow:
+    when:
+      visible: "(?i)profile info"
+    commands:
+      - tapOn:
+          id: "com.whatsapp:id/registration_name"
+      - eraseText: 30
+      - inputText: "B"
+      - tapOn: "(?i)^next$"

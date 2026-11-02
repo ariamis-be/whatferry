@@ -1,0 +1,20 @@
+# Turn on the end-to-end encrypted backup with a 64-digit key, and stop on
+# the screen that shows the key: the harness reads it there (uiautomator),
+# then confirm_key.yaml carries on.
+appId: com.whatsapp
+---
+- launchApp:
+    appId: com.whatsapp
+    stopApp: false
+- tapOn:
+    id: "com.whatsapp:id/menuitem_overflow"
+- tapOn: "(?i)^settings$"
+- tapOn: "(?i)^chats$"
+- tapOn: "(?i)^chat backup$"
+- tapOn: "(?i)end-to-end encrypted backup"
+- tapOn: "(?i)^turn on$"
+- tapOn: "(?i)use 64-digit encryption key instead"
+- tapOn: "(?i)generate your 64-digit key"
+- extendedWaitUntil:
+    visible: "(?i)your 64-digit key|(?i)save your key"
+    timeout: 30000

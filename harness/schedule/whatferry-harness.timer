@@ -1,0 +1,10 @@
+[Unit]
+Description=whatferry round-trip harness, monthly
+
+[Timer]
+OnCalendar=*-*-01 03:00:00
+# A computer off at 03:00 runs it at the next start.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

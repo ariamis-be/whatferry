@@ -1,0 +1,18 @@
+# After enable_key.yaml, once the key is read: confirm it is saved, create
+# the encrypted backup, and go back to the chat list.
+appId: com.whatsapp
+---
+- tapOn: "(?i)^(continue|next)$"
+- runFlow:
+    when:
+      visible: "(?i)i saved my.*key|(?i)i've saved.*"
+    commands:
+      - tapOn: "(?i)i saved my.*key|(?i)i've saved.*"
+- tapOn: "(?i)^create$"
+- extendedWaitUntil:
+    visible: "(?i)end-to-end encrypted backup.*on|(?i)^back up$"
+    timeout: 300000
+- back
+- back
+- back
+- back

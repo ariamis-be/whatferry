@@ -3,6 +3,14 @@
 Two parts, because they are separable: the backup command
 is useful to every whatferry user on its own; the harness builds on it.
 
+**Status.** Part A is built (`whatferry ios backup`,
+`iphone.py`, the wizard's *Back up now*). Part B is built at Stage 1 in
+`harness/`, tested without phones: the flows still have to meet the real
+Pixel (B6 step 2), and Stage 2 waits on the WDA spike. Two changes from the
+text below: the harness has no dependency group, since it needs nothing
+beyond whatferry's; and iPhone → Android takes its source from a
+WhatsApp-only backup, which holds B's chats and media in seconds.
+
 ## Part A — the backup command
 
 **Goal.** One command that makes the encrypted iPhone backup on macOS, Windows

@@ -1,0 +1,14 @@
+# The monthly round trip on Linux, as a user service started by whatferry-harness.timer.
+# Replace __REPO__ with the repository's path, then:
+#   cp harness/schedule/whatferry-harness.* ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now whatferry-harness.timer
+#   loginctl enable-linger $USER    # so it runs with nobody logged in
+[Unit]
+Description=whatferry round-trip harness
+
+[Service]
+Type=oneshot
+WorkingDirectory=__REPO__
+ExecStart=/bin/bash -lc 'mise exec -- uv run python -m harness run roundtrip'
+# 75 is a pause for a person, not a failure.
+SuccessExitStatus=75
