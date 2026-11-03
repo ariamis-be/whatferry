@@ -4,12 +4,16 @@ Two parts, because they are separable: the backup command
 is useful to every whatferry user on its own; the harness builds on it.
 
 **Status.** Part A is built (`whatferry ios backup`,
-`iphone.py`, the wizard's *Back up now*). Part B is built at Stage 1 in
-`harness/`, tested without phones: the flows still have to meet the real
-Pixel (B6 step 2), and Stage 2 waits on the WDA spike. Two changes from the
-text below: the harness has no dependency group, since it needs nothing
-beyond whatferry's; and iPhone → Android takes its source from a
-WhatsApp-only backup, which holds B's chats and media in seconds.
+`iphone.py`, the wizard's *Back up now*). Part B is built in `harness/`,
+Stages 1 and 2, tested without phones: the flows still have to meet the
+real phones, and `python -m harness spike --yes` is the WDA spike, scripted.
+Changes from the text below: the harness has no dependency group, since it
+needs nothing beyond whatferry's; iPhone → Android takes its source from a
+WhatsApp-only backup, which holds B's chats and media in seconds; and
+Maestro can't drive a physical iPhone (its docs say so), so Stage 2 drives
+WebDriverAgent through pymobiledevice3, which also puts Developer Mode,
+the disk image and WDA back after each restore, without Xcode at run time.
+Each Stage 2 step falls back to its Stage 1 pause when its taps stop.
 
 ## Part A — the backup command
 

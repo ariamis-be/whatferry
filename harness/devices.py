@@ -185,10 +185,21 @@ class Iphone:
             return None
 
     def screenshot(self, path: Path) -> Path | None:
-        """Where the phone allows one (a developer image mounted); None otherwise, and the pause says so."""
-        try:
-            data = asyncio.run(_screenshot(self.udid))
-        except Exception:  # noqa: BLE001
+        """Where the phone allows one; None otherwise, and the pause says what to do without a picture.
+
+        iOS 17 and later: through pymobiledevice3's tunnel and the developer disk image (Stage 2's
+        setup). Older: the lockdown screenshot service.
+        """
+        from harness.ios_ui import screenshot_over_tunnel
+
+        data = None
+        for take in (screenshot_over_tunnel, _screenshot):
+            try:
+                data = asyncio.run(take(self.udid))
+                break
+            except Exception:  # noqa: BLE001
+                continue
+        if data is None:
             return None
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)

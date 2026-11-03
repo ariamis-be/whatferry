@@ -1,0 +1,14 @@
+# Stage 2 on Linux: pymobiledevice3's tunnel to the iPhone (iOS 17 and later), as root, always on.
+# Replace __REPO__ with the repository's path, then:
+#   sudo cp harness/schedule/pymobiledevice3-tunneld.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now pymobiledevice3-tunneld
+[Unit]
+Description=pymobiledevice3 tunnel to connected iPhones
+After=usbmuxd.service
+
+[Service]
+ExecStart=__REPO__/.venv/bin/pymobiledevice3 remote tunneld
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

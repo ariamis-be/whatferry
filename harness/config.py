@@ -17,6 +17,11 @@ logged or reported.
     smtp_host = "smtp.example.com"
     smtp_user = "…"
     smtp_password = "…"
+
+    [ios_automation]                  # Stage 2: the iPhone's taps without a person
+    wda_app = "~/wda/WebDriverAgentRunner-Runner.app"   # built and signed once (README.md)
+    runner = "com.facebook.WebDriverAgentRunner.xctrunner"  # its bundle id, if renamed
+    enabled = true                    # false goes back to Stage 1's pauses
 """
 
 import os
@@ -47,6 +52,13 @@ class Notify:
 
 
 @dataclass
+class IosAutomation:
+    wda_app: Path | None = None
+    runner: str = "com.facebook.WebDriverAgentRunner.xctrunner"
+    enabled: bool = True
+
+
+@dataclass
 class Kit:
     secrets: Path
     home: Path
@@ -57,6 +69,12 @@ class Kit:
     android_key: str | None = None
     maestro: str = "maestro"
     notify: Notify = field(default_factory=Notify)
+    # None: Stage 1, every iPhone tap a pause.
+    ios_automation: IosAutomation | None = None
+
+    @property
+    def taps_iphone(self) -> bool:
+        return bool(self.ios_automation and self.ios_automation.enabled)
 
     def __repr__(self) -> str:  # never the secrets, whatever prints a Kit
         return f"Kit(iphone …{self.iphone_udid[-6:]}, android {self.android_serial}, home {self.home})"
@@ -112,10 +130,20 @@ def load(secrets: Path | None = None, home: Path | None = None, env=os.environ) 
     unknown = set(notify) - set(Notify.__dataclass_fields__)
     if unknown:
         raise KitError(f"unknown [notify] settings: {', '.join(sorted(unknown))}")
+    automation = None
+    if "ios_automation" in data:
+        settings = data["ios_automation"] or {}
+        unknown = set(settings) - set(IosAutomation.__dataclass_fields__)
+        if unknown:
+            raise KitError(f"unknown [ios_automation] settings: {', '.join(sorted(unknown))}")
+        automation = IosAutomation(**settings)
+        if automation.wda_app:
+            automation.wda_app = Path(automation.wda_app).expanduser()
     return Kit(secrets=path, home=root, backup_passphrase=str(data["backup_passphrase"]),
                number_b=str(data["number_b"]), iphone_udid=str(data["iphone_udid"]),
                android_serial=str(data["android_serial"]), android_key=key,
-               maestro=str(data.get("maestro") or "maestro"), notify=Notify(**notify))
+               maestro=str(data.get("maestro") or "maestro"), notify=Notify(**notify),
+               ios_automation=automation)
 
 
 def isolate(kit: Kit, env=os.environ) -> None:

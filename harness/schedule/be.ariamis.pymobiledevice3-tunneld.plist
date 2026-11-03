@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Stage 2 on macOS: pymobiledevice3's tunnel to the iPhone, which iOS 17 and later need
+     for WebDriverAgent and screenshots. It must run as root, so it is a daemon, always on.
+     Replace __REPO__ with the repository's path, then:
+       sudo cp harness/schedule/be.ariamis.pymobiledevice3-tunneld.plist /Library/LaunchDaemons/
+       sudo launchctl bootstrap system /Library/LaunchDaemons/be.ariamis.pymobiledevice3-tunneld.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>be.ariamis.pymobiledevice3-tunneld</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__REPO__/.venv/bin/pymobiledevice3</string>
+    <string>remote</string>
+    <string>tunneld</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/var/log/pymobiledevice3-tunneld.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/pymobiledevice3-tunneld.log</string>
+</dict>
+</plist>

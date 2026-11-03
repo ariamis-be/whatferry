@@ -12,6 +12,7 @@ the harness folder records where, so a roundtrip always starts with the
 direction B's side calls for.
 """
 
+import asyncio
 import json
 import re
 import time
@@ -24,7 +25,7 @@ from whatferry import (android, android_writer, backup_writer, convert, ios, ios
 from whatferry.cli import SCHEMA_USES
 from whatferry.ios_backup import Backup
 
-from harness import devices, oracle, otp
+from harness import devices, ios_flows, ios_ui, oracle, otp
 from harness.config import Kit
 from harness.report import Run, notify
 
@@ -55,6 +56,8 @@ class Step:
     otp: bool = False
     # For an automated step that may hand over to a person: what makes it done anyway on resume.
     done_when: Callable[["Context"], bool] | None = None
+    # Stage 2: the manual step as taps, async (screen, context[, wait_for_code]); a failure falls back to the pause.
+    auto: Callable | None = None
 
 
 @dataclass
@@ -92,6 +95,10 @@ class Context:
         self.log(f"flow {name}")
         self.android.flow(name, self.run.path("maestro.log"), **env)
 
+    @staticmethod
+    def now_ms() -> int:
+        return int(time.time() * 1000)
+
     def phone_env(self) -> dict:
         country, number = split_number(self.kit.number_b)
         return {"COUNTRY_CODE": country, "PHONE": number}
@@ -125,6 +132,16 @@ def preflight(c: Context) -> None:
                 "ios": c.iphone.phone().ios_version}
     c.ctx.setdefault("versions", {}).update(versions)
     c.log("versions: " + ", ".join(f"{k} {v or '?'}" for k, v in versions.items()))
+    if c.kit.taps_iphone:
+        # Stage 2's needs, logged: a gap only turns its taps back into pauses, never stops the run.
+        try:
+            facts = asyncio.run(ios_ui.facts(c.kit.iphone_udid))
+        except Exception as e:  # noqa: BLE001
+            facts = {"error": str(e)}
+        c.ctx["ios_automation"] = facts
+        c.log("iPhone taps: " + ", ".join(f"{k} {v}" for k, v in facts.items()))
+        if facts.get("supervised") is False:
+            c.log("  not supervised: the panes after a restore will need a person (harness/README.md)")
 
 
 def check_schema(c: Context, db: Path, label: str) -> None:
@@ -279,16 +296,17 @@ A2I = [
     Step("a2i.android_backup", a2i_android_backup),
     Step("a2i.iphone_remove_b", manual=(
         "On the test iPhone, in WhatsApp: Settings → Accounts → B → Remove account, and delete its data from "
-        "this iPhone, so B comes back with a fresh, empty database.")),
+        "this iPhone, so B comes back with a fresh, empty database."), auto=ios_flows.remove_b),
     Step("a2i.ios_before", a2i_ios_before),
     Step("a2i.iphone_add_b", manual=(
         "On the test iPhone, in WhatsApp: Settings → Add account → B's number. The code goes to B's SIM in the "
-        "Pixel: the harness sends it in a second notification. Wait until B's empty chat list shows."), otp=True),
+        "Pixel: the harness sends it in a second notification. Wait until B's empty chat list shows."), otp=True,
+        auto=ios_flows.add_b),
     Step("a2i.ios_after", a2i_ios_after),
     Step("a2i.ios_restore", a2i_ios_restore),
     Step("a2i.iphone_after_restore", manual=(
         "On the test iPhone: get past the panes after the restore (Restore Completed, the Apple Account "
-        "sign-in), open WhatsApp, switch to B, and wait until its chats show.")),
+        "sign-in), open WhatsApp, switch to B, and wait until its chats show."), auto=ios_flows.after_restore),
     Step("a2i.verify", a2i_verify),
 ]
 
@@ -430,7 +448,16 @@ def execute(c: Context, steps: list[Step], *, resuming: bool = False, wait_for_c
             c.log(f"{name}: done by hand")
             continue
         if step.manual:
-            return _pause(c, step, step.manual, wait_for_code)
+            instructions, since = step.manual, c.now_ms()
+            if step.auto and c.kit.taps_iphone:
+                stopped = _tap(c, step, wait_for_code)
+                if stopped is None:
+                    run.mark(name, "done", by="harness")
+                    c.save()
+                    continue
+                instructions = f"{step.manual}\n(The harness's own taps stopped: {stopped}. The screenshot shows where.)"
+            # A code the taps already asked WhatsApp for still counts.
+            return _pause(c, step, instructions, wait_for_code, since)
         c.log(f"{name}: start")
         try:
             step.run(c)
@@ -469,9 +496,42 @@ def _screenshots(c: Context, label: str) -> list[Path]:
     return shots
 
 
-def _pause(c: Context, step: Step, instructions: str, wait_for_code) -> int:
+def open_screen(c: Context):
+    """A WDA session on the kit's iPhone (ios_ui.session); tests stand in for it."""
+    automation = c.kit.ios_automation
+    return ios_ui.session(c.kit.iphone_udid, automation.wda_app, automation.runner, c.log)
+
+
+def _tap(c: Context, step: Step, wait_for_code) -> str | None:
+    """Stage 2: the step's taps on the iPhone. None when done; otherwise why they stopped, for the pause."""
+    c.log(f"{step.name}: the harness taps the iPhone")
+
+    async def taps() -> str | None:
+        try:
+            async with open_screen(c) as screen:
+                try:
+                    await step.auto(screen, c, wait_for_code)
+                except Exception as e:  # noqa: BLE001 - every stop falls back to the person
+                    try:
+                        c.run.screenshot_path(f"{step.name}-iphone-stopped").write_bytes(await screen.screenshot())
+                    except Exception:  # noqa: BLE001
+                        pass
+                    return str(e) or type(e).__name__
+        except Exception as e:  # noqa: BLE001 - WDA couldn't start: a person instead
+            return str(e) or type(e).__name__
+        return None
+
+    stopped = asyncio.run(taps())
+    if stopped:
+        c.log(f"{step.name}: taps stopped: {stopped}")
+    else:
+        c.log(f"{step.name}: done by the harness")
+    return stopped
+
+
+def _pause(c: Context, step: Step, instructions: str, wait_for_code, since: int | None = None) -> int:
     run = c.run
-    since = int(time.time() * 1000)
+    since = since or c.now_ms()
     run.mark(step.name, "paused", instructions=instructions)
     run.state.update(status="paused", paused_at=step.name)
     run.save()

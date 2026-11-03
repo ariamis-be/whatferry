@@ -3,8 +3,9 @@
 Once a month, with nobody needed except for the iPhone's taps: Android →
 iPhone, verify, iPhone → Android, verify, report. It uses whatferry as a
 library and touches no phone but the test kit's two. The plan it follows is
-[`docs/harness-plan.md`](../docs/harness-plan.md), Part B, at Stage 1: every
-tap on the iPhone is a notified pause.
+[`docs/harness-plan.md`](../docs/harness-plan.md), Part B. At Stage 1, every
+tap on the iPhone is a notified pause. With Stage 2 set up (below), the
+harness taps the iPhone itself and pauses only when it can't.
 
 It lives beside `src/`, so the whatferry wheel never ships it. It needs no
 Python packages beyond whatferry's own, so it has no dependency group.
@@ -118,14 +119,79 @@ timer for Linux. Both fire on the 1st at 03:00, and both catch up when the
 computer was off. Replace `__REPO__` with the repository's path; each file
 says how to install it. A pause exits 75, which systemd counts as success.
 
+## Stage 2: the iPhone's taps
+
+With an `[ios_automation]` table in the secrets file, each of the three
+iPhone pauses first tries to do the taps itself. If anything stops it, the
+step falls back to its Stage 1 pause. That covers WebDriverAgent not
+starting, a label that differs, or a prompt only a person can answer. The
+pause says where the taps stopped, with a screenshot. Stage 2 can't make a
+run worse than Stage 1.
+
+Maestro can't drive a physical iPhone, so the harness drives WebDriverAgent
+(WDA) itself, through pymobiledevice3 ([`ios_ui.py`](ios_ui.py)). The three
+automations are in [`ios_flows.py`](ios_flows.py). Before each one, the
+harness puts back what a restore takes away:
+
+- Developer Mode, turned back on without a person when the iPhone has no passcode;
+- the developer disk image, mounted again;
+- the WDA runner app, installed again from the kit's signed copy.
+
+One-time setup, on a Mac with Xcode:
+
+1. **Developer account.** Join the Apple Developer Program (paid). A free
+   account's signature expires every seven days.
+2. **Build WDA once**, signed with your team, under a bundle ID of your own:
+
+   ```sh
+   git clone https://github.com/appium/WebDriverAgent ~/wda/src
+   cd ~/wda/src
+   xcodebuild build-for-testing -project WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner \
+     -destination generic/platform=iOS -derivedDataPath ~/wda/build -allowProvisioningUpdates \
+     DEVELOPMENT_TEAM=<your team ID> PRODUCT_BUNDLE_IDENTIFIER=be.ariamis.WebDriverAgentRunner
+   ```
+
+   Then put this in the secrets file:
+
+   ```toml
+   [ios_automation]
+   wda_app = "~/wda/build/Build/Products/Debug-iphoneos/WebDriverAgentRunner-Runner.app"
+   runner = "be.ariamis.WebDriverAgentRunner.xctrunner"
+   ```
+
+   A Linux kit uses the same `.app`, copied over. No Xcode is needed after this.
+3. **Developer Mode** on the iPhone: Settings → Privacy & Security →
+   Developer Mode. It shows once a developer app has been installed.
+4. **The tunnel**, which iOS 17 and later need, runs as root all the time:
+   [`schedule/`](schedule) has a launchd daemon and a systemd service for
+   `pymobiledevice3 remote tunneld`. It also gives the pauses their
+   screenshots.
+5. **Supervise the iPhone** with Apple Configurator (free, one erase). Have
+   it skip every Setup Assistant pane, so the screens after a restore never
+   appear. `preflight` logs whether the phone is supervised.
+6. **SIM A in the iPhone**, as the Apple Account's trusted number. An Apple
+   Account sign-in still stops the taps and becomes a pause. That is the
+   remaining risk the plan names.
+
+Then the go/no-go, which is the plan's spike as two commands:
+
+```sh
+mise exec -- uv run python -m harness ios-check     # WDA up, WhatsApp open, one screen read, a screenshot
+mise exec -- uv run python -m harness spike --yes   # ios-check, back up, restore that backup, ios-check again
+```
+
+`spike` restores the test iPhone from a backup it has just made, so nothing
+changes on the phone. After the restore, it checks whether the harness alone
+gets WDA working again. If it says go, Stage 2 holds through a real run's
+restore.
+
 ## Not built yet
 
-- **The flows haven't met a real Pixel.** They follow WhatsApp for Android's
-  resource IDs and English labels. Run each once by hand and fix what
-  differs: `maestro --device <serial> test harness/flows/<name>.yaml`. That is
-  the first job of the plan's step 2.
-- **iPhone screenshots** need a developer disk image on the phone. Without
-  one, a pause says what to do without a picture.
-- **Stage 2**, which takes the iPhone's taps out of the pauses, waits on the
-  one-hour WebDriverAgent spike the plan describes. It needs a paid Apple
-  developer account and the real iPhone.
+- **Nothing has met a real phone.** The Pixel flows follow WhatsApp for
+  Android's resource IDs and English labels. Run each once by hand and fix
+  what differs: `maestro --device <serial> test harness/flows/<name>.yaml`.
+  The iPhone's labels in `ios_flows.py` are written the same way, and the
+  first runs will pause where they differ. Adjust the patterns from the
+  screenshots.
+- **Without the tunnel**, iPhone screenshots work only on iOS 16 and older.
+  A pause then says what to do without a picture.
