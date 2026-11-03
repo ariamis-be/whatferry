@@ -14,6 +14,7 @@ import re
 from harness.ios_ui import ScreenUnknown
 
 WHATSAPP = "net.whatsapp.WhatsApp"
+WHATSAPP_IN_APP_STORE = "itms-apps://apps.apple.com/app/id310633997"
 
 SETTINGS_TAB = "Settings|You"
 ACCOUNTS = "Accounts?|Account list|Switch accounts?|Manage accounts"
@@ -50,14 +51,11 @@ async def remove_b(s, c, wait_for_code=None) -> None:
     await s.wait(SETTINGS_TAB + "|" + CHAT_LIST, timeout=60)
 
 
-async def add_b(s, c, wait_for_code) -> None:
-    """WhatsApp → Settings → Add account → B's number → the code from the Pixel → profile "B"."""
+async def _register(s, c, wait_for_code) -> None:
+    """From WhatsApp's terms to B's chat list: B's number, the code from the Pixel, profile "B"."""
     from harness.scenarios import split_number
 
     country, number = split_number(c.kit.number_b)
-    await _open_settings(s)
-    await s.tap_if(ACCOUNTS)
-    await s.tap(".*Add account.*")
     await s.tap_if("Agree (and|&) Continue")
     await s.wait(".*phone number.*", timeout=60)
     since = c.now_ms()
@@ -72,13 +70,39 @@ async def add_b(s, c, wait_for_code) -> None:
     c.log("  iPhone: typing B's code")
     await s.type(code)
     await s.wait(".*Profile info.*|.*Your name.*|.*Restore.*", timeout=300)
-    await s.tap_if("Skip|Not Now")
+    # A fresh WhatsApp offers B's iCloud backup: never, the chats come from whatferry.
+    await s.tap_if("Skip Restore|Skip|Not Now")
+    await s.tap_if("Skip Restore|Skip")
     await s.fill(0, "B")
     await s.tap("Done|Next")
     for _ in range(3):  # notifications, contacts, backups: each "not now"
         if not await s.tap_if(CONTINUE):
             break
     await s.wait(CHAT_LIST, timeout=120)
+
+
+async def add_b(s, c, wait_for_code) -> None:
+    """WhatsApp → Settings → Add account → B, next to A (two-account kit)."""
+    await _open_settings(s)
+    await s.tap_if(ACCOUNTS)
+    await s.tap(".*Add account.*")
+    await _register(s, c, wait_for_code)
+
+
+async def register_b(s, c, wait_for_code) -> None:
+    """A WhatsApp just installed, set up as B (one-account kit)."""
+    await s.launch(WHATSAPP)
+    await _register(s, c, wait_for_code)
+
+
+async def reinstall_whatsapp(s, c, wait_for_code=None) -> None:
+    """WhatsApp from the App Store again, after the harness removed it (one-account kit)."""
+    await s.open_url(WHATSAPP_IN_APP_STORE)
+    await s.tap(".*(Get|Download|Redownload|Install|re-download).*", timeout=60)
+    await s.tap_if("Install|Get")
+    installed = await asyncio.to_thread(c.iphone.wait_for_app, WHATSAPP)
+    if not installed:
+        raise ScreenUnknown("WhatsApp didn't finish downloading from the App Store")
 
 
 async def after_restore(s, c, wait_for_code=None) -> None:
@@ -95,8 +119,10 @@ async def after_restore(s, c, wait_for_code=None) -> None:
     for _ in range(4):  # "restoring media", notifications and the like
         if not await s.tap_if(CONTINUE):
             break
-    await s.tap(SETTINGS_TAB, timeout=180)
-    await s.tap_if(ACCOUNTS)
-    await s.tap(b_label(c.kit.number_b))
-    await s.tap(CHAT_LIST, timeout=60)
+    if c.kit.iphone_accounts == 2:
+        # B is the second account: switch to it.
+        await s.tap(SETTINGS_TAB, timeout=180)
+        await s.tap_if(ACCOUNTS)
+        await s.tap(b_label(c.kit.number_b))
+        await s.tap(CHAT_LIST, timeout=60)
     await s.wait(CHAT_LIST, timeout=600)

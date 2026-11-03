@@ -1,5 +1,6 @@
 """The harness's own steps on real whatferry, with backups built as iOS and WhatsApp make them; no phones."""
 
+import plistlib
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,7 @@ from whatferry.backup_writer import SHARED_DOMAIN as SHARED
 
 PASS = "correct horse"
 UDID = "00008160-0020"
+PREFS = (SHARED, "Library/Preferences/group.net.whatsapp.WhatsApp.shared.plist")
 
 
 @pytest.fixture
@@ -120,3 +122,65 @@ def test_iphone_to_android_into_the_template(ctx, inputs, tmp_path):  # noqa: F8
     backup = ios_backup.Backup(phone, PASS)
     seed = oracle.ios(extracted, to_android.backup_media(backup, ACCOUNT))
     assert oracle.diff(seed, result)["passed"]
+
+
+# The one-account kit: B is the iPhone's only WhatsApp account
+
+def prefs(own: str) -> bytes:
+    return plistlib.dumps({"LastOwnJabberID": f"{own}@s.whatsapp.net"}, fmt=plistlib.FMT_BINARY)
+
+
+def test_one_account_converts_into_the_main_database(ctx, inputs, tmp_path, monkeypatch):  # noqa: F811
+    android_db, ios_db, media = inputs
+    ctx.kit.iphone_accounts = 1
+    phone = make_encrypted_backup(tmp_path / "after" / UDID, PASS, {
+        (SHARED, "ChatStorage.sqlite"): ios_db.read_bytes(), PREFS: prefs("32470000000")},
+        folders=[(SHARED, "Message")])
+    ctx.ctx.update({"a2i.android_db": str(android_db), "a2i.media": str(media)})
+    scenarios._seed(ctx, "a2i", oracle.android(android_db, media))
+
+    backups_returning(monkeypatch, phone)
+    scenarios.a2i_ios_after(ctx)
+    assert ctx.ctx["a2i.account"] is None
+    backups_returning(monkeypatch, Path(ctx.ctx["a2i.written"]))
+    scenarios.a2i_verify(ctx)
+    assert ctx.ctx["a2i.verdict"]["passed"]
+
+
+def test_one_account_refuses_an_iphone_set_up_as_someone_else(ctx, inputs, tmp_path, monkeypatch):  # noqa: F811
+    _, ios_db, _ = inputs
+    ctx.kit.iphone_accounts = 1
+    phone = make_encrypted_backup(tmp_path / "after" / UDID, PASS, {
+        (SHARED, "ChatStorage.sqlite"): ios_db.read_bytes(), PREFS: prefs("40700001234")})
+    backups_returning(monkeypatch, phone)
+    with pytest.raises(scenarios.StepFailed, match="isn't set up as B"):
+        scenarios.a2i_ios_after(ctx)
+
+
+def test_one_account_steps():
+    names = [s.name for s in scenarios.steps_for("a2i", {}, accounts=1)]
+    assert "a2i.ios_before" not in names and "a2i.iphone_remove_b" not in names
+    assert names.index("a2i.iphone_remove_whatsapp") < names.index("a2i.iphone_reinstall_whatsapp") \
+        < names.index("a2i.iphone_register_b") < names.index("a2i.ios_after")
+    roundtrip = [s.name for s in scenarios.steps_for("roundtrip", {"b_on": "iphone"}, accounts=1)]
+    assert roundtrip[0] == "i2a.preflight" and "a2i.iphone_register_b" in roundtrip
+    assert all(s.auto for s in scenarios.steps_for("a2i", {}, accounts=1) if s.manual)
+
+
+def test_whatsapp_is_removed_only_when_it_is_there(ctx):
+    class Iphone:
+        def __init__(self, present):
+            self.present, self.removed = present, []
+
+        def has_app(self, bundle):
+            return self.present
+
+        def remove_app(self, bundle):
+            self.removed.append(bundle)
+
+    ctx._iphone = Iphone(True)
+    scenarios.a2i_iphone_remove_whatsapp(ctx)
+    assert ctx._iphone.removed == ["net.whatsapp.WhatsApp"]
+    ctx._iphone = Iphone(False)
+    scenarios.a2i_iphone_remove_whatsapp(ctx)
+    assert ctx._iphone.removed == []

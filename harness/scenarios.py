@@ -252,13 +252,22 @@ def a2i_ios_after(c: Context) -> None:
     folder = _backup(c)
     passphrase = c.kit.backup_passphrase
     after = Backup(folder, passphrase)
-    d = ios.diff(Backup(Path(c.ctx["a2i.before_index"]), passphrase), after)
-    new = sorted({e.path.rsplit("/", 1)[0] for e in d.added
-                  if e.domain == ios.SHARED_DOMAIN and e.path.endswith(f"/{ios.CHAT_STORAGE}")})
-    if len(new) != 1:
-        raise StepFailed(f"expected one new account database after adding B, found {len(new)}: was B added?")
-    account = new[0]
     report, _ = ios.inspect(after)
+    if c.kit.iphone_accounts == 1:
+        # B is WhatsApp's only, main account: its database is the one at the root.
+        ends = re.sub(r"\D", "", c.kit.number_b)[-4:]
+        main = next((a for a in report.accounts if a.main), None)
+        if main is None or main.number_ends != ends:
+            raise StepFailed("the iPhone's WhatsApp isn't set up as B: was B registered after the reinstall?")
+        account = None
+    else:
+        # B is the account adding it created: its data/<id> folder is new since the "before" backup.
+        d = ios.diff(Backup(Path(c.ctx["a2i.before_index"]), passphrase), after)
+        new = sorted({e.path.rsplit("/", 1)[0] for e in d.added
+                      if e.domain == ios.SHARED_DOMAIN and e.path.endswith(f"/{ios.CHAT_STORAGE}")})
+        if len(new) != 1:
+            raise StepFailed(f"expected one new account database after adding B, found {len(new)}: was B added?")
+        account = new[0]
     ios_db = _account_db(report, account)
     check_schema(c, ios_db, "a2i-iphone")
     converted, convert_run = convert.convert(Path(c.ctx["a2i.android_db"]), ios_db, Path(c.ctx["a2i.media"]), account)
@@ -307,6 +316,37 @@ A2I = [
     Step("a2i.iphone_after_restore", manual=(
         "On the test iPhone: get past the panes after the restore (Restore Completed, the Apple Account "
         "sign-in), open WhatsApp, switch to B, and wait until its chats show."), auto=ios_flows.after_restore),
+    Step("a2i.verify", a2i_verify),
+]
+
+
+def a2i_iphone_remove_whatsapp(c: Context) -> None:
+    """One-account kit: WhatsApp and all its data off the iPhone, so B starts as on an iPhone that never had it."""
+    if c.iphone.has_app(ios_flows.WHATSAPP):
+        c.log("removing WhatsApp from the iPhone")
+        c.iphone.remove_app(ios_flows.WHATSAPP)
+
+
+# The one-account kit: no A, B the iPhone's only WhatsApp account. No "before"
+# backup either: it only served to find a second account's new folder.
+A2I_ONE_ACCOUNT = [
+    Step("a2i.preflight", preflight),
+    Step("a2i.android_ready", a2i_android_ready),
+    Step("a2i.android_backup", a2i_android_backup),
+    Step("a2i.iphone_remove_whatsapp", a2i_iphone_remove_whatsapp),
+    Step("a2i.iphone_reinstall_whatsapp", manual=(
+        "On the test iPhone: App Store → WhatsApp → download it again (the harness removed it, with its data)."),
+        auto=ios_flows.reinstall_whatsapp,
+        done_when=lambda c: c.iphone.has_app(ios_flows.WHATSAPP)),
+    Step("a2i.iphone_register_b", manual=(
+        "On the test iPhone: open WhatsApp and set it up with B's number. The code goes to B's SIM in the Pixel: "
+        "the harness sends it in a second notification. Skip restoring from iCloud. Wait until B's empty chat "
+        "list shows."), otp=True, auto=ios_flows.register_b),
+    Step("a2i.ios_after", a2i_ios_after),
+    Step("a2i.ios_restore", a2i_ios_restore),
+    Step("a2i.iphone_after_restore", manual=(
+        "On the test iPhone: get past the panes after the restore (Restore Completed, the Apple Account "
+        "sign-in), open WhatsApp, and wait until B's chats show."), auto=ios_flows.after_restore),
     Step("a2i.verify", a2i_verify),
 ]
 
@@ -420,14 +460,19 @@ I2A = [
     Step("i2a.verify", i2a_verify),
 ]
 
-SCENARIOS = {"a2i": lambda state: A2I, "i2a": lambda state: I2A,
-             "roundtrip": lambda state: A2I + I2A if state.get("b_on", "android") == "android" else I2A + A2I}
+SCENARIOS = ("a2i", "i2a", "roundtrip")
 
 
-def steps_for(scenario: str, kit_state: dict) -> list[Step]:
+def steps_for(scenario: str, kit_state: dict, accounts: int = 2) -> list[Step]:
+    """The scenario's steps for a kit whose iPhone has `accounts` WhatsApp accounts (B next to A, or B alone)."""
     if scenario not in SCENARIOS:
         raise StepFailed(f"unknown scenario {scenario!r}: one of {', '.join(SCENARIOS)}")
-    return SCENARIOS[scenario](kit_state)
+    a2i = A2I_ONE_ACCOUNT if accounts == 1 else A2I
+    if scenario == "a2i":
+        return a2i
+    if scenario == "i2a":
+        return I2A
+    return a2i + I2A if kit_state.get("b_on", "android") == "android" else I2A + a2i
 
 
 def execute(c: Context, steps: list[Step], *, resuming: bool = False, wait_for_code=otp.wait_for_code) -> int:
@@ -446,6 +491,11 @@ def execute(c: Context, steps: list[Step], *, resuming: bool = False, wait_for_c
             # The person did what the pause asked.
             run.mark(name, "done", by="person")
             c.log(f"{name}: done by hand")
+            continue
+        if step.manual and step.done_when and _holds(c, step):
+            # Already as the step would leave it: nothing for anyone to do.
+            run.mark(name, "done", by="already")
+            c.log(f"{name}: already done")
             continue
         if step.manual:
             instructions, since = step.manual, c.now_ms()
@@ -494,6 +544,13 @@ def _screenshots(c: Context, label: str) -> list[Path]:
         if shot:
             shots.append(shot)
     return shots
+
+
+def _holds(c: Context, step: Step) -> bool:
+    try:
+        return bool(step.done_when(c))
+    except Exception:  # noqa: BLE001 - can't tell: the step runs
+        return False
 
 
 def open_screen(c: Context):

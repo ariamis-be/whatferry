@@ -184,6 +184,29 @@ class Iphone:
         except Exception:  # noqa: BLE001 - logged as unknown, never a reason to stop
             return None
 
+    def has_app(self, bundle: str) -> bool:
+        return asyncio.run(_app_version(self.udid, bundle, installed_only=True)) is not None
+
+    def remove_app(self, bundle: str) -> None:
+        """Delete an app and all its data, as long-press → Remove App → Delete App does."""
+        try:
+            asyncio.run(_uninstall(self.udid, bundle))
+        except Exception as e:  # noqa: BLE001
+            raise DeviceError(f"the iPhone wouldn't remove {bundle}: {e}") from e
+
+    def wait_for_app(self, bundle: str, timeout: float = 900, every: float = 10, sleep=time.sleep) -> bool:
+        """Whether an app finishes installing (an App Store download) within the timeout."""
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                if self.has_app(bundle):
+                    return True
+            except Exception:  # noqa: BLE001 - the phone busy installing
+                pass
+            if time.monotonic() > deadline:
+                return False
+            sleep(every)
+
     def screenshot(self, path: Path) -> Path | None:
         """Where the phone allows one; None otherwise, and the pause says what to do without a picture.
 
@@ -206,7 +229,8 @@ class Iphone:
         return path
 
 
-async def _app_version(udid: str, bundle: str) -> str | None:
+async def _app_version(udid: str, bundle: str, installed_only: bool = False) -> str | None:
+    """The app's version; with installed_only, "" for an app there without one, None when absent or still a placeholder."""
     from pymobiledevice3.lockdown import create_using_usbmux
     from pymobiledevice3.services.installation_proxy import InstallationProxyService
 
@@ -214,7 +238,24 @@ async def _app_version(udid: str, bundle: str) -> str | None:
     try:
         async with InstallationProxyService(lockdown) as proxy:
             apps = await proxy.get_apps(bundle_identifiers=[bundle])
-        return (apps.get(bundle) or {}).get("CFBundleShortVersionString")
+        app = apps.get(bundle)
+        if app is None:
+            return None
+        if installed_only and app.get("IsPlaceholder"):
+            return None  # an App Store download still under way
+        return app.get("CFBundleShortVersionString") or ("" if installed_only else None)
+    finally:
+        await lockdown.close()
+
+
+async def _uninstall(udid: str, bundle: str) -> None:
+    from pymobiledevice3.lockdown import create_using_usbmux
+    from pymobiledevice3.services.installation_proxy import InstallationProxyService
+
+    lockdown = await create_using_usbmux(serial=udid, autopair=False)
+    try:
+        async with InstallationProxyService(lockdown) as proxy:
+            await proxy.uninstall(bundle)
     finally:
         await lockdown.close()
 

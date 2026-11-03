@@ -95,7 +95,7 @@ def _run(kit, args) -> int:
     with _lock(kit):
         devices.check_allowed(kit)
         state = scenarios.load_kit_state(kit)
-        steps = scenarios.steps_for(args.scenario, state)
+        steps = scenarios.steps_for(args.scenario, state, kit.iphone_accounts)
         run = Run.new(kit.runs, args.scenario)
         run.log(f"run {args.scenario}, B on the {'Pixel' if state.get('b_on', 'android') == 'android' else 'iPhone'}")
         return scenarios.execute(scenarios.Context(kit, run, state), steps)
@@ -110,8 +110,8 @@ def _resume(kit, args) -> int:
         devices.check_allowed(kit)
         state = scenarios.load_kit_state(kit)
         # The order the run started with: B's side has moved since, so it isn't recomputed.
-        steps = scenarios.steps_for(run.state["scenario"], state)
-        by_name = {s.name: s for s in scenarios.A2I + scenarios.I2A}
+        steps = scenarios.steps_for(run.state["scenario"], state, kit.iphone_accounts)
+        by_name = {s.name: s for s in steps}
         order = run.state.get("order") or [s.name for s in steps]
         run.log("resume")
         return scenarios.execute(scenarios.Context(kit, run, state), [by_name[n] for n in order], resuming=True)

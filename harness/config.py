@@ -10,6 +10,7 @@ logged or reported.
     iphone_udid = "00008160-…"        # the only iPhone the harness touches
     android_serial = "1A2B3C4D5E6F70" # the only Android phone it touches
     android_key = "…64 characters…"   # 0-9 and a-f; written by the harness when it reads one
+    iphone_accounts = 2               # 2: B is added next to A (two numbers); 1: B is the only account (one SIM)
 
     [notify]
     ntfy = "https://ntfy.sh/<a long random topic>"   # and/or:
@@ -69,6 +70,8 @@ class Kit:
     android_key: str | None = None
     maestro: str = "maestro"
     notify: Notify = field(default_factory=Notify)
+    # WhatsApp accounts on the test iPhone: 2, B next to A; 1, B alone.
+    iphone_accounts: int = 2
     # None: Stage 1, every iPhone tap a pause.
     ios_automation: IosAutomation | None = None
 
@@ -130,6 +133,9 @@ def load(secrets: Path | None = None, home: Path | None = None, env=os.environ) 
     unknown = set(notify) - set(Notify.__dataclass_fields__)
     if unknown:
         raise KitError(f"unknown [notify] settings: {', '.join(sorted(unknown))}")
+    accounts = data.get("iphone_accounts", 2)
+    if accounts not in (1, 2):
+        raise KitError("iphone_accounts must be 1 (B alone on the iPhone) or 2 (B next to A)")
     automation = None
     if "ios_automation" in data:
         settings = data["ios_automation"] or {}
@@ -143,7 +149,7 @@ def load(secrets: Path | None = None, home: Path | None = None, env=os.environ) 
                number_b=str(data["number_b"]), iphone_udid=str(data["iphone_udid"]),
                android_serial=str(data["android_serial"]), android_key=key,
                maestro=str(data.get("maestro") or "maestro"), notify=Notify(**notify),
-               ios_automation=automation)
+               ios_automation=automation, iphone_accounts=accounts)
 
 
 def isolate(kit: Kit, env=os.environ) -> None:

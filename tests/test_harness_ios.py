@@ -253,3 +253,54 @@ def test_every_iphone_pause_has_its_taps():
     manual = [s for s in scenarios.A2I + scenarios.I2A if s.manual]
     assert [s.name for s in manual] == ["a2i.iphone_remove_b", "a2i.iphone_add_b", "a2i.iphone_after_restore"]
     assert all(s.auto for s in manual)
+
+
+# The one-account kit
+
+def test_one_account_registers_b_on_a_fresh_whatsapp_and_never_switches(ctx):
+    ctx.kit.iphone_accounts = 1
+    s = Scripted(which=["home"])
+    asyncio.run(ios_flows.register_b(s, ctx, lambda android, since: "482913"))
+    assert s.done[0] == ("launch", ios_flows.WHATSAPP)
+    assert ("tap", ".*Add account.*") not in s.done and ("type", "482913") in s.done
+    assert ("tap_if", "Skip Restore|Skip|Not Now") in s.done  # never B's iCloud backup
+    asyncio.run(ios_flows.after_restore(s, ctx))
+    assert ("tap", ios_flows.b_label(ctx.kit.number_b)) not in s.done
+
+
+def test_reinstall_waits_for_the_app_store_download(ctx):
+    class Phone:
+        def wait_for_app(self, bundle):
+            return bundle == ios_flows.WHATSAPP
+
+    class Store(Scripted):
+        async def open_url(self, url):
+            self.done.append(("url", url))
+
+    ctx._iphone, s = Phone(), Store()
+    asyncio.run(ios_flows.reinstall_whatsapp(s, ctx))
+    assert s.done[0] == ("url", "itms-apps://apps.apple.com/app/id310633997")
+    ctx._iphone.wait_for_app = lambda bundle: False
+    with pytest.raises(ScreenUnknown, match="didn't finish downloading"):
+        asyncio.run(ios_flows.reinstall_whatsapp(Store(), ctx))
+
+
+def test_a_manual_step_already_done_is_skipped(ctx, monkeypatch, sent):  # noqa: F811
+    screen_for(monkeypatch, fails=AssertionError("opened"))
+    steps = [Step("reinstall", manual="Reinstall it.", auto=ios_flows.reinstall_whatsapp, done_when=lambda c: True)]
+    assert scenarios.execute(ctx, steps) == scenarios.PASSED
+    assert ctx.run.steps["reinstall"]["by"] == "already"
+
+
+def test_the_kits_account_count(tmp_path):
+    path = tmp_path / "s.toml"
+    for value, ok in (("1", True), ("2", True), ("3", False)):
+        path.write_text(SECRETS.replace("[notify]", f"iphone_accounts = {value}\n[notify]"))
+        path.chmod(0o600)
+        if ok:
+            assert config.load(path).iphone_accounts == int(value)
+        else:
+            with pytest.raises(config.KitError, match="iphone_accounts must be 1"):
+                config.load(path)
+    path.write_text(SECRETS)
+    assert config.load(path).iphone_accounts == 2

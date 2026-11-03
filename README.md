@@ -1,10 +1,18 @@
 # whatferry
 
-Move WhatsApp chats from an Android phone to an iPhone that is already set
-up, without Move to iOS and without erasing the iPhone. It is built for an
-iPhone that already runs one WhatsApp account and will add the Android one as
-its second. It also works the other way, from an iPhone to an Android phone
-(see [iPhone to Android](#iphone-to-android)).
+Move WhatsApp chats between Android and iPhone, in either direction, without
+Move to iOS and without erasing the iPhone. On the iPhone, the Android
+number's chats can go into:
+
+- a fresh WhatsApp, when the iPhone has none yet;
+- a second account, next to a WhatsApp account the iPhone already runs;
+- the existing account, when it already uses the Android number, merged with
+  the chats it has.
+
+From an iPhone to an Android phone, see [iPhone to Android](#iphone-to-android).
+
+So far the second-account move is the one done on a real phone (below). The
+others are covered by the tests and wait for their first real transfer.
 
 It never changes a backup you made: it writes a new one beside it. The only
 thing it writes to a phone is that new backup, restored over USB when you ask
@@ -14,16 +22,17 @@ and confirm.
 
 1. Android: WhatsApp's end-to-end encrypted backup, with the 64-digit key,
    gives a `msgstore.db.crypt15` file whatferry can decrypt without root.
-2. iPhone: add the Android number as a second account in WhatsApp, so
-   WhatsApp itself creates that account's empty database, folders and keys.
+2. iPhone: set up WhatsApp with the Android number, either as its only
+   account or added as a second one. WhatsApp itself creates that account's
+   database, folders and keys.
 3. whatferry converts the Android messages into WhatsApp for iOS's Core Data
-   database and fills only that new account's database, inside an encrypted
+   database and fills only that account's database, inside an encrypted
    Finder backup of the iPhone.
-4. That edited backup is restored to the same iPhone. The other account's
+4. That edited backup is restored to the same iPhone. Any other account's
    files are restored as the backup had them, never edited.
 
-All four steps are built and have carried a real account (its full history,
-media included) onto a real iPhone.
+All four steps are built. The second-account move has carried a real account
+(its full history, media included) onto a real iPhone.
 
 ## Setup
 

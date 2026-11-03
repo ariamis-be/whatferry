@@ -132,6 +132,11 @@ class Screen:
         self.log(f"  iPhone: open {bundle}")
         await self.client.start_session(bundle_id=bundle)
 
+    async def open_url(self, url: str) -> None:
+        """Open a link on the iPhone, such as an App Store page (itms-apps://)."""
+        self.log(f"  iPhone: open {url}")
+        await self.client._request_json("POST", f"/session/{self.client.session_id}/url", {"url": url})
+
     async def home(self) -> None:
         await self.client.press_button("home", self.client.session_id)
 

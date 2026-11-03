@@ -13,20 +13,29 @@ Maestro and adb are the two outside tools.
 
 ## The test kit
 
-Set up once, by hand.
+Set up once, by hand. First choose the kit's shape with `iphone_accounts` in
+the secrets file:
+
+- **2, the default.** The iPhone runs WhatsApp account **A**, and B is added
+  next to it as a second account. This tests the second-account move, and
+  that the restore leaves the other account untouched. It takes two numbers.
+- **1.** B is the iPhone's only WhatsApp account. Each Android → iPhone run
+  removes WhatsApp, reinstalls it from the App Store and sets it up as B. This
+  tests the move onto an iPhone without WhatsApp, with one SIM.
 
 | | |
 |---|---|
-| Test iPhone | No passcode, Find My off, Stolen Device Protection off, Auto-Lock Never, iOS auto-update off. Apple ID signed in, so WhatsApp re-downloads after a restore. WhatsApp with account **A** as the main account. Paired with the computer: run `whatferry ios backup` once and tap Trust. |
+| Test iPhone | No passcode, Find My off, Stolen Device Protection off, Auto-Lock Never, iOS auto-update off. Apple ID signed in, so WhatsApp downloads again after a restore and, with one account, after the reinstall. With two accounts, WhatsApp runs **A** as the main account. Paired with the computer: run `whatferry ios backup` once and tap Trust. |
 | Pixel | USB debugging on, *Stay awake* on, SIM **B** inside for good, WhatsApp auto-update **on**. The language is English: the flows match English labels. |
-| Numbers | A stays on the iPhone. B is ferried between the phones. Two prepaid SIMs on real carriers, with a calendar reminder for whatever keeps them alive. |
+| Numbers | B is ferried between the phones, and its SIM never moves: codes for the iPhone are read off the Pixel. With two accounts, A's SIM is needed once, to register A. After that it can stay in a drawer, with WhatsApp's two-step verification PIN on A. Keep every prepaid number alive with a calendar reminder: a recycled number lets a stranger take the account. |
 | Computer | An always-on Mac or Linux box, a powered hub, both phones never unplugged. |
 | Tools | `mise install` in the repository, Maestro (`curl -fsSL "https://get.maestro.mobile.dev" \| bash`), adb on `PATH`. |
 
 The **seed corpus** is a set of chats on B that every run carries across:
 text both ways, a photo with a caption, a video, a voice note, a document, a
-contact card, a location, a deleted message, and a group of A and B. Make it
-once on the Pixel, with A replying from the iPhone. The first run's
+contact card, a location, a deleted message, and a group. Make it once on the
+Pixel. With two accounts, A replies from the iPhone and is in the group. With
+one, any other WhatsApp you own does that part. The first run's
 fingerprint of it becomes `baseline.json`, and every later run also reports
 what the baseline had that the result lacks.
 
@@ -81,6 +90,15 @@ Android → iPhone:
 9. **Pause:** get past the panes after the restore, open WhatsApp, switch to B.
 10. A WhatsApp-only backup is fingerprinted and compared with the seed.
 
+With one account, steps 4 to 7 differ:
+
+4. The harness removes WhatsApp and its data from the iPhone.
+5. **Pause:** download WhatsApp again from the App Store. This is skipped if it's already there.
+6. **Pause:** set WhatsApp up as B, with the code sent on from the Pixel, skipping the iCloud restore.
+7. iPhone backup. B must be the main account, and the chats go into the main database. There is no "before" backup, which saves about an hour.
+
+The rest is the same, with no account to switch to at step 9.
+
 iPhone → Android:
 
 1. Preflight.
@@ -121,8 +139,10 @@ says how to install it. A pause exits 75, which systemd counts as success.
 
 ## Stage 2: the iPhone's taps
 
-With an `[ios_automation]` table in the secrets file, each of the three
-iPhone pauses first tries to do the taps itself. If anything stops it, the
+With an `[ios_automation]` table in the secrets file, each iPhone pause
+first tries to do the taps itself. That's three pauses with two accounts:
+remove B, add B, after the restore. With one account it's also three:
+reinstall WhatsApp, set it up as B, after the restore. If anything stops it, the
 step falls back to its Stage 1 pause. That covers WebDriverAgent not
 starting, a label that differs, or a prompt only a person can answer. The
 pause says where the taps stopped, with a screenshot. Stage 2 can't make a
@@ -169,9 +189,10 @@ One-time setup, on a Mac with Xcode:
 5. **Supervise the iPhone** with Apple Configurator (free, one erase). Have
    it skip every Setup Assistant pane, so the screens after a restore never
    appear. `preflight` logs whether the phone is supervised.
-6. **SIM A in the iPhone**, as the Apple Account's trusted number. An Apple
-   Account sign-in still stops the taps and becomes a pause. That is the
-   remaining risk the plan names.
+6. **B's number as the Apple Account's trusted number**, so any sign-in
+   code arrives on the Pixel, where you can read it. The harness doesn't read
+   Apple's codes, so an Apple Account sign-in still stops the taps and
+   becomes a pause. That is the remaining risk the plan names.
 
 Then the go/no-go, which is the plan's spike as two commands:
 
