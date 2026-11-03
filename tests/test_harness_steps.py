@@ -184,3 +184,50 @@ def test_whatsapp_is_removed_only_when_it_is_there(ctx):
     ctx._iphone = Iphone(False)
     scenarios.a2i_iphone_remove_whatsapp(ctx)
     assert ctx._iphone.removed == []
+
+
+# This run's check message
+
+def converted_pair(inputs):  # noqa: F811
+    android_db, ios_db, media = inputs
+    _, run = convert.convert(android_db, ios_db, media, ACCOUNT)
+    return oracle.android(android_db, media), oracle.ios(run / "files" / "ChatStorage.sqlite")
+
+
+def test_the_check_message_arriving_is_part_of_the_verdict(ctx, inputs):  # noqa: F811
+    seed, result = converted_pair(inputs)
+    ctx.ctx["a2i.check"] = "hello"  # a text message the fixture's history holds, standing in for today's
+    scenarios._verdict(ctx, "a2i", seed, result)
+    assert ctx.ctx["a2i.verdict"]["check_message"] == "arrived"
+    assert ctx.ctx["a2i.verdict"]["summary"].endswith("and this run's check message arrived")
+
+
+def test_a_check_message_that_didnt_arrive_fails_the_run(ctx, inputs):  # noqa: F811
+    seed, result = converted_pair(inputs)
+    gone = next(k for k, v in result["items"].items() if v["text"] == oracle._hash("hello"))
+    del result["items"][gone]
+    seed["items"].pop(gone)  # so only the check message itself is missing
+    ctx.ctx["a2i.check"] = "hello"
+    seed["items"]["0:check"] = {"chat": "?", "kind": 0, "at_ms": 1, "text": oracle._hash("hello"), "media": None}
+    with pytest.raises(scenarios.StepFailed, match="check message didn't arrive"):
+        scenarios._verdict(ctx, "a2i", seed, result)
+    assert ctx.ctx["a2i.verdict"]["passed"] is False
+
+
+def test_a_source_backup_older_than_the_check_message_fails(ctx, inputs):  # noqa: F811
+    seed, result = converted_pair(inputs)
+    ctx.ctx["a2i.check"] = "whatferry check sent after the backup"
+    with pytest.raises(scenarios.StepFailed, match="isn't in the source backup"):
+        scenarios._verdict(ctx, "a2i", seed, result)
+
+
+def test_the_check_message_goes_to_bs_own_chat(ctx):
+    text, link = scenarios.check_message(ctx, "a2i")
+    assert text.startswith(f"whatferry check {ctx.run.folder.name} a2i ")
+    assert link == f"whatsapp://send?phone=32470000000&text={text.replace(' ', '%20')}"
+    assert scenarios.check_message(ctx, "a2i")[0] == text  # the same message on a resume
+
+
+def test_without_iphone_taps_there_is_no_check_message_from_the_iphone(ctx):
+    scenarios.i2a_send_check(ctx)
+    assert "i2a.check" not in ctx.ctx

@@ -15,10 +15,12 @@ direction B's side calls for.
 import asyncio
 import json
 import re
+import secrets
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import quote
 
 from whatferry import (android, android_writer, backup_writer, convert, ios, ios_backup, iphone, restore, schema,
                        to_android)
@@ -190,9 +192,55 @@ def _verdict(c: Context, prefix: str, seed: dict, result: dict) -> None:
         # Slow drift: what the very first seed had that this result no longer has.
         drift = oracle.diff(oracle.load(baseline), result)
         c.ctx[f"{prefix}.drift"] = drift["missing"]
-    c.log(f"{prefix}: {oracle.summary(d)}")
-    if not d["passed"]:
-        raise StepFailed(f"{prefix}: {oracle.summary(d)} (see {prefix}-diff.json)")
+    problems = [] if d["passed"] else [f"{oracle.summary(d)} (see {prefix}-diff.json)"]
+    text = c.ctx.get(f"{prefix}.check")
+    if text:
+        # This run's own message: proof the transfer carried today's chats, not only old ones.
+        arrived = oracle.has_text(result, text)
+        c.ctx[f"{prefix}.verdict"]["check_message"] = "arrived" if arrived else "missing"
+        if not oracle.has_text(seed, text):
+            problems.append("this run's check message isn't in the source backup, which was older than it")
+        elif not arrived:
+            problems.append("this run's check message didn't arrive")
+        else:
+            c.ctx[f"{prefix}.verdict"]["summary"] += ", and this run's check message arrived"
+    c.log(f"{prefix}: {c.ctx[f'{prefix}.verdict']['summary']}")
+    if problems:
+        c.ctx[f"{prefix}.verdict"]["passed"] = False
+        raise StepFailed(f"{prefix}: " + "; ".join(problems))
+
+
+def check_message(c: Context, prefix: str) -> tuple[str, str]:
+    """This run's check message for a direction, and the WhatsApp link that sends it to B's own chat."""
+    key = f"{prefix}.check"
+    if not c.ctx.get(key):
+        c.ctx[key] = f"whatferry check {c.run.folder.name} {prefix} {secrets.token_hex(3)}"
+    text = c.ctx[key]
+    return text, f"whatsapp://send?phone={re.sub(r'\D', '', c.kit.number_b)}&text={quote(text)}"
+
+
+def a2i_send_check(c: Context) -> None:
+    """From the Pixel, before its backup: a message the iPhone must show after the transfer."""
+    text, link = check_message(c, "a2i")
+    c.flow("send_check", LINK=link, TEXT=text)
+
+
+def i2a_send_check(c: Context) -> None:
+    """From the iPhone, before its backup. That takes Stage 2's taps; without them this direction has no check message."""
+    if not c.kit.taps_iphone:
+        c.log("i2a: no check message: sending one from the iPhone needs Stage 2's taps")
+        return
+    text, link = check_message(c, "i2a")
+
+    async def send() -> None:
+        async with open_screen(c) as screen:
+            await ios_flows.send_check(screen, c, link, text)
+
+    try:
+        asyncio.run(send())
+    except Exception as e:  # noqa: BLE001 - no message is no check, never a stopped run
+        c.log(f"i2a: the check message couldn't be sent from the iPhone: {e}")
+        c.ctx.pop("i2a.check", None)
 
 
 def _seed(c: Context, prefix: str, fingerprint: dict) -> None:
@@ -302,6 +350,7 @@ def a2i_verify(c: Context) -> None:
 A2I = [
     Step("a2i.preflight", preflight),
     Step("a2i.android_ready", a2i_android_ready),
+    Step("a2i.send_check", a2i_send_check),
     Step("a2i.android_backup", a2i_android_backup),
     Step("a2i.iphone_remove_b", manual=(
         "On the test iPhone, in WhatsApp: Settings → Accounts → B → Remove account, and delete its data from "
@@ -332,6 +381,7 @@ def a2i_iphone_remove_whatsapp(c: Context) -> None:
 A2I_ONE_ACCOUNT = [
     Step("a2i.preflight", preflight),
     Step("a2i.android_ready", a2i_android_ready),
+    Step("a2i.send_check", a2i_send_check),
     Step("a2i.android_backup", a2i_android_backup),
     Step("a2i.iphone_remove_whatsapp", a2i_iphone_remove_whatsapp),
     Step("a2i.iphone_reinstall_whatsapp", manual=(
@@ -451,6 +501,7 @@ def i2a_verify(c: Context) -> None:
 
 I2A = [
     Step("i2a.preflight", preflight),
+    Step("i2a.send_check", i2a_send_check),
     Step("i2a.ios_source", i2a_ios_source),
     Step("i2a.template_register", i2a_template_register),
     Step("i2a.template_key", i2a_template_key, done_when=lambda c: bool(c.kit.android_key)),

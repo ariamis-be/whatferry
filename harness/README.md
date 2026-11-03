@@ -81,6 +81,8 @@ Android → iPhone:
 
 1. Preflight: the phones, and the WhatsApp and iOS versions, logged.
 2. B registered on the Pixel; if not, registered, with WhatsApp reading the SMS itself.
+   Then the Pixel sends this run's **check message** to B's own chat, for example
+   `whatferry check 2026-11-01 a2i 7f3a`.
 3. WhatsApp backs up, the harness copies the backup and the Media folder off, decrypts them and fingerprints them. This is the seed.
 4. **Pause:** remove B from WhatsApp on the iPhone.
 5. iPhone backup ("before"), and its file list kept.
@@ -88,7 +90,10 @@ Android → iPhone:
 7. iPhone backup ("after"). The new account is found from the diff, then converted and written. The schema checks and reports go to `compat/`.
 8. Restore, then a wait until the iPhone is back and paired.
 9. **Pause:** get past the panes after the restore, open WhatsApp, switch to B.
-10. A WhatsApp-only backup is fingerprinted and compared with the seed.
+10. A WhatsApp-only backup is fingerprinted and compared with the seed. The
+    run passes only if the check message arrived too. Old chats alone could
+    match yesterday's data, so the check message proves this run's transfer
+    carried the chats as they are today.
 
 With one account, steps 4 to 7 differ:
 
@@ -101,12 +106,14 @@ The rest is the same, with no account to switch to at step 9.
 
 iPhone → Android:
 
-1. Preflight.
+1. Preflight. With Stage 2's taps, the iPhone sends this direction's check
+   message to B's own chat. Without them there is none, rather than another
+   pause.
 2. A WhatsApp-only backup gives B's chats and media, and the seed.
 3. The template. It is an empty B on the Pixel: `pm clear`, register, turn on the 64-digit key (read off the screen), back up, copy. It is cached per WhatsApp version, so most months skip it.
 4. Convert into the template and write.
 5. `pm clear`, push, register B, and restore with the key.
-6. Back up, copy, fingerprint, compare.
+6. Back up, copy, fingerprint, compare, including the check message when one was sent.
 
 A step that meets a screen it doesn't know stops the run. It takes a
 screenshot of both phones and notifies. The harness never guesses. `resume`

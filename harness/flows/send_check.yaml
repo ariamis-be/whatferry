@@ -1,0 +1,17 @@
+# Send this run's check message to B's own chat ("Message yourself"), so the
+# run can confirm that exact message arrives on the other phone.
+# env: LINK (whatsapp://send?phone=…&text=…), TEXT (the message, to see it sent)
+appId: com.whatsapp
+---
+- openLink:
+    link: ${LINK}
+- extendedWaitUntil:
+    visible:
+      id: "com.whatsapp:id/send"
+    timeout: 30000
+- tapOn:
+    id: "com.whatsapp:id/send"
+- extendedWaitUntil:
+    visible: ${TEXT}
+    timeout: 30000
+- back

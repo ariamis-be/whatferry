@@ -245,7 +245,7 @@ def test_while_paused_for_bs_code_it_is_sent_on(kit, tmp_path, sent):
 
 def test_roundtrip_starts_where_b_is():
     assert scenarios.steps_for("roundtrip", {"b_on": "android"})[1].name == "a2i.android_ready"
-    assert scenarios.steps_for("roundtrip", {"b_on": "iphone"})[1].name == "i2a.ios_source"
+    assert scenarios.steps_for("roundtrip", {"b_on": "iphone"})[1].name == "i2a.send_check"
     names = [s.name for s in scenarios.steps_for("roundtrip", {})]
     assert len(names) == len(set(names))  # one state entry per step
 

@@ -304,3 +304,15 @@ def test_the_kits_account_count(tmp_path):
                 config.load(path)
     path.write_text(SECRETS)
     assert config.load(path).iphone_accounts == 2
+
+
+def test_the_iphone_sends_the_check_message_and_sees_it_sent(ctx):
+    class Phone(Scripted):
+        async def open_url(self, url):
+            self.done.append(("url", url))
+
+    s = Phone()
+    asyncio.run(ios_flows.send_check(s, ctx, "whatsapp://send?phone=1&text=x", "whatferry check (x) i2a"))
+    assert s.done[0] == ("url", "whatsapp://send?phone=1&text=x")
+    assert ("tap", "Send") in s.done
+    assert s.done[-1] == ("wait", ".*whatferry\\ check\\ \\(x\\)\\ i2a.*")

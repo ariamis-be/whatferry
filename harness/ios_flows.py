@@ -105,6 +105,14 @@ async def reinstall_whatsapp(s, c, wait_for_code=None) -> None:
         raise ScreenUnknown("WhatsApp didn't finish downloading from the App Store")
 
 
+async def send_check(s, c, link: str, text: str) -> None:
+    """Send this run's check message to B's own chat, from WhatsApp on the iPhone."""
+    await s.open_url(link)
+    await s.tap_if("Open")  # iOS asks before an app opens a link
+    await s.tap("Send", timeout=60)
+    await s.wait(f".*{re.escape(text)}.*", timeout=60)
+
+
 async def after_restore(s, c, wait_for_code=None) -> None:
     """Past iOS's panes after the restore, then WhatsApp open on B with its chats."""
     for _ in range(12):

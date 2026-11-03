@@ -148,6 +148,12 @@ def diff(seed: dict, result: dict, examples: int = 20) -> dict:
     }
 
 
+def has_text(fingerprint: dict, text: str) -> bool:
+    """Whether a text message with exactly this text is in the fingerprint."""
+    wanted = _hash(text)
+    return any(item["kind"] == 0 and item["text"] == wanted for item in fingerprint["items"].values())
+
+
 def summary(d: dict) -> str:
     if d["passed"]:
         return f"{d['seed']} messages, all arrived unchanged"
