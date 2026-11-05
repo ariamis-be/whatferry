@@ -43,7 +43,7 @@ export function StartStep({ overview, refresh }: StepProps) {
               <span className="grid gap-1">
                 <span className="flex items-center gap-1.5 text-sm font-medium">
                   {d === "to-iphone" ? t.start.android : t.start.iphone}
-                  <ArrowRight className="size-3.5" />
+                  <ArrowRight className="size-3.5 rtl:-scale-x-100" />
                   {d === "to-iphone" ? t.start.iphone : t.start.android}
                 </span>
                 <span className="text-xs text-muted-foreground">{t.start.directionNote[d]}</span>
@@ -80,7 +80,7 @@ export function StartStep({ overview, refresh }: StepProps) {
           <CardDescription>{t.start.privateLead}</CardDescription>
         </CardHeader>
         <CardContent>
-          <ul className="list-disc space-y-1.5 pl-5 text-sm">
+          <ul className="list-disc space-y-1.5 ps-5 text-sm">
             {t.start.private(overview.home).map((item, i) => (
               <li key={i}>{item}</li>
             ))}

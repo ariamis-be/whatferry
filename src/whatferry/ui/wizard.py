@@ -142,7 +142,10 @@ class Wizard:
         self.settings = State(self.home / "settings.json")
         self.jobs = Jobs()
 
-    SETTINGS = {"lang": ("en", "zh"), "theme": ("light", "dark", "system")}
+    # The page's languages: the ids in web/src/i18n.tsx (a test keeps the two lists equal).
+    LANGS = ("en", "ar", "bn", "zh", "zh-Hant", "nl", "fr", "de", "he", "hi", "id", "it", "ms", "fa", "pl", "pt",
+             "ro", "es", "tr", "uk", "ur")
+    SETTINGS = {"lang": LANGS, "theme": ("light", "dark", "system")}
 
     def set_settings(self, values: dict) -> dict:
         for key, value in values.items():

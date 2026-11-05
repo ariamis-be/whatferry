@@ -45,9 +45,9 @@ export function Section({ n, title, children }: { n?: number; title: string; chi
 
 export function Instructions({ items }: { items: ReactNode[] }) {
   return (
-    <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed marker:font-medium marker:text-muted-foreground">
+    <ol className="list-decimal space-y-1.5 ps-5 text-sm leading-relaxed marker:font-medium marker:text-muted-foreground">
       {items.map((item, i) => (
-        <li key={i} className="pl-1">
+        <li key={i} className="ps-1">
           {item}
         </li>
       ))}
@@ -81,10 +81,10 @@ export function Disclosure({ title, children }: { title: string; children: React
   return (
     <Collapsible className="group/disclosure">
       <CollapsibleTrigger asChild>
-        <Button variant="ghost" size="sm" className="-ml-2.5 text-muted-foreground">
+        <Button variant="ghost" size="sm" className="-ms-2.5 text-muted-foreground">
           <ChevronRight
             data-icon="inline-start"
-            className="transition-transform group-data-[state=open]/disclosure:rotate-90"
+            className="transition-transform rtl:-scale-x-100 group-data-[state=open]/disclosure:rotate-90 rtl:group-data-[state=open]/disclosure:-rotate-90"
           />
           {title}
         </Button>

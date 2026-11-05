@@ -315,7 +315,7 @@ function ConvertResult({ entry, toAndroid }: { entry: ConvertedEntry; toAndroid:
             <AlertDescription>{c.note}</AlertDescription>
           </Alert>
         ))}
-        <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+        <ul className="list-disc space-y-1 ps-5 text-sm text-muted-foreground">
           {skipped > 0 && <li>{t.convert.skipped(num(skipped))}</li>}
           {Object.entries(r.not_converted_yet ?? {}).map(([what, n]) => (
             <li key={what}>{t.convert.notYet(capitalized(t.counts[what] ?? what), num(n))}</li>

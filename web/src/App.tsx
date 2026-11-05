@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Spinner } from "@/components/ui/spinner"
-import { I18nContext, LANGS, locale, MESSAGES, type Lang } from "@/i18n"
+import { I18nContext, language, LANGUAGES, locale, type Lang } from "@/i18n"
 import { cn } from "@/lib/utils"
 import { AccountStep } from "@/steps/account"
 import { AndroidStep } from "@/steps/android"
@@ -62,7 +62,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
   const [error, setError] = useState<string | null>(null)
   const [current, setCurrent] = useState<StepId>("start")
 
-  const t = MESSAGES[lang]
+  const t = language(lang).messages
   setLocale(locale(lang))
   const i18n = useMemo(() => ({
     lang,
@@ -74,7 +74,8 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
   }), [lang, t])
 
   useEffect(() => {
-    document.documentElement.lang = lang === "zh" ? "zh-CN" : "en"
+    document.documentElement.lang = language(lang).tag
+    document.documentElement.dir = language(lang).rtl ? "rtl" : "ltr"
   }, [lang])
 
   useEffect(() => {
@@ -126,7 +127,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                 whatferry
               </div>
               <div className="flex items-center gap-1">
-                <p className="mr-2 hidden items-center gap-1.5 text-xs text-muted-foreground md:flex">
+                <p className="me-2 hidden items-center gap-1.5 text-xs text-muted-foreground md:flex">
                   <ShieldCheck className="size-3.5" />
                   {t.header.tagline}
                 </p>
@@ -134,14 +135,14 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" aria-label={t.header.language}>
                       <Languages data-icon="inline-start" />
-                      {LANGS.find((l) => l.id === lang)?.name}
+                      {language(lang).name}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-auto min-w-44 [&_[role=menuitemradio]]:whitespace-nowrap">
                     <DropdownMenuLabel>{t.header.language}</DropdownMenuLabel>
                     <DropdownMenuRadioGroup value={lang} onValueChange={(v) => i18n.setLang(v as Lang)}>
-                      {LANGS.map((l) => (
-                        <DropdownMenuRadioItem key={l.id} value={l.id} lang={l.id === "zh" ? "zh-CN" : "en"}>
+                      {LANGUAGES.map((l) => (
+                        <DropdownMenuRadioItem key={l.id} value={l.id} lang={l.tag} dir={l.rtl ? "rtl" : "ltr"}>
                           {l.name}
                         </DropdownMenuRadioItem>
                       ))}
@@ -197,7 +198,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                         aria-label={
                           skipped ? `${label} (${t.stepSkipped})` : blocker ? `${label} (${t.nav.first(stepName(blocker))})` : label
                         }
-                        className="group flex w-full flex-col gap-2 rounded-sm py-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="group flex w-full flex-col gap-2 rounded-sm py-1 text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <span
                           className={cn(
@@ -265,7 +266,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
               <footer className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-3 border-t bg-background/85 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:-mx-6 sm:px-6">
                 {back ? (
                   <Button variant="ghost" onClick={() => go(back)}>
-                    <ArrowLeft data-icon="inline-start" /> {t.nav.back}
+                    <ArrowLeft data-icon="inline-start" className="rtl:-scale-x-100" /> {t.nav.back}
                   </Button>
                 ) : (
                   <span />
@@ -279,7 +280,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
                       disabled={nextBlocker !== null}
                       onClick={() => go(next)}
                     >
-                      {current === "start" ? t.nav.start : t.nav.continue} <ArrowRight data-icon="inline-end" />
+                      {current === "start" ? t.nav.start : t.nav.continue} <ArrowRight data-icon="inline-end" className="rtl:-scale-x-100" />
                     </Button>
                   </div>
                 )}

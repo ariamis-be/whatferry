@@ -290,14 +290,14 @@ function AndroidResult({ entry }: { entry: AndroidEntry }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t.android.jidHead[0]}</TableHead>
-                  <TableHead className="text-right">{t.android.jidHead[1]}</TableHead>
+                  <TableHead className="text-end">{t.android.jidHead[1]}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {Object.entries(r.jid_servers).map(([server, n]) => (
                   <TableRow key={server}>
                     <TableCell className="font-mono text-xs">{server}</TableCell>
-                    <TableCell className="text-right tabular-nums">{num(n)}</TableCell>
+                    <TableCell className="text-end tabular-nums">{num(n)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

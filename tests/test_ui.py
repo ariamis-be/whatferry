@@ -311,10 +311,18 @@ def test_settings_survive_a_restart_and_a_reset(server, private_home):
     assert Wizard(private_home).settings.get() == {"theme": "dark", "lang": "zh"}
 
 
-@pytest.mark.parametrize("body", [{"theme": "purple"}, {"lang": "fr"}, {"token": "x"}])
+@pytest.mark.parametrize("body", [{"theme": "purple"}, {"lang": "ru"}, {"lang": "zh-hant"}, {"token": "x"}])
 def test_unknown_settings_are_refused(server, body):
     assert request(server, "POST", "/api/settings", body)[0] == 400
     assert request(server, "GET", "/api/settings")[2] == {}
+
+
+def test_the_server_accepts_exactly_the_page_languages():
+    """A language the page offers but the server refuses fails when chosen; one the page lacks is dead."""
+    page = (Path(__file__).parents[1] / "web" / "src" / "i18n.tsx").read_text()
+    table = page.split("const TABLE = [", 1)[1].split("] as const", 1)[0]
+    assert sorted(re.findall(r'\{ id: "([^"]+)"', table)) == sorted(Wizard.LANGS)
+    assert len(set(Wizard.LANGS)) == len(Wizard.LANGS)
 
 
 def test_reset_forgets_progress(server, private_home):

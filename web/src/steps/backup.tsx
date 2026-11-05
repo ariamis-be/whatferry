@@ -399,16 +399,16 @@ function BackupResult({ entry, first }: { entry: IosEntry; first: boolean }) {
             <TableHeader>
               <TableRow>
                 <TableHead>{t.backup.areasHead[0]}</TableHead>
-                <TableHead className="text-right">{t.backup.areasHead[1]}</TableHead>
-                <TableHead className="text-right">{t.backup.areasHead[2]}</TableHead>
+                <TableHead className="text-end">{t.backup.areasHead[1]}</TableHead>
+                <TableHead className="text-end">{t.backup.areasHead[2]}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {Object.entries(r.domains).map(([domain, n]) => (
                 <TableRow key={domain}>
                   <TableCell className="font-mono text-xs whitespace-nowrap">{domain}</TableCell>
-                  <TableCell className="text-right tabular-nums">{num(n.files)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{size(n.bytes)}</TableCell>
+                  <TableCell className="text-end tabular-nums">{num(n.files)}</TableCell>
+                  <TableCell className="text-end tabular-nums">{size(n.bytes)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -459,7 +459,7 @@ function DiffView({ diff }: { diff: Diff }) {
         <TableHeader>
           <TableRow>
             {t.backup.diffHead.slice(1).map((head) => (
-              <TableHead key={head} className="w-0 text-right">
+              <TableHead key={head} className="w-0 text-end">
                 {head}
               </TableHead>
             ))}
@@ -469,9 +469,9 @@ function DiffView({ diff }: { diff: Diff }) {
         <TableBody>
           {Object.entries(diff.by_folder).map(([where, c]) => (
             <TableRow key={where}>
-              <TableCell className="text-right tabular-nums">{c.added ?? 0}</TableCell>
-              <TableCell className="text-right tabular-nums">{c.changed ?? 0}</TableCell>
-              <TableCell className="text-right tabular-nums">{c.removed ?? 0}</TableCell>
+              <TableCell className="text-end tabular-nums">{c.added ?? 0}</TableCell>
+              <TableCell className="text-end tabular-nums">{c.changed ?? 0}</TableCell>
+              <TableCell className="text-end tabular-nums">{c.removed ?? 0}</TableCell>
               <TableCell className="font-mono text-xs whitespace-nowrap">{where}</TableCell>
             </TableRow>
           ))}

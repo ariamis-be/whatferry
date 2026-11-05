@@ -70,13 +70,13 @@ export function ConversionPreview({ madeAt, toAndroid = false }: { madeAt: strin
             </TabsList>
           </Tabs>
           <div className="relative min-w-48 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute top-1/2 start-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               aria-label={t.preview.search}
               placeholder={t.preview.search}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="pl-8"
+              className="ps-8"
             />
           </div>
         </div>
@@ -90,7 +90,7 @@ export function ConversionPreview({ madeAt, toAndroid = false }: { madeAt: strin
                 onClick={() => setOpen(c)}
                 aria-pressed={open?.id === c.id}
                 className={cn(
-                  "flex w-full items-center gap-3 px-3 py-2.5 text-left outline-none hover:bg-muted/50 focus-visible:bg-muted/50",
+                  "flex w-full items-center gap-3 px-3 py-2.5 text-start outline-none hover:bg-muted/50 focus-visible:bg-muted/50",
                   open?.id === c.id && "bg-muted",
                 )}
               >
