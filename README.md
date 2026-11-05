@@ -394,7 +394,13 @@ that is where the conversion will write.
   writing it. It is read from the merged copy on request, sent only to the
   local page (with `Cache-Control: no-store`), and never saved in
   `state.json`, a report or the summary.
-- Delete the run folders when done.
+- Delete the run folders when done: `whatferry clean` lists them, with the
+  space each gives back, and asks before deleting (`--dry-run` only lists,
+  `--yes` doesn't ask). It also deletes the wizard's progress, the Manifest
+  snapshots it compares and the private `tmp/` folder; it keeps
+  `settings.json`, and the iPhone backups `whatferry ios backup` made unless
+  you add `--backups`. Finder's backups and the Android copies in
+  `~/whatferry-android` are never touched. Close the wizard first.
 
 ## Development
 

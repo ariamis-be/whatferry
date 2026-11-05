@@ -126,6 +126,14 @@ def _parser() -> argparse.ArgumentParser:
     u.add_argument("--port", type=int, default=0, help="port on 127.0.0.1 (default: any free one)")
     u.add_argument("--no-browser", action="store_true", help="print the link instead of opening it")
     u.set_defaults(run=_ui)
+
+    k = sides.add_parser("clean", help="delete what the steps left in whatferry's folder: decrypted copies, "
+                                       "conversions, written backups and the wizard's progress")
+    k.add_argument("--backups", action="store_true",
+                   help="also the iPhone backups `whatferry ios backup` made (Finder's are never touched)")
+    k.add_argument("--dry-run", action="store_true", help="list what would go, delete nothing")
+    k.add_argument("--yes", action="store_true", help="delete without asking")
+    k.set_defaults(run=_clean)
     return p
 
 
@@ -151,6 +159,34 @@ def _ui(args) -> int:
     from whatferry.ui.server import serve
 
     serve(port=args.port, open_browser=not args.no_browser)
+    return 0
+
+
+def _clean(args) -> int:
+    root = workdir.home()
+    found = workdir.leftovers(root, backups=args.backups)
+    if not found:
+        print(f"Nothing to delete in {root}.")
+    sizes = workdir.freed(found)
+    total = sum(sizes)
+    for path, size in zip(found, sizes):
+        print(f"  {path.name:<36} {_size(size):>10}")
+    if found:
+        print(f"{len(found)} to delete, {_size(total)} freed, in {root}")
+    if not args.backups and (root / "backups").exists():
+        print(f"Kept: the iPhone backups in {root / 'backups'} (--backups deletes them too).")
+    if not found or args.dry_run:
+        return 0
+    if not args.yes:
+        if not sys.stdin.isatty():
+            print("whatferry: not deleting without a question to answer; add --yes", file=sys.stderr)
+            return 1
+        if input("Close the wizard first. Delete them? [y/N] ").strip().lower() not in ("y", "yes"):
+            print("Nothing deleted.")
+            return 1
+    for path in found:
+        workdir.remove(path)
+    print(f"Deleted {len(found)}, {_size(total)}.")
     return 0
 
 

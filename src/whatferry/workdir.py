@@ -10,6 +10,8 @@ administrators), so the default location under the profile stays private.
 import hashlib
 import os
 import re
+import shutil
+import stat
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -52,6 +54,63 @@ def new_run(kind: str) -> Path:
         run = root / f"{stamp}-{kind}-{suffix}"
     run.mkdir(mode=0o700)
     return run
+
+
+# A folder new_run made: 20261025-192744-backup, or -backup-2 for a second one that second.
+_RUN = re.compile(r"^\d{8}-\d{6}-[a-z][a-z-]*?(-\d+)?$")
+# Beside the run folders: Manifest.db copies the wizard compares, library temp
+# files, and the wizard's progress, which only points at run folders.
+_LEFTOVERS = ("snapshots", "tmp", "state.json")
+
+
+def leftovers(root: Path, backups: bool = False) -> list[Path]:
+    """What `whatferry clean` deletes from whatferry's folder, oldest run first.
+
+    settings.json (the page's language and theme) and anything whatferry
+    didn't name stay. The iPhone backups `whatferry ios backup` made stay
+    unless asked for: they are the phone's, not a step's output.
+    """
+    if not root.is_dir():
+        return []
+    found = sorted(p for p in root.iterdir() if _RUN.match(p.name) and p.is_dir() and not p.is_symlink())
+    names = _LEFTOVERS + (("backups",) if backups else ())
+    return found + [root / name for name in names if (root / name).exists() or (root / name).is_symlink()]
+
+
+def freed(paths: list[Path]) -> list[int]:
+    """Bytes deleting each path gives back, without following links.
+
+    A conversion hard-links its media, often to the Android media copy
+    outside whatferry's folder: such a file counts once, toward the path
+    holding its last link, and only when every link to it is among the paths.
+    """
+    sizes = [0] * len(paths)
+    linked: dict[tuple[int, int], list] = {}  # (device, inode) -> [links seen, links, size, index of the last]
+    for i, path in enumerate(paths):
+        if path.is_symlink() or not path.is_dir():
+            stats = [path.lstat()]
+        else:
+            stats = [os.lstat(os.path.join(folder, name)) for folder, dirs, files in os.walk(path)
+                     for name in dirs + files]
+        for st in stats:
+            if st.st_nlink > 1 and stat.S_ISREG(st.st_mode):
+                seen = linked.setdefault((st.st_dev, st.st_ino), [0, st.st_nlink, st.st_size, i])
+                seen[0] += 1
+                seen[3] = i
+            else:
+                sizes[i] += st.st_size
+    for links_seen, links, size, i in linked.values():
+        if links_seen >= links:
+            sizes[i] += size
+    return sizes
+
+
+def remove(path: Path) -> None:
+    """Delete a file or a whole folder; a link is removed, never followed."""
+    if path.is_symlink() or not path.is_dir():
+        path.unlink()
+    else:
+        shutil.rmtree(path)
 
 
 def private_temp() -> Path:
