@@ -30,10 +30,20 @@ def main(argv: list[str] | None = None) -> int:
         return 130
 
 
+def _version() -> str:
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("whatferry")
+    except PackageNotFoundError:  # run from a checkout that was never installed
+        return "unknown"
+
+
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="whatferry", description=(
-        "Move WhatsApp chats from Android to iPhone: decrypt and describe both backups, convert the "
-        "chats, write them into a new copy of the iPhone backup, and restore that onto the iPhone."))
+        "Move WhatsApp chats between Android and iPhone, either way: decrypt and describe both backups, "
+        "convert the chats, write them into a new copy of the other phone's backup, and put that onto the phone."))
+    p.add_argument("--version", action="version", version=f"whatferry {_version()}")
     sides = p.add_subparsers(required=True, metavar="command")
 
     a = sides.add_parser("android", help="the Android backup").add_subparsers(required=True, metavar="command")

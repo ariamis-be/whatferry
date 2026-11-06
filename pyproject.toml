@@ -1,10 +1,29 @@
 [project]
 name = "whatferry"
 version = "0.1.0"
-description = "Move WhatsApp chats from Android to an iPhone that is already set up"
+description = "Move WhatsApp chats between Android and iPhone, in either direction, without erasing the iPhone"
 readme = "README.md"
 authors = [
     { name = "Edward Arghiroiu", email = "edward@ariamis.be" }
+]
+# pymobiledevice3 and wa-crypt-tools, both imported, are GPL-3.0-or-later.
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+keywords = ["whatsapp", "iphone", "android", "backup", "transfer", "chat", "migration"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: English",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Communications :: Chat",
+    "Topic :: System :: Archiving :: Backup",
 ]
 requires-python = ">=3.14"
 dependencies = [

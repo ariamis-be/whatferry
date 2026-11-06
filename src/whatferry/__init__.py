@@ -1,4 +1,4 @@
-"""whatferry: move WhatsApp chats from an Android phone to an iPhone."""
+"""whatferry: move WhatsApp chats between Android and iPhone, in either direction."""
 
 
 def main() -> int:

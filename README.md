@@ -18,6 +18,16 @@ It never changes a backup you made: it writes a new one beside it. The only
 thing it writes to a phone is that new backup, restored over USB when you ask
 and confirm.
 
+> [!IMPORTANT]
+> whatferry is an independent project. It is not made, endorsed or supported
+> by WhatsApp, Meta, Apple or Google, and their names are used only to say
+> what it works with. It reads and writes WhatsApp's private database
+> formats, which can change with any WhatsApp update: it checks them first
+> (see [Compatibility](#compatibility)), but a restore replaces what is on the
+> iPhone with the backup. Keep the backups you made until the moved chats
+> look right, and use it at your own risk. The licence below comes with no
+> warranty.
+
 ## How the transfer works
 
 1. Android: WhatsApp's end-to-end encrypted backup, with the 64-digit key,
@@ -36,8 +46,20 @@ All four steps are built. The second-account move has carried a real account
 
 ## Setup
 
-Runs on macOS, Windows and Linux with [mise](https://mise.jdx.dev), which
-installs the pinned Python and uv:
+Runs on macOS, Windows and Linux, with Python 3.14. The easiest way is
+[uv](https://docs.astral.sh/uv/), which fetches that Python itself:
+
+```sh
+uvx whatferry ui          # run the wizard without installing anything
+uv tool install whatferry # or install the `whatferry` command
+```
+
+`pipx install whatferry` works too. On Linux, talking to an iPhone needs the
+`usbmuxd` package; on macOS and Windows, Finder or the Apple Devices app
+already brings it.
+
+From a checkout, with [mise](https://mise.jdx.dev), which installs the
+pinned Python and uv:
 
 ```sh
 mise install
@@ -45,7 +67,7 @@ mise exec -- uv sync
 mise exec -- uv run whatferry --help
 ```
 
-The commands below write `whatferry` for `mise exec -- uv run whatferry`.
+The commands below write `whatferry` for either.
 
 ## The wizard
 
@@ -94,9 +116,12 @@ Only the last four digits are stored or shown. Further accounts only show as
 against a real phone and dropped: the keyboard's `ID_<lid>@lid` entries and
 ChatStorage's profile-name row both belong to contacts.
 
-The page is in English and Simplified Chinese (it starts in the browser's
-language; the header switches it), with light, dark or system theme (system
-by default). Both choices are kept in `settings.json` in whatferry's folder,
+The page is in 21 languages: English, Arabic, Bengali, Chinese (Simplified
+and Traditional), Dutch, French, German, Hebrew, Hindi, Indonesian, Italian,
+Malay, Persian, Polish, Portuguese (Brazil), Romanian, Spanish, Turkish,
+Ukrainian and Urdu, with Arabic, Hebrew, Persian and Urdu laid out right to
+left. It starts in the browser's language, and the header switches it. It
+has a light, dark or system theme, system by default. Both choices are kept in `settings.json` in whatferry's folder,
 not in the browser, which keeps them per port, and the port changes on every
 start. Messages from the server,
 and the summary to send on, stay in English.
@@ -422,4 +447,14 @@ or `%`, and byte-exact writes. CI runs the suite on macOS, Windows and Linux.
 Android, each side verified). It isn't part of the package: see
 [`harness/README.md`](harness/README.md).
 
-wa-crypt-tools is GPL-3.0, so whatferry is too, if it is ever distributed.
+To help, see [`CONTRIBUTING.md`](CONTRIBUTING.md); to report a security
+problem, see [`SECURITY.md`](SECURITY.md). Changes are listed in
+[`CHANGELOG.md`](CHANGELOG.md).
+
+## Licence
+
+[GPL-3.0-or-later](LICENSE). whatferry imports pymobiledevice3 and
+wa-crypt-tools, which are both GPL-3.0-or-later, so it is too.
+
+WhatsApp is a trademark of WhatsApp LLC; iPhone, iOS and Finder are
+trademarks of Apple Inc.; Android is a trademark of Google LLC.

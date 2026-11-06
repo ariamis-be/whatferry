@@ -1,0 +1,73 @@
+name: release
+
+# A tag like v0.1.0 builds the package, checks it, and publishes it to PyPI
+# and as a GitHub release. PyPI trusts this workflow through a trusted
+# publisher (project whatferry, workflow release.yml, environment pypi), so
+# no token is stored anywhere.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: mise exec -- uv sync --locked
+      - run: mise exec -- uv run pytest
+      - name: The tag is the package's version
+        run: |
+          version=$(mise exec -- uv version --short)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME but pyproject.toml says $version"
+            exit 1
+          fi
+      - run: mise exec -- uv build
+      - name: The wheel holds the page, the schemas and the licence
+        run: |
+          wheel=$(ls dist/*.whl)
+          for f in whatferry/ui/static/index.html whatferry/schemas/CHANGES.md licenses/LICENSE; do
+            unzip -l "$wheel" | grep -q "$f" || { echo "::error::$f missing from $wheel"; exit 1; }
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: astral-sh/setup-uv@v6
+      - run: uv publish --trusted-publishing always dist/*
+
+  github:
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Release with the changelog's section
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          awk -v v="$version" '$0 ~ "^## \\[" v "\\]" {on=1; next} on && /^## \[/ {exit} on' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/* --title "whatferry $version" --notes-file notes.md

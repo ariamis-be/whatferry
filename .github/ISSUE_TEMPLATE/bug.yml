@@ -1,0 +1,43 @@
+name: Something went wrong
+description: A step failed, or the moved chats don't look right
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Never attach a backup, a database, a key, a passphrase or a screenshot
+        of chats. The summary on the wizard's Results page is made for this:
+        counts, versions and file locations, with phone numbers masked.
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Direction
+      options: ["Android to iPhone", "iPhone to Android"]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: whatferry version
+      description: "`whatferry --version`"
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Computer
+      placeholder: "macOS 27, Windows 11, Ubuntu 26.04…"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The step, what you expected, and the error the page or terminal showed.
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary from the Results page
+      description: Or the output of `whatferry schema check <database>`, if a check stopped the conversion.
+      render: text
