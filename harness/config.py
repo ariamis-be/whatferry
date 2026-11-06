@@ -110,9 +110,16 @@ class Kit:
         self.android_key = key
 
 
+def secrets_path(secrets: Path | None = None, env=os.environ) -> Path:
+    return (secrets or Path(env.get("WHATFERRY_HARNESS_SECRETS") or DEFAULT_SECRETS)).expanduser()
+
+
+def home_path(home: Path | None = None, env=os.environ) -> Path:
+    return (home or Path(env.get("WHATFERRY_HARNESS_HOME") or DEFAULT_HOME)).expanduser()
+
+
 def load(secrets: Path | None = None, home: Path | None = None, env=os.environ) -> Kit:
-    path = (secrets or Path(env.get("WHATFERRY_HARNESS_SECRETS") or DEFAULT_SECRETS)).expanduser()
-    root = (home or Path(env.get("WHATFERRY_HARNESS_HOME") or DEFAULT_HOME)).expanduser()
+    path, root = secrets_path(secrets, env), home_path(home, env)
     if not path.is_file():
         raise KitError(f"no secrets file at {path}: see harness/README.md")
     if sys.platform != "win32" and path.stat().st_mode & 0o077:

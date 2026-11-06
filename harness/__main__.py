@@ -1,4 +1,4 @@
-"""python -m harness run|resume|status|abandon|preflight|code|ios-check|spike
+"""python -m harness setup|ready|ping|run|watch|resume|status|abandon|preflight|code|ios-check|spike
 
 Exit codes: 0 passed, 1 failed, 2 refused to start, 75 paused for a person.
 """
@@ -13,7 +13,7 @@ from pathlib import Path
 
 from whatferry import iphone, restore
 
-from harness import config, devices, ios_flows, ios_ui, otp, scenarios
+from harness import config, devices, ios_flows, ios_ui, kit_setup, otp, report, scenarios
 from harness.report import Run
 
 REFUSED = 2
@@ -37,7 +37,26 @@ def main(argv: list[str] | None = None) -> int:
                                           "backup, then ios-check again with nobody touching the phone")
     s.add_argument("--yes", action="store_true", help="the restore replaces what's on the test iPhone with "
                                                       "the backup just made: confirm it")
+    su = commands.add_parser("setup", help="write the secrets file, with a passphrase and a private ntfy topic; "
+                                           "--detect fills in the two phones once plugged in")
+    su.add_argument("--detect", action="store_true", help="fill in the connected iPhone's and Pixel's IDs")
+    commands.add_parser("ready", help="what the kit still lacks, phones connected or not")
+    commands.add_parser("ping", help="send a test notification")
+    w = commands.add_parser("watch", help="the daily timer's command: a round trip when WhatsApp or iOS changed "
+                                          "on either phone since the last pass, or that pass is a month old")
+    w.add_argument("--dry-run", action="store_true", help="say whether it would run, and why; start nothing")
     args = p.parse_args(argv)
+    if args.command == "setup":
+        lines = kit_setup.setup(config.secrets_path(args.secrets), config.home_path(), detect=args.detect)
+        for line in lines:
+            print(line)
+        if any(line.startswith(("iphone_udid = ", "android_serial = ")) for line in lines):
+            print("These are now the only phones the harness touches, and it clears WhatsApp on them. If either "
+                  "is anyone's own phone, not the test kit's, empty its line in the secrets file now.")
+        print("Next: fill in number_b, then `python -m harness ready`.")
+        return 0
+    if args.command == "ready":
+        return kit_setup.show(kit_setup.ready(config.secrets_path(args.secrets), config.home_path()))
     try:
         kit = config.load(args.secrets)
     except config.KitError as e:
@@ -217,8 +236,36 @@ def _spike(kit, args) -> int:
     return result
 
 
+def _ping(kit, args) -> int:
+    sent = report.notify(kit, "whatferry harness: test", "If you can read this, the harness can reach you.")
+    print(f"Sent by {', '.join(sent)}." if sent else "Nothing sent: see above.")
+    return 0 if sent else 1
+
+
+def _watch(kit, args) -> int:
+    """Daily: a round trip only when something changed, so a WhatsApp update is tested the day it lands."""
+    last = Run.latest(kit.runs)
+    if last and last.state.get("status") in ("paused", "failed", "running"):
+        # Its pause or failure already notified; another notification a day would only be noise.
+        print(f"Waiting on {last.folder.name}, {last.state['status']}: `resume` or `abandon` it.")
+        return 0
+    devices.check_allowed(kit)
+    phone = devices.Iphone(kit)
+    versions = {"whatsapp_android": devices.Android(kit).whatsapp_version(),
+                "whatsapp_iphone": phone.whatsapp_version(), "ios": phone.phone().ios_version}
+    reason = kit_setup.why_run(versions, kit_setup.last_pass(kit.runs))
+    if reason is None:
+        print("Nothing changed since the last pass: no run today.")
+        return 0
+    print(f"Running: {reason}." if not args.dry_run else f"Would run: {reason}.")
+    if args.dry_run:
+        return 0
+    args.scenario = "roundtrip"
+    return _run(kit, args)
+
+
 COMMANDS = {"run": _run, "resume": _resume, "status": _status, "abandon": _abandon, "preflight": _preflight,
-            "code": _code, "ios-check": _ios_check, "spike": _spike}
+            "code": _code, "ios-check": _ios_check, "spike": _spike, "ping": _ping, "watch": _watch}
 
 if __name__ == "__main__":
     sys.exit(main())

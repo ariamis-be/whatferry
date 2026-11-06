@@ -1,8 +1,8 @@
 [Unit]
-Description=whatferry round-trip harness, monthly
+Description=whatferry round-trip harness, daily check
 
 [Timer]
-OnCalendar=*-*-01 03:00:00
+OnCalendar=*-*-* 03:00:00
 # A computer off at 03:00 runs it at the next start.
 Persistent=true
 

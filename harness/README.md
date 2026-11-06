@@ -1,7 +1,8 @@
 # The round-trip harness
 
-Once a month, with nobody needed except for the iPhone's taps: Android →
-iPhone, verify, iPhone → Android, verify, report. It uses whatferry as a
+Whenever WhatsApp or iOS updates on either test phone, and at least once a
+month, with nobody needed except for the iPhone's taps: Android → iPhone,
+verify, iPhone → Android, verify, report. It uses whatferry as a
 library and touches no phone but the test kit's two. The plan it follows is
 [`docs/harness-plan.md`](../docs/harness-plan.md), Part B. At Stage 1, every
 tap on the iPhone is a notified pause. With Stage 2 set up (below), the
@@ -53,11 +54,43 @@ a whatferry folder of its own. Its backups and decrypted copies never mix
 with anyone else's: `WHATFERRY_HOME` and `WHATFERRY_BACKUP_ROOT` point
 there for the run.
 
+## Getting the kit ready
+
+Most of it can be done before the phones arrive:
+
+```sh
+mise exec -- uv run python -m harness setup   # the secrets file: passphrase and ntfy topic made up
+mise exec -- uv run python -m harness ready   # what's still missing, phones or not
+mise exec -- uv run python -m harness ping    # a test notification
+```
+
+`setup` never overwrites a secrets file. It makes up the iPhone backup
+passphrase and a private ntfy topic; subscribe to that topic in the ntfy app.
+`ready` lists every part of the kit: the secrets file, adb, Maestro,
+usbmuxd, the phones, notifications, the 64-digit key, Stage 2's
+WebDriverAgent and tunnel, the baseline and the daily timer. Each missing
+part says what to do. It exits 0 once nothing is missing.
+
+The day the phones arrive:
+
+1. Set each phone up as the table above says, with B's SIM in the Pixel.
+2. Plug in **only** the two test phones, then
+   `python -m harness setup --detect`. It fills in their IDs, and only
+   while those lines are empty. Those become the only phones the harness
+   touches, and it clears WhatsApp on them.
+3. Write B's number into `number_b`, and set `iphone_accounts`.
+4. Make the seed corpus on the Pixel.
+5. `python -m harness ready`, then `python -m harness preflight`.
+6. Run each Pixel flow once by hand, as [Not built yet](#not-built-yet) says.
+7. `python -m harness run`. The first pass records the baseline.
+8. Install the daily timer from [`schedule/`](schedule).
+
 ## Running it
 
 ```sh
 mise exec -- uv run python -m harness preflight   # secrets, phones, versions
 mise exec -- uv run python -m harness run         # roundtrip; or: run a2i, run i2a
+mise exec -- uv run python -m harness watch       # a roundtrip only if something changed (--dry-run: say why)
 mise exec -- uv run python -m harness status
 mise exec -- uv run python -m harness resume      # after a pause or a fix
 mise exec -- uv run python -m harness abandon     # give up a run, so a new one can start
@@ -137,11 +170,17 @@ by their last four digits only.
 conversion and write reports. Then come `fingerprints/`, `a2i-diff.json`,
 `i2a-diff.json` and `summary.txt`, the line the notification sent.
 
-## The monthly timer
+## The daily timer
 
 [`schedule/`](schedule) has a launchd agent for macOS and a systemd user
-timer for Linux. Both fire on the 1st at 03:00, and both catch up when the
-computer was off. Replace `__REPO__` with the repository's path; each file
+timer for Linux. Both run `python -m harness watch` every day at 03:00, and
+both catch up when the computer was off. The watch reads WhatsApp's version
+on both phones and the iPhone's iOS version. It starts a round trip when any
+of them differs from the last passing run, when that run is 30 days old, or
+when no run has passed yet. Otherwise it does nothing. While a run waits to
+be resumed, the watch only says so: that run's pause has already notified.
+So a WhatsApp update is tested the night after it lands, before anyone moves
+chats with it. Replace `__REPO__` with the repository's path; each file
 says how to install it. A pause exits 75, which systemd counts as success.
 
 ## Stage 2: the iPhone's taps

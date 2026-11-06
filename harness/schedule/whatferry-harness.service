@@ -1,4 +1,5 @@
-# The monthly round trip on Linux, as a user service started by whatferry-harness.timer.
+# The round trip on Linux, as a user service whatferry-harness.timer starts daily: `harness watch`
+# runs one when WhatsApp or iOS changed on either phone since the last pass, or that pass is a month old.
 # Replace __REPO__ with the repository's path, then:
 #   cp harness/schedule/whatferry-harness.* ~/.config/systemd/user/
 #   systemctl --user daemon-reload && systemctl --user enable --now whatferry-harness.timer
@@ -9,6 +10,6 @@ Description=whatferry round-trip harness
 [Service]
 Type=oneshot
 WorkingDirectory=__REPO__
-ExecStart=/bin/bash -lc 'mise exec -- uv run python -m harness run roundtrip'
+ExecStart=/bin/bash -lc 'mise exec -- uv run python -m harness watch'
 # 75 is a pause for a person, not a failure.
 SuccessExitStatus=75

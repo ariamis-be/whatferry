@@ -443,7 +443,7 @@ writes one of those folders.
 folders, file names Windows refuses, `file:` URIs for paths holding `#`, `?`
 or `%`, and byte-exact writes. CI runs the suite on macOS, Windows and Linux.
 
-`harness/` is the monthly round trip on a fixed test kit (Android → iPhone →
+`harness/` runs real round trips on a fixed test kit, nightly after any WhatsApp or iOS update and at least monthly (Android → iPhone →
 Android, each side verified). It isn't part of the package: see
 [`harness/README.md`](harness/README.md).
 
