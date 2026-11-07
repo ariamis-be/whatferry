@@ -10,27 +10,7 @@
 
 import { createContext, useContext } from "react"
 
-import { ar } from "./locales/ar"
-import { bn } from "./locales/bn"
-import { de } from "./locales/de"
 import { en, type Messages } from "./locales/en"
-import { es } from "./locales/es"
-import { fa } from "./locales/fa"
-import { fr } from "./locales/fr"
-import { he } from "./locales/he"
-import { hi } from "./locales/hi"
-import { id } from "./locales/id"
-import { it } from "./locales/it"
-import { ms } from "./locales/ms"
-import { nl } from "./locales/nl"
-import { pl } from "./locales/pl"
-import { pt } from "./locales/pt"
-import { ro } from "./locales/ro"
-import { tr } from "./locales/tr"
-import { uk } from "./locales/uk"
-import { ur } from "./locales/ur"
-import { zh } from "./locales/zh"
-import { zhHant } from "./locales/zh-Hant"
 
 export type { Messages }
 
@@ -44,33 +24,34 @@ type Language = {
   /** The browser languages that pick it on a first start. */
   matches: string[]
   rtl?: boolean
-  messages: Messages
+  /** English is built in; every other language is its own file, fetched when chosen. */
+  load: () => Promise<Messages>
 }
 
 // Ordered by the menu: English first, then by each name's English spelling.
 const TABLE = [
-  { id: "en", name: "English", tag: "en", matches: ["en"], messages: en },
-  { id: "ar", name: "العربية", tag: "ar", matches: ["ar"], rtl: true, messages: ar },
-  { id: "bn", name: "বাংলা", tag: "bn", matches: ["bn"], messages: bn },
-  { id: "zh", name: "中文（简体）", tag: "zh-CN", matches: ["zh-cn", "zh-sg", "zh-hans", "zh"], messages: zh },
+  { id: "en", name: "English", tag: "en", matches: ["en"], load: async () => en },
+  { id: "ar", name: "العربية", tag: "ar", matches: ["ar"], rtl: true, load: () => import("./locales/ar").then((m) => m.ar) },
+  { id: "bn", name: "বাংলা", tag: "bn", matches: ["bn"], load: () => import("./locales/bn").then((m) => m.bn) },
+  { id: "zh", name: "中文（简体）", tag: "zh-CN", matches: ["zh-cn", "zh-sg", "zh-hans", "zh"], load: () => import("./locales/zh").then((m) => m.zh) },
   { id: "zh-Hant", name: "中文（繁體）", tag: "zh-HK", matches: ["zh-hk", "zh-tw", "zh-mo", "zh-hant"],
-    messages: zhHant },
-  { id: "nl", name: "Nederlands", tag: "nl", matches: ["nl"], messages: nl },
-  { id: "fr", name: "Français", tag: "fr", matches: ["fr"], messages: fr },
-  { id: "de", name: "Deutsch", tag: "de", matches: ["de"], messages: de },
-  { id: "he", name: "עברית", tag: "he", matches: ["he", "iw"], rtl: true, messages: he },
-  { id: "hi", name: "हिन्दी", tag: "hi", matches: ["hi"], messages: hi },
-  { id: "id", name: "Bahasa Indonesia", tag: "id", matches: ["id", "in"], messages: id },
-  { id: "it", name: "Italiano", tag: "it", matches: ["it"], messages: it },
-  { id: "ms", name: "Bahasa Melayu", tag: "ms", matches: ["ms"], messages: ms },
-  { id: "fa", name: "فارسی", tag: "fa", matches: ["fa"], rtl: true, messages: fa },
-  { id: "pl", name: "Polski", tag: "pl", matches: ["pl"], messages: pl },
-  { id: "pt", name: "Português (Brasil)", tag: "pt-BR", matches: ["pt"], messages: pt },
-  { id: "ro", name: "Română", tag: "ro", matches: ["ro", "mo"], messages: ro },
-  { id: "es", name: "Español", tag: "es", matches: ["es"], messages: es },
-  { id: "tr", name: "Türkçe", tag: "tr", matches: ["tr"], messages: tr },
-  { id: "uk", name: "Українська", tag: "uk", matches: ["uk"], messages: uk },
-  { id: "ur", name: "اردو", tag: "ur", matches: ["ur"], rtl: true, messages: ur },
+    load: () => import("./locales/zh-Hant").then((m) => m.zhHant) },
+  { id: "nl", name: "Nederlands", tag: "nl", matches: ["nl"], load: () => import("./locales/nl").then((m) => m.nl) },
+  { id: "fr", name: "Français", tag: "fr", matches: ["fr"], load: () => import("./locales/fr").then((m) => m.fr) },
+  { id: "de", name: "Deutsch", tag: "de", matches: ["de"], load: () => import("./locales/de").then((m) => m.de) },
+  { id: "he", name: "עברית", tag: "he", matches: ["he", "iw"], rtl: true, load: () => import("./locales/he").then((m) => m.he) },
+  { id: "hi", name: "हिन्दी", tag: "hi", matches: ["hi"], load: () => import("./locales/hi").then((m) => m.hi) },
+  { id: "id", name: "Bahasa Indonesia", tag: "id", matches: ["id", "in"], load: () => import("./locales/id").then((m) => m.id) },
+  { id: "it", name: "Italiano", tag: "it", matches: ["it"], load: () => import("./locales/it").then((m) => m.it) },
+  { id: "ms", name: "Bahasa Melayu", tag: "ms", matches: ["ms"], load: () => import("./locales/ms").then((m) => m.ms) },
+  { id: "fa", name: "فارسی", tag: "fa", matches: ["fa"], rtl: true, load: () => import("./locales/fa").then((m) => m.fa) },
+  { id: "pl", name: "Polski", tag: "pl", matches: ["pl"], load: () => import("./locales/pl").then((m) => m.pl) },
+  { id: "pt", name: "Português (Brasil)", tag: "pt-BR", matches: ["pt"], load: () => import("./locales/pt").then((m) => m.pt) },
+  { id: "ro", name: "Română", tag: "ro", matches: ["ro", "mo"], load: () => import("./locales/ro").then((m) => m.ro) },
+  { id: "es", name: "Español", tag: "es", matches: ["es"], load: () => import("./locales/es").then((m) => m.es) },
+  { id: "tr", name: "Türkçe", tag: "tr", matches: ["tr"], load: () => import("./locales/tr").then((m) => m.tr) },
+  { id: "uk", name: "Українська", tag: "uk", matches: ["uk"], load: () => import("./locales/uk").then((m) => m.uk) },
+  { id: "ur", name: "اردو", tag: "ur", matches: ["ur"], rtl: true, load: () => import("./locales/ur").then((m) => m.ur) },
 ] as const satisfies readonly Language[]
 
 export type Lang = (typeof TABLE)[number]["id"]
@@ -80,6 +61,21 @@ export const LANGUAGES: readonly (Language & { id: Lang })[] = TABLE
 
 export function language(lang: Lang): Language {
   return LANGUAGES.find((l) => l.id === lang) ?? LANGUAGES[0]
+}
+
+const loaded = new Map<Lang, Promise<Messages>>()
+
+/** A language's words, fetched once; English if its file can't be loaded. */
+export function loadMessages(lang: Lang): Promise<Messages> {
+  let messages = loaded.get(lang)
+  if (!messages) {
+    messages = language(lang).load().catch(() => {
+      loaded.delete(lang)
+      return en
+    })
+    loaded.set(lang, messages)
+  }
+  return messages
 }
 
 /** The tag for dates and numbers: English keeps the browser's own English (en-GB, en-US…). */

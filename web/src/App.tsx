@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { Direction } from "radix-ui"
 import { ArrowLeft, ArrowRight, Check, Languages, Monitor, Moon, ShieldCheck, Sun } from "lucide-react"
 
 import { api, saveSettings, setLocale, TOKEN, type Overview, type State } from "@/api"
@@ -13,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Spinner } from "@/components/ui/spinner"
-import { I18nContext, language, LANGUAGES, locale, type Lang } from "@/i18n"
+import { I18nContext, language, LANGUAGES, loadMessages, locale, type Lang, type Messages } from "@/i18n"
 import { cn } from "@/lib/utils"
 import { AccountStep } from "@/steps/account"
 import { AndroidStep } from "@/steps/android"
@@ -55,21 +56,25 @@ function blockedBy(id: StepId, s: State): StepId | null {
   return null
 }
 
-export default function App({ initialTheme, initialLang }: { initialTheme: Theme; initialLang: Lang }) {
-  const [lang, setLangState] = useState<Lang>(initialLang)
+export default function App({ initialTheme, initialLang, initialMessages }: {
+  initialTheme: Theme
+  initialLang: Lang
+  initialMessages: Messages
+}) {
+  // The language and its words change together, once the chosen language's file has loaded.
+  const [{ lang, t }, setLanguage] = useState({ lang: initialLang, t: initialMessages })
   const [theme, setThemeState] = useState<Theme>(initialTheme)
   const [overview, setOverview] = useState<Overview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [current, setCurrent] = useState<StepId>("start")
 
-  const t = language(lang).messages
   setLocale(locale(lang))
   const i18n = useMemo(() => ({
     lang,
     t,
     setLang: (l: Lang) => {
       saveSettings({ lang: l })
-      setLangState(l)
+      void loadMessages(l).then((messages) => setLanguage({ lang: l, t: messages }))
     },
   }), [lang, t])
 
@@ -118,6 +123,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
 
   return (
     <I18nContext.Provider value={i18n}>
+    <Direction.Provider dir={language(lang).rtl ? "rtl" : "ltr"}>
       <div className="flex min-h-svh flex-col">
         <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
           <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-4xl xl:max-w-5xl">
@@ -289,6 +295,7 @@ export default function App({ initialTheme, initialLang }: { initialTheme: Theme
           )}
         </main>
       </div>
+    </Direction.Provider>
     </I18nContext.Provider>
   )
 }

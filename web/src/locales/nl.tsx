@@ -1,4 +1,639 @@
-// Placeholder until translated.
-import { en, type Messages } from "./en"
+// Dutch. Menu names follow what WhatsApp, Android and Apple show in Dutch.
+import { Code } from "@/components/code"
 
-export const nl: Messages = en
+import type { Messages } from "./en"
+
+const one = (n: string) => n === "1"
+
+export const nl: Messages = {
+  header: {
+    tagline: "Blijft op deze computer · schrijft pas aan het eind naar een telefoon, als jij dat zegt",
+    language: "Taal",
+    theme: "Thema",
+    light: "Licht",
+    dark: "Donker",
+    system: "Systeem",
+  },
+  steps: {
+    start: "Start",
+    android: "Android",
+    before: "iPhone",
+    account: "Account",
+    after: "Vergelijken",
+    convert: "Omzetten",
+    write: "Schrijven",
+    restore: "Herstellen",
+    copy: "Kopiëren",
+    done: "Resultaat",
+  },
+  stepOf: (n, total) => `Stap ${n} van ${total}`,
+  stepLabel: (n, title, done) => `Stap ${n}: ${title}${done ? " (klaar)" : ""}`,
+  stepSkipped: "niet nodig",
+  nav: { back: "Terug", continue: "Doorgaan", start: "Starten", first: (step) => `Eerst ${step}` },
+  common: {
+    loading: "Laden…",
+    openWithLink: "Open de wizard met de link die `whatferry ui` heeft getoond.",
+    cantReach: (m) => `Kan whatferry niet bereiken: ${m}. Draait \`whatferry ui\` nog?`,
+    failed: "Dat is niet gelukt",
+    checked: "Gecontroleerd",
+    searchAgain: "Opnieuw zoeken",
+    messagesRange: (a, b) => (
+      <>
+        Berichten van <strong>{a}</strong> tot <strong>{b}</strong>.
+      </>
+    ),
+    noMessages: "Nog geen berichten.",
+  },
+  counts: {
+    chats: "chats",
+    messages: "berichten",
+    media: "media",
+    "quoted replies": "geciteerde antwoorden",
+    "reactions and other add-ons": "reacties en andere toevoegingen",
+    "contact cards": "contactkaarten",
+    locations: "locaties",
+    calls: "oproepen",
+    "contacts and groups (jid)": "contacten en groepen (jid)",
+    "group members": "groepsleden",
+    "group info": "groepsinfo",
+    "message info (receipts)": "berichtinfo (leesbevestigingen)",
+    "profile push names": "profielnamen",
+    "files added": "bestanden toegevoegd",
+    "files changed": "bestanden gewijzigd",
+    "files removed": "bestanden verwijderd",
+    "chats matched": "chats die er al waren",
+    "chats created": "chats toegevoegd",
+    "media placed": "mediabestanden geplaatst",
+    "media missing": "mediabestanden niet gevonden",
+  },
+  start: {
+    title: "WhatsApp-chats overzetten van Android naar iPhone",
+    titleToAndroid: "WhatsApp-chats overzetten van iPhone naar Android",
+    lead: "Deze wizard zet de chats van één Android-WhatsApp-account over naar WhatsApp op je iPhone, zonder de iPhone te wissen. Je back-ups worden alleen gelezen; er wordt één keer naar de iPhone geschreven, aan het eind, als je kiest voor herstellen.",
+    leadToAndroid: "Deze wizard zet de chats van één iPhone-WhatsApp-account over naar WhatsApp op je Android-telefoon. Je back-ups worden alleen gelezen; er wordt één keer naar de Android-telefoon geschreven, aan het eind, als je de nieuwe back-up erop kopieert.",
+    directionTitle: "Welke kant op",
+    android: "Android",
+    iphone: "iPhone",
+    directionNote: {
+      "to-iphone": "Naar WhatsApp op een iPhone die al is ingesteld, als tweede of als enige account.",
+      "to-android": "Naar WhatsApp op een Android-telefoon, via het eigen herstel van WhatsApp uit een back-up.",
+    },
+    needsToAndroid: [
+      "De iPhone, met WhatsApp en de chats die je wilt overzetten.",
+      "De Android-telefoon, met WhatsApp ingelogd op het nummer dat je overzet.",
+      "Een kabel voor elke telefoon, en USB-foutopsporing op de Android-telefoon.",
+      "Ongeveer een uur, vooral wachten op back-ups. Je kunt dit sluiten en later terugkomen: de voortgang wordt bewaard.",
+    ],
+    happensToAndroid: [
+      "Maak een back-up van de iPhone, zodat de wizard de chats, foto's en video's van het account kan lezen.",
+      "Maak de versleutelde back-up van WhatsApp op de Android-telefoon, met een 64-cijferige sleutel, en breng het bestand hierheen.",
+      "Zet de iPhone-chats om in die back-up en bekijk een voorbeeld van het resultaat.",
+      "Schrijf de nieuwe back-up, kopieer hem naar de Android-telefoon en herstel hem in WhatsApp met de sleutel.",
+    ],
+    needTitle: "Je hebt nodig",
+    needs: [
+      "De Android-telefoon, met WhatsApp en de chats die je wilt overzetten.",
+      "De iPhone, met WhatsApp al ingesteld voor zijn eigen nummer.",
+      "Een kabel om de iPhone op deze computer aan te sluiten.",
+      "Ongeveer een uur, vooral wachten op back-ups. Je kunt dit sluiten en later terugkomen: de voortgang wordt bewaard.",
+    ],
+    happensTitle: "Wat er gebeurt",
+    happens: [
+      "Maak een versleutelde WhatsApp-back-up op de Android-telefoon en breng het bestand hierheen.",
+      "Maak een reservekopie van de iPhone, zodat de wizard ziet hoe WhatsApp je huidige account opslaat.",
+      "Voeg het Android-nummer toe aan WhatsApp op de iPhone als tweede account.",
+      "Maak opnieuw een reservekopie van de iPhone. Door de twee te vergelijken zie je precies waar de chats van het nieuwe account komen.",
+      "Zet de Android-chats om en bekijk een voorbeeld van het resultaat.",
+      "Schrijf een nieuwe kopie van de iPhone-reservekopie met de chats erin en zet die terug op de iPhone.",
+    ],
+    privateTitle: "Wat privé blijft",
+    privateLead: "Niets verlaat deze computer.",
+    private: (home) => [
+      "De pagina praat alleen met whatferry op deze computer. Er wordt nergens iets geüpload.",
+      "Sleutels en wachtwoorden worden één keer gebruikt en nooit bewaard.",
+      <>
+        Ontsleutelde kopieën staan in <Code>{home}</Code>, alleen leesbaar voor jou. Verwijder die map als je klaar bent.
+      </>,
+    ],
+  },
+  android: {
+    title: "Android-back-up",
+    lead: "De versleutelde back-up van WhatsApp, met een 64-cijferige sleutel die je opschrijft, kan hier worden gelezen zonder de telefoon te rooten.",
+    makeTitle: "Maak de back-up op de Android-telefoon",
+    make: [
+      "Open WhatsApp → Instellingen → Chats → Chatback-up → End-to-end versleutelde back-up → Aanzetten.",
+      "Kies ‘Gebruik in plaats daarvan een 64-cijferige coderingssleutel’ en genereer de sleutel. Schrijf hem op of maak een screenshot: WhatsApp kan hem niet nog eens tonen.",
+      "Tik terug bij Chatback-up op Back-up maken. Zo wordt er een bestand op de telefoon opgeslagen, ook als back-ups naar Google Drive uit staan.",
+    ],
+    toAndroidTitle: "Eerst WhatsApp op de Android-telefoon",
+    toAndroidBody: "Installeer WhatsApp en log in met het nummer dat je overzet. Als het aanbiedt een back-up te herstellen, sla dat over. Maak daarna de back-up hieronder: die geeft de wizard de eigen lege database van WhatsApp voor het account, waar de iPhone-chats in komen.",
+    multiTitle: "Meer dan één WhatsApp-account op de telefoon?",
+    multiBody: "Elk account heeft een eigen back-up en een eigen sleutel. Schakel over naar het account dat je wilt overzetten (tik op je profielfoto → account wisselen) voordat je de stappen hierboven doet, en herhaal ze voor elk account dat je wilt.",
+    bringTitle: "Breng het bestand naar deze computer",
+    bringLead: "Elk van deze manieren werkt; kies wat het makkelijkst is.",
+    tabs: { share: "Delen vanaf de telefoon", cable: "USB-bestandsoverdracht", adb: "Kopiëren met USB-foutopsporing" },
+    share: [
+      <>
+        Open de bestanden-app van de telefoon (Files van Google, of Mijn bestanden op Samsung) en ga naar{" "}
+        <Code>Android/media/com.whatsapp/WhatsApp</Code>. Sommige bestanden-apps verbergen de map <Code>Android</Code>;
+        Files van Google toont hem.
+      </>,
+      <>
+        Open <Code>Databases</Code>, of bij meerdere accounts <Code>accounts</Code> → het nummer van het account →{" "}
+        <Code>Databases</Code>.
+      </>,
+      <>
+        Houd <Code>msgstore.db.crypt15</Code> ingedrukt (die zonder datum) en tik op Delen.
+      </>,
+      "Stuur het naar deze computer, met wat je hebt: LocalSend (gratis, telefoon en computer op hetzelfde wifi-netwerk, niets gaat online), Quick Share (Windows), Google Drive, of een e-mail of bericht aan jezelf.",
+      "Sla het op in Downloads en klik daarna hieronder op Opnieuw zoeken.",
+    ],
+    cable: (platform) => [
+      "Sluit de telefoon met een USB-kabel aan op deze computer en ontgrendel hem.",
+      "Tik op de telefoon op de melding ‘Dit apparaat wordt opgeladen via USB’ en kies Bestandsoverdracht.",
+      {
+        darwin: "Een Mac kan Android-telefoons niet zelf openen: installeer OpenMTP (gratis, openmtp.ganeshrvel.com) en open de telefoon daarin.",
+        win32: "Open Verkenner: de telefoon staat onder Deze pc.",
+        other: "Je bestandsbeheerder toont de telefoon in de zijbalk.",
+      }[platform],
+      "Kopieer msgstore.db.crypt15 uit de map hieronder naar Downloads en klik daarna hieronder op Opnieuw zoeken.",
+    ],
+    foldersTitle: "Waar WhatsApp back-ups op de telefoon bewaart",
+    folders: ["Eén account", "Meerdere accounts", "WhatsApp Business", "Android 10 of ouder"],
+    foldersNote: (
+      <>
+        Bij meerdere accounts is elke map <Code>accounts/&lt;nummer&gt;</Code> één account: kies die waarvan
+        msgstore.db.crypt15 het nieuwst is, net nadat je op Back-up maken tikte. Bestanden die eindigen op .crypt14 en
+        bestanden met een datum of ‘increment’ zijn niet bruikbaar.
+      </>
+    ),
+    chooseTitle: "Kies het bestand",
+    searching: "Zoeken…",
+    noneFound: "Nog geen WhatsApp-back-up gevonden.",
+    chooseFile: "Kies een bestand…",
+    copyingFile: (name) => `${name} kopiëren…`,
+    searchHint: (folders) => (
+      <>Opnieuw zoeken zoekt naar WhatsApp-back-ups in {folders}. Staat het ergens anders? Gebruik Kies een bestand.</>
+    ),
+    listAnd: " en ",
+    listSep: ", ",
+    keyTitle: "Voer de sleutel in",
+    keyLabel: "64-cijferige sleutel",
+    keyPlaceholder: "64 tekens, spaties mogen",
+    showKey: "Sleutel tonen",
+    hideKey: "Sleutel verbergen",
+    keyHint: "Eén keer gebruikt om te ontsleutelen en daarna vergeten. Niet nodig als je een al ontsleutelde msgstore.db hebt gekozen.",
+    decrypting: "Back-up ontsleutelen en controleren…",
+    decrypt: "Ontsleutelen en controleren",
+    checkAgain: "Opnieuw controleren",
+    resultLine: (version, db, checked) => `WhatsApp ${version} · databaseversie ${db} · gecontroleerd ${checked}`,
+    legacy: "Deze back-up gebruikt de oude indeling van WhatsApp. Werk WhatsApp op de telefoon bij en maak opnieuw een back-up.",
+    jidTitle: "Contact-ID's per type",
+    jidHead: ["Server", "Aantal"],
+    decryptedCopy: "Ontsleutelde kopie:",
+    accountsTitle: "Android-accounts",
+    accountsLead: "Elk account wordt apart overgezet. Kies hieronder het back-upbestand van een ander account en ontsleutel het om het toe te voegen; schakel hier om aan een account te werken.",
+    accountRow: (ends, messages) => `Nummer eindigt op ${ends ?? "?"} · ${messages} berichten`,
+    accountProgress: (destination, secondDone) =>
+      [destination ? `gaat naar: ${destination}` : "bestemming nog niet gekozen", secondDone ? "tweede reservekopie gecontroleerd" : null]
+        .filter(Boolean).join(" · "),
+    destinationNames: { setup: "WhatsApp instellen", second: "tweede account", existing: "bestaand account" },
+    workingOn: "Hier werk je nu aan",
+    switchTo: "Overschakelen naar dit account",
+    movingAccount: (ends) => `Android-account eindigend op ${ends ?? "?"}`,
+  },
+  phone: {
+    intro: (folder) => (
+      <>
+        Sluit de telefoon aan op deze computer en whatferry kopieert de back-up zelf, rechtstreeks naar <Code>{folder}</Code>.
+        Daarvoor is USB-foutopsporing op de telefoon nodig en adb op deze computer; je kunt foutopsporing daarna weer
+        uitzetten.
+      </>
+    ),
+    looking: "Zoeken naar adb en aangesloten telefoons…",
+    noAdbTitle: "adb is niet geïnstalleerd op deze computer",
+    noAdbIntro: "adb is de gratis tool van Google om via USB met Android-telefoons te praten.",
+    install: {
+      darwin: ["Met Homebrew: brew install --cask android-platform-tools", "Of download platform-tools van Google (hieronder) en pak het uit."],
+      win32: ["In een terminal: winget install Google.PlatformTools", "Of download platform-tools van Google (hieronder) en pak het uit."],
+      other: ["Debian of Ubuntu: sudo apt install adb · Fedora: sudo dnf install android-tools", "Of download platform-tools van Google (hieronder) en pak het uit."],
+    },
+    download: (
+      <>
+        Download van Google: <Code>developer.android.com/tools/releases/platform-tools</Code>. Staat adb ergens waar whatferry
+        niet zoekt, start het dan met <Code>WHATFERRY_ADB=/path/to/adb</Code>.
+      </>
+    ),
+    debugTitle: "Zet USB-foutopsporing aan",
+    debug: [
+      "Open op de telefoon Instellingen → Over de telefoon en tik zeven keer op Buildnummer. Voer je pincode in als daarom wordt gevraagd; je ziet ‘Je bent nu ontwikkelaar!’. (Samsung: Instellingen → Telefoninfo → Software-informatie → Buildnummer.)",
+      "Ga terug naar Instellingen → Systeem → Ontwikkelaarsopties en zet USB-foutopsporing aan.",
+      "Sluit de telefoon met een USB-kabel aan op deze computer en ontgrendel hem.",
+      "Tik op Toestaan bij ‘USB-foutopsporing toestaan?’. Vink ‘Altijd toestaan vanaf deze computer’ aan, dan hoeft het niet nog eens.",
+      "Klik hieronder op Telefoon zoeken.",
+    ],
+    debugOff: "Als je klaar bent: Ontwikkelaarsopties → zet USB-foutopsporing uit.",
+    notReady: (model) => `${model} is niet klaar`,
+    advice: {
+      unauthorized: "Ontgrendel de telefoon en tik op Toestaan bij ‘USB-foutopsporing toestaan?’.",
+      offline: "De telefoon reageert niet: koppel hem los, sluit hem opnieuw aan en ontgrendel hem.",
+      "no permissions": "Deze computer mag niet met de telefoon praten (voeg op Linux een udev-regel voor Android toe).",
+      authorizing: "Wachten tot je op de telefoon op Toestaan tikt.",
+    },
+    otherState: (state) => `adb meldt ‘${state}’.`,
+    phone: "Android-telefoon",
+    connected: "Verbonden",
+    account: (app, account) => (account ? `${app} · account ${account}` : app),
+    noBackups: "Nog geen WhatsApp-back-up op deze telefoon. Maak er eerst een (stap 1) en klik daarna opnieuw op Telefoon zoeken.",
+    noUsable: "Nog geen bruikbare back-up: zet de back-up met 64-cijferige versleuteling aan en tik op Back-up maken (stap 1), klik daarna opnieuw op Telefoon zoeken.",
+    otherFiles: (n) => `${n} ${n === 1 ? "ander bestand" : "andere bestanden"} die niet bruikbaar ${n === 1 ? "is" : "zijn"}`,
+    notes: {
+      rooted: "Oudere versleuteling: de sleutel bestaat alleen op een geroote telefoon. Zet de back-up met 64-cijferige versleuteling aan en maak opnieuw een back-up om een .crypt15-bestand te krijgen.",
+      increment: "Een gedeeltelijke (incrementele) back-up; gebruik het volledige msgstore-bestand.",
+      other: "Geen WhatsApp-chatback-up.",
+    },
+    copy: "Kopiëren",
+    copying: "Kopiëren…",
+    copiedTitle: (name) => `${name} gekopieerd`,
+    copiedBody: "Het is hieronder gekozen, in stap 3.",
+    findPhone: "Telefoon zoeken",
+  },
+  backup: {
+    title: { before: "iPhone-reservekopie", after: "Tweede iPhone-reservekopie" },
+    lead: {
+      before: "Een reservekopie laat zien hoe WhatsApp op de iPhone zijn gegevens nu opslaat. De wizard leest hem; hij verandert hem nooit.",
+      after: "Met het tweede account toegevoegd laat een nieuwe reservekopie zien welke bestanden het nieuwe account heeft aangemaakt. Daar komen de Android-chats.",
+    },
+    needFirst: "Controleer eerst de eerste iPhone-reservekopie.",
+    goFirst: "Naar de eerste reservekopie",
+    makeTitle: { before: "Maak een reservekopie van de iPhone", after: "Maak opnieuw een reservekopie van de iPhone" },
+    make: {
+      darwin: [
+        "Sluit de iPhone met een kabel aan op deze Mac en ontgrendel hem. Tik op Vertrouw als daarom wordt gevraagd.",
+        "Open de Finder en selecteer de iPhone in de navigatiekolom.",
+        "Kies onder Reservekopieën ‘Maak een reservekopie van alle gegevens op je iPhone op deze Mac’.",
+        "Vink ‘Codeer lokale reservekopie’ aan en kies een wachtwoord dat je onthoudt. Je typt het zo meteen hier.",
+        "Klik op Maak nu reservekopie en wacht tot het klaar is.",
+      ],
+      win32: [
+        "Sluit de iPhone met een kabel aan op deze pc en ontgrendel hem. Tik op Vertrouw als daarom wordt gevraagd.",
+        "Open de app Apple Apparaten (of iTunes) en selecteer de iPhone.",
+        "Kies onder Reservekopieën ‘Maak een reservekopie van alle gegevens op je iPhone op deze computer’.",
+        "Vink ‘Codeer lokale reservekopie’ aan en kies een wachtwoord dat je onthoudt. Je typt het zo meteen hier.",
+        "Klik op Maak nu reservekopie en wacht tot het klaar is.",
+      ],
+      other: [
+        "Installeer libimobiledevice en sluit de iPhone aan met een kabel. Ontgrendel hem en tik op Vertrouw.",
+        "Zet versleuteling één keer aan: idevicebackup2 encryption on",
+        "Maak de reservekopie: idevicebackup2 backup --full <map>",
+        "Start de wizard met WHATFERRY_BACKUP_ROOT=<map> zodat hij de reservekopie kan vinden.",
+      ],
+    },
+    now: {
+      title: "Nu een reservekopie maken",
+      lead: "whatferry maakt de reservekopie zelf via de kabel, zoals de Finder. Sluit de iPhone aan met een kabel en ontgrendel hem.",
+      looking: "Zoeken naar de iPhone…",
+      connect: "Geen iPhone gevonden. Sluit hem aan met een kabel, ontgrendel hem en zoek opnieuw.",
+      onlyOne: "Er is meer dan één iPhone aangesloten: laat alleen de iPhone aangesloten waarvan je een reservekopie wilt maken.",
+      trust: "De iPhone vertrouwt deze computer nog niet. Nu een reservekopie maken vraagt erom: tik op de telefoon op Vertrouw en maak daarna opnieuw een reservekopie.",
+      found: (name) => `${name} gevonden.`,
+      encrypts: "De reservekopieën ervan zijn versleuteld.",
+      turnOnTitle: "Deze iPhone versleutelt zijn reservekopieën nog niet",
+      turnOnBody: "De chats van WhatsApp staan alleen in een versleutelde reservekopie. Kies een wachtwoord: de iPhone versleutelt voortaan elke reservekopie ermee, en de Finder toont ‘Codeer lokale reservekopie’ aangevinkt. De iPhone kan om zijn toegangscode vragen.",
+      choose: "Kies een wachtwoord voor de reservekopie",
+      again: "Typ het nog een keer",
+      mismatch: "De twee komen niet overeen.",
+      run: "Nu een reservekopie maken",
+      lookAgain: "Opnieuw zoeken",
+      working: (p) => `Reservekopie maken… ${Math.round(p)}%`,
+      keepConnected: "Bij een volle iPhone kan dit een uur duren. Houd hem aangesloten en ontgrendeld.",
+      done: "Reservekopie gemaakt",
+      turnedOn: "Versleuteling staat nu aan voor deze iPhone. Bewaar het wachtwoord: geen enkele reservekopie ervan opent zonder.",
+      byHand: "Of maak de reservekopie zelf",
+    },
+    samePassphrase: "Gebruik hetzelfde wachtwoord als eerder. De nieuwe reservekopie vervangt de oude in dezelfde map; de wizard heeft uit de eerste bewaard wat hij nodig heeft.",
+    chooseTitle: "Kies de reservekopie",
+    looking: "Zoeken naar reservekopieën…",
+    noneTitle: "Nog geen reservekopieën gevonden",
+    lookedIn: (folders) => `Gezocht in ${folders}.`,
+    noRoot: "Dit systeem heeft geen standaardmap voor reservekopieën: stel WHATFERRY_BACKUP_ROOT in.",
+    encrypted: "Versleuteld",
+    notEncrypted: "Niet versleuteld",
+    iphone: "iPhone",
+    deviceLine: (model, ios, date) => `${model} · iOS ${ios} · reservekopie van ${date}`,
+    notEncryptedTitle: "Deze reservekopie is niet versleuteld",
+    notEncryptedBody: "Voor controleren is dat prima, maar voor het overzetten is een versleutelde nodig: vink ‘Codeer lokale reservekopie’ aan en maak opnieuw een reservekopie.",
+    passLabel: "Wachtwoord van de reservekopie",
+    passHint: "Het wachtwoord dat je koos toen je ‘Codeer lokale reservekopie’ aanvinkte. Eén keer gebruikt, nooit bewaard.",
+    unlocking: "De reservekopie wordt ontgrendeld. Dit duurt een minuut of twee: het trage deel is de versleuteling die haar werk doet.",
+    reading: "Reservekopie lezen…",
+    check: { before: "Deze reservekopie controleren", after: "Controleren en vergelijken" },
+    checkAgain: "Opnieuw controleren",
+    resultLine: (model, ios, backed, checked) =>
+      `${model} · iOS ${ios} · reservekopie van ${backed} · gecontroleerd ${checked}`,
+    noWhatsapp: "Deze reservekopie bevat geen WhatsApp-gegevens. Is WhatsApp op deze iPhone geïnstalleerd?",
+    chatsIn: (path) => (
+      <>
+        Chats in <code className="font-mono text-xs">{path}</code>
+      </>
+    ),
+    messagesRange: (a, b) => `Berichten van ${a} tot ${b}`,
+    manyStores: (n) => `${n} chatdatabases: waarschijnlijk één per account.`,
+    areasTitle: "Opslaggebieden van WhatsApp",
+    areasHead: ["Gebied", "Bestanden", "Grootte"],
+    savedList: "De bestandenlijst van deze reservekopie is bewaard, om te vergelijken met de volgende.",
+    diffTitle: "Wat het toevoegen van het account heeft veranderd",
+    foundOne: "De chatdatabase van het nieuwe account is gevonden",
+    foundMany: (n) => `${n} nieuwe chatdatabases gevonden`,
+    whereGo: "Daar komen de Android-chats.",
+    noneNewTitle: "Er is geen nieuwe chatdatabase verschenen",
+    noneNewBody: "Het tweede account deelt misschien de bestaande, of WhatsApp was nog niet klaar met instellen voor de reservekopie. De volledige lijst met wijzigingen staat hieronder.",
+    diffHead: ["Waar", "Toegevoegd", "Gewijzigd", "Verwijderd"],
+    filesAdded: "Bestanden toegevoegd",
+    filesChanged: "Bestanden gewijzigd",
+  },
+  destination: {
+    title: "Waar moeten de Android-chats heen?",
+    lead: "Kies welk WhatsApp-account op deze iPhone ze krijgt. De suggestie komt van wat de reservekopieën laten zien.",
+    suggested: "Voorgesteld",
+    options: {
+      setup: {
+        title: "WhatsApp op deze iPhone instellen met het Android-nummer",
+        body: "WhatsApp is nog niet ingesteld op deze iPhone: het Android-nummer wordt het enige account.",
+      },
+      second: {
+        title: "Het Android-nummer toevoegen als tweede account",
+        body: "De iPhone houdt zijn huidige account; de Android-chats gaan naar een nieuw, leeg account ernaast.",
+      },
+      existing: {
+        title: "Een account hier gebruikt het Android-nummer al",
+        body: "De Android-chats gaan naar dat account. Heeft het al chats, dan worden de twee geschiedenissen samengevoegd.",
+      },
+    },
+    reasons: {
+      noWhatsapp: "Deze reservekopie bevat geen WhatsApp-gegevens.",
+      matches: (ends) =>
+        `Een account hier heeft een nummer dat eindigt op ${ends}, net als dat van de Android-back-up (alleen de laatste twee cijfers zijn bekend, dus controleer of het echt hetzelfde nummer is).`,
+      different: (ends, accounts) =>
+        `Het Android-nummer eindigt op ${ends}; de accountnummers van deze iPhone eindigen op ${accounts}.`,
+      unknown: "De Android-back-up slaat zijn nummer niet op, dus de wizard kan niet vergelijken.",
+      stale: "Deze iPhone-controle is opgeslagen met een oudere manier om de accounts van de iPhone te lezen, die een chat voor een account kon aanzien. Klik hierboven op Opnieuw controleren om de nummers te vergelijken.",
+      secondStarted: (ends) =>
+        `Het Android-nummer (eindigend op ${ends}) is hier al ingesteld als tweede account, maar heeft nog geen chats: het inloggen is waarschijnlijk gestopt voor de bevestigingscode. Rond het inloggen op de iPhone af en maak daarna de tweede reservekopie.`,
+      iphoneUnknown: (ends) =>
+        `Het Android-nummer eindigt op ${ends}, maar de accountnummers van de iPhone konden niet uit deze reservekopie worden gelezen.`,
+    },
+    full: "Deze iPhone heeft misschien al een tweede WhatsApp-account: de reservekopie bevat er een map voor. Zo ja, dan staat WhatsApp misschien geen derde toe en moet je er eerst een verwijderen.",
+    merge: (n) =>
+      `Dat account heeft al ${n} berichten op deze iPhone. Samenvoegen bewaart beide geschiedenissen, maar dit is het lastigste geval om goed te krijgen.`,
+    notMatching: (ends, numbers) =>
+      `Geen account hier heeft een nummer dat eindigt op ${ends}. Met deze keuze gaan de Android-chats naar een account met een ander nummer (eindigend op ${numbers}), en ze verschijnen onder dat nummer.`,
+    cantConfirm: "De wizard kan niet bevestigen dat een account hier het Android-nummer gebruikt: controleer WhatsApp op de iPhone voordat je dit kiest.",
+    replaceExisting: (numbers) =>
+      `WhatsApp is al ingesteld op deze iPhone${numbers ? ` (nummer eindigend op ${numbers})` : ""}. Opnieuw instellen met het Android-nummer zou dat account uitloggen; voeg in plaats daarvan een tweede account toe om het te houden.`,
+    accountsTitle: "WhatsApp-accounts op deze iPhone",
+    account: (numberEnds, country, main, hasChats) =>
+      `Nummer eindigt op ${numberEnds ?? "?"}${country ? ` (${country})` : ""} · ${main ? "hoofdaccount" : "tweede account"}${hasChats ? "" : " · geen chats in deze reservekopie"}`,
+    secondNoChats: "De chats van dat account staan niet in de iPhone-reservekopie: het heeft er nog geen, of WhatsApp houdt de chats van een tweede account buiten reservekopieën. Het overzetten moet daar omheen werken, dus dat is het volgende wat we moeten uitzoeken.",
+    folders: (n) =>
+      `De reservekopie bevat ook ${n} ${n === 1 ? "map" : "mappen"} die WhatsApp voor een ander account bijhoudt, mogelijk een tweede; het nummer ervan is niet te lezen.`,
+    chooseFirst: "Controleer eerst de iPhone-reservekopie; kies daarna waar de chats heen gaan.",
+  },
+  account: {
+    setup: {
+      title: "WhatsApp instellen met het Android-nummer",
+      lead: "WhatsApp maakt zijn database, mappen en sleutels aan voor het Android-nummer. De volgende reservekopie laat zien waar ze staan.",
+      sectionTitle: "WhatsApp instellen op de iPhone",
+      steps: [
+        "Installeer WhatsApp uit de App Store, als het nog niet geïnstalleerd is.",
+        "Open het en registreer het nummer van de Android-telefoon; voer de code in die WhatsApp stuurt. WhatsApp op de Android-telefoon logt uit: dat hoort zo, en je back-upbestand staat al veilig op deze computer.",
+        "Als WhatsApp aanbiedt chats te herstellen, sla dat over. Het account moet leeg beginnen.",
+      ],
+    },
+    existing: {
+      title: "Niets toe te voegen op de iPhone",
+      lead: "Het account dat het Android-nummer al gebruikt, krijgt de chats. Een tweede reservekopie is niet nodig: ga door naar het resultaat.",
+    },
+    none: "Kies eerst waar de chats heen gaan: dat staat aan het eind van de stap iPhone-reservekopie.",
+    goChoose: "Kies waar de chats heen gaan",
+    notNeeded: "Niet nodig voor deze keuze",
+    skipNote: "Het account dat de chats krijgt bestaat al, dus er is niets nieuws te vinden. Ga door naar het resultaat.",
+    title: "Voeg het Android-nummer toe op de iPhone",
+    lead: "WhatsApp stelt het tweede account zelf in: een eigen lege database, mappen en sleutels. Later wordt alleen dat nieuwe account gevuld met de Android-chats; je huidige account blijft onaangeroerd.",
+    addTitle: "Voeg het account toe op de iPhone",
+    steps: [
+      "Open op de iPhone WhatsApp → Instellingen en kies Account toevoegen (naast je naam bovenaan).",
+      "Registreer het nummer van de Android-telefoon en voer de code in die WhatsApp stuurt. WhatsApp op de Android-telefoon logt uit: dat hoort zo, en je back-upbestand staat al veilig op deze computer.",
+      "Als WhatsApp aanbiedt chats te herstellen voor het nieuwe account, sla dat over. Het nieuwe account moet leeg beginnen.",
+    ],
+    keepAndroid: "Houd WhatsApp geïnstalleerd op de Android-telefoon tot het overzetten klaar is. Als er iets misgaat, kun je daar weer inloggen en staan je chats er nog.",
+  },
+  convert: {
+    title: "Chats omzetten",
+    lead: "Voegt de geschiedenis van het Android-account samen in een kopie van de chatdatabase van het iPhone-account. Er verandert nog niets op de telefoons of in de reservekopie: bekijk het resultaat hieronder voordat je schrijft, en zet opnieuw om met een andere keuze als het niet klopt.",
+    needBackups: "Controleer eerst de Android-back-up en een iPhone-reservekopie.",
+    goAndroid: "Naar de Android-back-up",
+    goIphone: "Naar de iPhone-reservekopie",
+    targetTitle: "Welk iPhone-account de chats krijgt",
+    leadToAndroid: "Voegt de geschiedenis van het iPhone-account samen in een kopie van de chatdatabase van het Android-account. Er verandert nog niets op de telefoons of in de back-ups: bekijk het resultaat hieronder voordat je schrijft, en zet opnieuw om met een andere keuze als het niet klopt.",
+    sourceTitle: "Van welk iPhone-account de chats gaan",
+    fromIphoneBackup: (date) => `Uit de iPhone-reservekopie, gecontroleerd ${date}.`,
+    mediaFromBackup: "Uit de iPhone-reservekopie",
+    mediaFromBackupNote: "Foto's, video's, spraakberichten en documenten die op de iPhone staan, uit de reservekopie gehaald. Oudere die WhatsApp van de iPhone heeft gehaald, zijn er niet.",
+    androidNotWritableTitle: "Naar deze Android-back-up kan niet worden teruggeschreven",
+    androidNotWritable: "Controleer in de Android-stap de end-to-end versleutelde back-up van WhatsApp (msgstore.db.crypt15, met de 64-cijferige sleutel): daaruit herstelt WhatsApp.",
+    notYetToAndroid: "Antwoorden, reacties, peilingen en oproepen gaan nog niet mee; de berichten zelf wel.",
+    versionTitle: (kind) => `Niet de ${kind} WhatsApp-versie waarop whatferry is gecontroleerd`,
+    fromBackup: (second, date) => `Uit de ${second ? "tweede" : "eerste"} iPhone-reservekopie, gecontroleerd ${date}.`,
+    mainAccount: (ends) => `Hoofdaccount${ends ? `, nummer eindigt op ${ends}` : ""}`,
+    otherAccount: (ends) => `Toegevoegd account${ends ? `, nummer eindigt op ${ends}` : ""}`,
+    suggested: "Voorgesteld",
+    hasMessages: (n) => `nu ${n} ${one(n) ? "bericht" : "berichten"}`,
+    mergeNote: (n) =>
+      `Dit account heeft al ${n} ${one(n) ? "bericht" : "berichten"}. De Android-chats komen ernaast; chats met dezelfde persoon of groep worden samengevoegd.`,
+    mediaTitle: "Foto's, video's en spraakberichten",
+    mediaLead: "De Android-map WhatsApp Media, gekopieerd naar deze computer. Elke gevonden map wordt vergeleken met de nieuwste bestanden die de Android-chats noemen.",
+    mediaFound: (found, sampled) =>
+      sampled ? `Bevat ${found} van de ${sampled} nieuwste bestanden die de chats noemen` : "De chats noemen geen mediabestanden",
+    mediaOther: "Een andere map",
+    mediaPlaceholder: "Pad naar een kopie van WhatsApp/Media",
+    mediaNone: "Zonder media",
+    mediaNoneNote: "Berichten houden hun bijschriften; de foto's en video's zelf blijven achter.",
+    working: "Omzetten… een minuut of twee.",
+    run: "Omzetten",
+    again: "Opnieuw omzetten",
+    doneTitle: (converted, total) => `${converted} van ${total} berichten omgezet`,
+    doneLine: (at) => `Omgezet ${at}.`,
+    checksClean: "De samengevoegde database heeft alle consistentiecontroles doorstaan.",
+    checksFailed: "De samengevoegde database heeft een consistentiecontrole niet doorstaan",
+    integrity: (result) => `integriteit: ${result}`,
+    skipped: (n) =>
+      `${n} ${one(n) ? "gebeurtenis" : "gebeurtenissen"} die WhatsApp op elke telefoon anders bewaart (systeemmeldingen, oproepen, peilingen en dergelijke) ${one(n) ? "wordt" : "worden"} weggelaten.`,
+    notYet: (what, n) => `${what}: ${n}, gaan nog niet mee (de berichten zelf wel).`,
+  },
+  preview: {
+    title: "Wat het account zal hebben",
+    loading: "Resultaat lezen…",
+    android: "van Android",
+    iphone: "van de iPhone",
+    totals: (fresh, joined, unchanged, messages, from) =>
+      `${fresh} ${one(fresh) ? "nieuwe chat" : "nieuwe chats"} en ${joined} samengevoegd met chats die er al waren (${messages} ${one(messages) ? "bericht" : "berichten"} ${from}); ${unchanged} ${one(unchanged) ? "chat" : "chats"} onaangeroerd.`,
+    fromSource: (from) => from.charAt(0).toUpperCase() + from.slice(1),
+    all: "Alle chats",
+    search: "Zoeken op naam of nummer",
+    noChats: "Geen chats gevonden.",
+    group: "Groep",
+    change: { new: "Nieuw", joined: "Samengevoegd", unchanged: "Onaangeroerd" },
+    chatLine: (moved, total, first, last, from) => `${moved} van ${total} berichten ${from} · ${first} tot ${last}`,
+    showAll: (n) => `Alle ${n} tonen`,
+    newest: (n, from) => `nieuwste berichten van ${n}; omlijnde komen ${from}`,
+    kinds: {
+      image: "Foto",
+      video: "Video",
+      audio: "Spraakbericht of audio",
+      contact: "Contactkaart",
+      location: "Locatie",
+      document: "Document",
+      gif: "GIF",
+      sticker: "Sticker",
+      deleted: "Dit bericht is verwijderd",
+      link: "Link",
+      system: "Chatgebeurtenis",
+      other: "Ander bericht",
+    },
+  },
+  write: {
+    title: "Een nieuwe reservekopie schrijven",
+    lead: "Kopieert de iPhone-reservekopie en zet de omgezette chats in de kopie, versleuteld zoals iOS dat doet. Elk geschreven bestand wordt teruggelezen en gecontroleerd.",
+    needConvert: "Zet eerst de chats om.",
+    goConvert: "Naar Omzetten",
+    fromTitle: "De reservekopie waarmee het begint",
+    from: (date) => `De iPhone-reservekopie van ${date}, waarin de chats zijn omgezet:`,
+    untouched: "Die reservekopie blijft zoals hij is; de nieuwe komt in de eigen map van whatferry.",
+    previewFirst: "Er wordt geschreven wat het voorbeeld van de omzetting laat zien.",
+    openPreview: "Bekijk het voorbeeld",
+    passTitle: "Wachtwoord",
+    leadToAndroid: "Versleutelt de omgezette database als eigen back-up van WhatsApp, met de 64-cijferige sleutel van de Android-back-up, en zet hem neer met de foto's en video's zoals WhatsApp ze bewaart. Hij wordt opnieuw ontsleuteld en gecontroleerd.",
+    fromAndroid: "De Android-back-up waarin de chats zijn omgezet:",
+    keyTitle: "De sleutel van de Android-back-up",
+    keyLabel: "64-cijferige sleutel",
+    keyHint: "De sleutel die WhatsApp toonde toen je de end-to-end versleutelde back-up aanzette. Eén keer gebruikt, nooit bewaard.",
+    skipNoteToAndroid: "Normaal geweigerd: de Android-back-up moet die zijn waarin de chats zijn omgezet. Hiermee gaat bij het herstellen verloren wat WhatsApp op de Android-telefoon na die back-up heeft ontvangen.",
+    changedBodyToAndroid: "Controleer de nieuwste Android-back-up opnieuw in zijn stap en zet daarna opnieuw om. Zo blijft alles bewaard wat het account nu heeft.",
+    addedToAndroid: (bytes, media) =>
+      `msgstore.db.crypt15 (${bytes}), opnieuw ontsleuteld en gecontroleerd, en ${media} mediabestanden, klaar om naar de telefoon te kopiëren.`,
+    noPass: "Deze reservekopie is niet versleuteld: geen wachtwoord nodig.",
+    skipLabel: "Ook schrijven als de reservekopie sinds het omzetten is veranderd",
+    skipNote: "Normaal geweigerd: de reservekopie moet die zijn waarin de chats zijn omgezet. Hiermee gaat bij het herstellen verloren wat het account na het omzetten op de iPhone heeft ontvangen.",
+    changedTitle: "Deze reservekopie is na het omzetten veranderd",
+    changedBody: "Controleer de nieuwste iPhone-reservekopie opnieuw in zijn stap en zet daarna opnieuw om. Zo blijft alles bewaard wat het account nu heeft.",
+    working: "Schrijven… een paar minuten bij een grote reservekopie.",
+    run: "Schrijf de nieuwe reservekopie",
+    again: "Opnieuw schrijven",
+    doneTitle: "Nieuwe reservekopie geschreven en gecontroleerd",
+    unchecked: "bron niet gecontroleerd",
+    doneLine: (at) => `Geschreven ${at}.`,
+    added: (files, bytes, verified) =>
+      `${files} bestanden toegevoegd (${bytes}); ${verified} bestanden teruggelezen en gecontroleerd.`,
+  },
+  copy: {
+    title: "Kopiëren naar de Android-telefoon",
+    lead: "Zet de nieuwe back-up en de media via USB in de map van WhatsApp op de telefoon. Daarna herstelt WhatsApp hem, zoals elke eigen back-up.",
+    warnTitle: "WhatsApp op de Android-telefoon begint opnieuw vanaf deze back-up",
+    warnBody: "Herstellen vervangt de chats van WhatsApp op de Android-telefoon door die van de back-up: de eigen chats van het account zoals ze waren bij de back-up, plus die van de iPhone. Verder verandert er niets op de telefoon.",
+    beforeTitle: "Voordat je begint",
+    before: [
+      "Als er sinds de gecontroleerde back-up iets in WhatsApp op de Android-telefoon is binnengekomen, maak dan opnieuw een back-up en doorloop de Android-stap, Omzetten en Schrijven opnieuw.",
+      "Wis de gegevens van WhatsApp: Instellingen → Apps → WhatsApp → Opslag → Opslag wissen. WhatsApp logt uit op deze telefoon; de chats komen terug uit de back-up.",
+      "Sluit de telefoon aan met een kabel, met USB-foutopsporing aan (zoals in de Android-stap), en ontgrendel hem.",
+    ],
+    phoneTitle: "De Android-telefoon",
+    looking: "Zoeken naar de telefoon…",
+    noAdbTitle: "adb is niet geïnstalleerd",
+    noAdb: "Installeer het zoals de Android-stap uitlegt, of kopieer de map zelf (hieronder).",
+    noPhoneTitle: "Geen telefoon gevonden",
+    noPhone: "Sluit de telefoon aan met een kabel, zet USB-foutopsporing aan, ontgrendel hem en zoek opnieuw.",
+    ready: "Klaar",
+    whichFolder: "Welke WhatsApp-map op de telefoon (één per account):",
+    lookAgain: "Opnieuw zoeken",
+    confirmTitle: "Bevestigen",
+    cleared: "Ik heb de opslag van WhatsApp op de telefoon gewist (stap 1.2).",
+    working: "Kopiëren… een paar minuten bij veel foto's.",
+    run: "Kopiëren naar de telefoon",
+    again: "Opnieuw kopiëren",
+    doneTitle: "Gekopieerd naar de telefoon",
+    doneLine: (at, media) => `Gekopieerd ${at}, met ${media} mediabestanden. Daarna:`,
+    kept: (path) => `De eigen back-up van de telefoon is bewaard als ${path}.`,
+    after: [
+      "Open WhatsApp, ga akkoord met de voorwaarden en verifieer hetzelfde nummer.",
+      "Als WhatsApp de back-up vindt, tik je op Herstellen en typ je de 64-cijferige sleutel.",
+      "Wacht tot het klaar is en bekijk dan de chats.",
+    ],
+    manualTitle: "Zonder USB-foutopsporing",
+    manual: "Kopieer de inhoud van deze map:",
+    manualInto: "naar deze map op de telefoon met USB-bestandsoverdracht, nadat je de eigen Databases/msgstore.db.crypt15 van de telefoon hebt hernoemd zodat die bewaard blijft:",
+  },
+  restore: {
+    title: "Terugzetten op de iPhone",
+    lead: "Zet de nieuwe reservekopie via de kabel op de iPhone, zoals Zet reservekopie terug in de Finder.",
+    needWrite: "Schrijf eerst de nieuwe reservekopie.",
+    goWrite: "Naar Schrijven",
+    warnTitle: "Dit vervangt alles op de iPhone",
+    warnBody: (date) =>
+      `De iPhone gaat terug naar hoe hij was bij zijn reservekopie van ${date}, plus de omgezette chats. Alles wat daarna binnenkwam (berichten, foto's, appgegevens) is daarna weg.`,
+    beforeTitle: "Voordat je begint",
+    before: [
+      "Maak in WhatsApp op de iPhone een back-up van de chats van elk account naar iCloud (Instellingen → Chats → Chatback-up → Nu back-up maken). Dat is de weg terug als er iets misgaat.",
+      "Houd de iPhone in vliegtuigmodus vanaf de reservekopie tot het terugzetten klaar is, of maak een nieuwe reservekopie en doorloop Omzetten opnieuw.",
+      "Zet Zoek mijn uit. Als Bescherming gestolen apparaat aan staat, vraagt iOS daar eerst om: Instellingen → Face ID en toegangscode → Bescherming gestolen apparaat → uit (buiten een vertrouwde locatie laat iOS je een uur wachten). Daarna Instellingen → je naam → Zoek mijn → Zoek mijn iPhone → uit.",
+      "Sluit de iPhone aan met een kabel, ontgrendel hem en houd hem ontgrendeld. Sluit het Finder-venster ervan.",
+    ],
+    phoneTitle: "De iPhone",
+    looking: "Zoeken naar de iPhone…",
+    noPhone: "De iPhone waarvan deze reservekopie is, is niet aangesloten",
+    noPhoneBody: (others) =>
+      others
+        ? `${others} ${others > 1 ? "andere iPhones zijn" : "andere iPhone is"} aangesloten, maar niet die van deze reservekopie. Sluit de juiste aan en zoek opnieuw.`
+        : "Sluit hem aan met een kabel, ontgrendel hem en zoek opnieuw.",
+    phoneLine: (ios) => `iOS ${ios}, aangesloten met kabel`,
+    matches: "De nieuwe reservekopie is van deze iPhone",
+    trusted: "Deze computer wordt vertrouwd",
+    notTrusted: "Nog niet vertrouwd: ontgrendel de iPhone, tik op Vertrouw en zoek opnieuw",
+    findMyOff: "Zoek mijn staat uit",
+    findMyOn: "Zoek mijn staat aan: zet het uit (eerst Bescherming gestolen apparaat, als dat aan staat) en zoek opnieuw",
+    findMyUnknown: "Zoek mijn: niet te bepalen. Ontgrendel de iPhone en zoek opnieuw",
+    lookAgain: "Opnieuw zoeken",
+    confirmTitle: "Bevestigen",
+    typeName: (name) => `Typ ${name} om te bevestigen`,
+    working: (percent) => `Terugzetten… ${Math.round(percent)}%`,
+    keepConnected: "Houd de iPhone aangesloten en ontgrendeld tot hij opnieuw opstart.",
+    run: "Zet de iPhone terug",
+    doneTitle: "Teruggezet",
+    doneLine: (at) => `Teruggezet ${at}. Daarna:`,
+    after: [
+      "De iPhone start opnieuw op en maakt het terugzetten af. Houd hem aangesloten tot het toegangsscherm verschijnt en ontgrendel hem dan.",
+      "Apps worden op de achtergrond opnieuw geïnstalleerd uit de App Store: wacht op WhatsApp.",
+      "Open WhatsApp, schakel over naar het account waar de chats heen gingen en bekijk ze. Als het vraagt het nummer te verifiëren, doe dat. Als het aanbiedt de chatgeschiedenis uit iCloud te herstellen, sla dat over: dat zou de omgezette chats vervangen.",
+      "Zet Zoek mijn weer aan, en daarna Bescherming gestolen apparaat.",
+    ],
+  },
+  results: {
+    title: "Resultaat",
+    lead: "Deze samenvatting bevat aantallen, versies en bestandslocaties: geen berichten, namen of telefoonnummers. Stuur hem door als er iets moet worden uitgezocht.",
+    summaryLabel: "Samenvatting",
+    summaryLanguage: "De samenvatting is in het Engels, zodat je hem naar de ontwikkelaar kunt sturen.",
+    copy: "Samenvatting kopiëren",
+    copied: "Gekopieerd",
+    nextTitle: "Wat er nu gebeurt",
+    next: "Als de iPhone opnieuw is opgestart, open je WhatsApp en controleer je het account waar de chats heen gingen. Om nog een Android-account over te zetten, controleer je de back-up ervan in de Android-stap en doorloop je de stappen opnieuw.",
+    cleanTitle: "Opruimen",
+    clean: (home) => (
+      <>
+        Ontsleutelde kopieën staan in <Code>{home}</Code>. Verwijder die map wanneer je wilt; de samenvatting hierboven
+        heeft hem niet nodig.
+      </>
+    ),
+    startOver: "Opnieuw beginnen",
+    confirmReset: "Alle voortgang vergeten? Ontsleutelde kopieën blijven op de schijf tot je ze verwijdert.",
+  },
+}

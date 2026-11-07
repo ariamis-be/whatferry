@@ -1,4 +1,642 @@
-// Placeholder until translated.
-import { en, type Messages } from "./en"
+// Brazilian Portuguese. Menu names follow what WhatsApp, Android and Apple show in Brazilian Portuguese.
+import { Code } from "@/components/code"
 
-export const pt: Messages = en
+import type { Messages } from "./en"
+
+// Portuguese uses the singular for 0 and 1.
+const one = (n: string) => n === "0" || n === "1"
+
+export const pt: Messages = {
+  header: {
+    tagline: "Fica neste computador · só grava em um celular no final, quando você mandar",
+    language: "Idioma",
+    theme: "Tema",
+    light: "Claro",
+    dark: "Escuro",
+    system: "Sistema",
+  },
+  steps: {
+    start: "Início",
+    android: "Android",
+    before: "iPhone",
+    account: "Conta",
+    after: "Comparar",
+    convert: "Converter",
+    write: "Gravar",
+    restore: "Restaurar",
+    copy: "Copiar",
+    done: "Resultados",
+  },
+  stepOf: (n, total) => `Etapa ${n} de ${total}`,
+  stepLabel: (n, title, done) => `Etapa ${n}: ${title}${done ? " (concluída)" : ""}`,
+  stepSkipped: "não necessária",
+  nav: { back: "Voltar", continue: "Continuar", start: "Começar", first: (step) => `Primeiro: ${step}` },
+  common: {
+    loading: "Carregando…",
+    openWithLink: "Abra o assistente pelo link que o `whatferry ui` mostrou.",
+    cantReach: (m) => `Não foi possível conectar ao whatferry: ${m}. O \`whatferry ui\` ainda está rodando?`,
+    failed: "Não deu certo",
+    checked: "Verificado",
+    searchAgain: "Procurar de novo",
+    messagesRange: (a, b) => (
+      <>
+        Mensagens de <strong>{a}</strong> a <strong>{b}</strong>.
+      </>
+    ),
+    noMessages: "Ainda não há mensagens.",
+  },
+  counts: {
+    chats: "conversas",
+    messages: "mensagens",
+    media: "mídias",
+    "quoted replies": "respostas com citação",
+    "reactions and other add-ons": "reações e outros complementos",
+    "contact cards": "cartões de contato",
+    locations: "localizações",
+    calls: "ligações",
+    "contacts and groups (jid)": "contatos e grupos (jid)",
+    "group members": "membros de grupos",
+    "group info": "dados de grupos",
+    "message info (receipts)": "dados de mensagens (confirmações)",
+    "profile push names": "nomes de perfil",
+    "files added": "arquivos adicionados",
+    "files changed": "arquivos alterados",
+    "files removed": "arquivos removidos",
+    "chats matched": "conversas que já existiam",
+    "chats created": "conversas adicionadas",
+    "media placed": "arquivos de mídia colocados",
+    "media missing": "arquivos de mídia não encontrados",
+  },
+  start: {
+    title: "Transfira conversas do WhatsApp do Android para o iPhone",
+    titleToAndroid: "Transfira conversas do WhatsApp do iPhone para o Android",
+    lead: "Este assistente transfere as conversas de uma conta do WhatsApp no Android para o WhatsApp no seu iPhone, sem apagar o iPhone. Seus backups só são lidos; o iPhone é gravado uma única vez, no final, quando você escolher restaurar.",
+    leadToAndroid: "Este assistente transfere as conversas de uma conta do WhatsApp no iPhone para o WhatsApp no seu celular Android. Seus backups só são lidos; o celular Android é gravado uma única vez, no final, quando você copiar o novo backup para ele.",
+    directionTitle: "Em que sentido",
+    android: "Android",
+    iphone: "iPhone",
+    directionNote: {
+      "to-iphone": "Para o WhatsApp em um iPhone já configurado, como segunda conta ou como a única.",
+      "to-android": "Para o WhatsApp em um celular Android, pela própria restauração de backup do WhatsApp.",
+    },
+    needsToAndroid: [
+      "O iPhone, com o WhatsApp e as conversas que você quer transferir.",
+      "O celular Android, com o WhatsApp conectado ao número que você vai transferir.",
+      "Um cabo para cada celular, e a depuração USB ativada no celular Android.",
+      "Cerca de uma hora, quase toda esperando backups. Você pode fechar e voltar depois: o progresso fica salvo.",
+    ],
+    happensToAndroid: [
+      "Faça backup do iPhone, para o assistente poder ler as conversas, fotos e vídeos da conta.",
+      "Faça o backup criptografado do WhatsApp no celular Android, com uma chave de 64 dígitos, e traga o arquivo para cá.",
+      "Converta as conversas do iPhone para dentro desse backup e confira uma prévia do resultado.",
+      "Grave o novo backup, copie-o para o celular Android e restaure-o no WhatsApp com a chave.",
+    ],
+    needTitle: "Você vai precisar de",
+    needs: [
+      "O celular Android, com o WhatsApp e as conversas que você quer transferir.",
+      "O iPhone, com o WhatsApp já configurado para o número dele.",
+      "Um cabo para conectar o iPhone a este computador.",
+      "Cerca de uma hora, quase toda esperando backups. Você pode fechar e voltar depois: o progresso fica salvo.",
+    ],
+    happensTitle: "O que acontece",
+    happens: [
+      "Faça um backup criptografado do WhatsApp no celular Android e traga o arquivo para cá.",
+      "Faça backup do iPhone, para o assistente ver como o WhatsApp guarda sua conta atual.",
+      "Adicione o número do Android ao WhatsApp no iPhone como segunda conta.",
+      "Faça backup do iPhone de novo. A comparação dos dois backups mostra exatamente onde as conversas da nova conta vão ficar.",
+      "Converta as conversas do Android e confira uma prévia do resultado.",
+      "Grave uma nova cópia do backup do iPhone com as conversas dentro e restaure-a no iPhone.",
+    ],
+    privateTitle: "O que continua privado",
+    privateLead: "Nada sai deste computador.",
+    private: (home) => [
+      "A página só se comunica com o whatferry neste computador. Nada é enviado para lugar nenhum.",
+      "Chaves e senhas são usadas uma vez e nunca são salvas.",
+      <>
+        As cópias descriptografadas ficam em <Code>{home}</Code>, e só você pode lê-las. Apague quando terminar.
+      </>,
+    ],
+  },
+  android: {
+    title: "Backup do Android",
+    lead: "O backup criptografado do WhatsApp, com uma chave de 64 dígitos que você anota, pode ser lido aqui sem fazer root no celular.",
+    makeTitle: "Faça o backup no celular Android",
+    make: [
+      "Abra o WhatsApp → Configurações → Conversas → Backup de conversas → Backup protegido com a criptografia de ponta a ponta → Ativar.",
+      "Escolha “Usar chave de criptografia de 64 dígitos” e gere a chave. Anote ou tire uma captura de tela: o WhatsApp não consegue mostrá-la de novo.",
+      "De volta em Backup de conversas, toque em Fazer backup. Isso salva um arquivo no celular mesmo com os backups no Google Drive desativados.",
+    ],
+    toAndroidTitle: "Primeiro, o WhatsApp no celular Android",
+    toAndroidBody: "Instale o WhatsApp e entre com o número que você vai transferir. Se ele oferecer restaurar um backup, pule. Depois faça o backup abaixo: ele dá ao assistente o próprio banco de dados vazio do WhatsApp para a conta, onde entram as conversas do iPhone.",
+    multiTitle: "Mais de uma conta do WhatsApp no celular?",
+    multiBody: "Cada conta tem seu próprio backup e sua própria chave. Mude para a conta que você quer transferir (toque na sua foto do perfil → mudar de conta) antes das etapas acima, e repita-as para cada conta que quiser.",
+    bringTitle: "Traga o arquivo para este computador",
+    bringLead: "Qualquer uma destas opções funciona; escolha a mais fácil.",
+    tabs: { share: "Compartilhar pelo celular", cable: "Transferência de arquivos por USB", adb: "Copiar com depuração USB" },
+    share: [
+      <>
+        Abra o app de arquivos do celular (Files do Google, ou Meus arquivos no Samsung) e vá até{" "}
+        <Code>Android/media/com.whatsapp/WhatsApp</Code>. Alguns apps de arquivos escondem a pasta <Code>Android</Code>; o
+        Files do Google mostra.
+      </>,
+      <>
+        Abra <Code>Databases</Code>, ou, com várias contas, <Code>accounts</Code> → o número da conta →{" "}
+        <Code>Databases</Code>.
+      </>,
+      <>
+        Toque e segure <Code>msgstore.db.crypt15</Code> (o que não tem data) e toque em Compartilhar.
+      </>,
+      "Envie para este computador com o que você tiver: LocalSend (gratuito, celular e computador no mesmo Wi-Fi, nada vai para a internet), Quick Share (Windows), Google Drive, ou um e-mail ou mensagem para você mesmo.",
+      "Salve em Downloads e clique em Procurar de novo, abaixo.",
+    ],
+    cable: (platform) => [
+      "Conecte o celular a este computador com um cabo USB e desbloqueie-o.",
+      "No celular, toque na notificação “Carregando este dispositivo via USB” e escolha Transferência de arquivos.",
+      {
+        darwin: "O Mac não abre celulares Android sozinho: instale o OpenMTP (gratuito, openmtp.ganeshrvel.com) e abra o celular nele.",
+        win32: "Abra o Explorador de Arquivos: o celular aparece em Este Computador.",
+        other: "Seu gerenciador de arquivos mostra o celular na barra lateral.",
+      }[platform],
+      "Copie o msgstore.db.crypt15 da pasta abaixo para Downloads e clique em Procurar de novo, abaixo.",
+    ],
+    foldersTitle: "Onde o WhatsApp guarda os backups no celular",
+    folders: ["Uma conta", "Várias contas", "WhatsApp Business", "Android 10 ou anterior"],
+    foldersNote: (
+      <>
+        Com várias contas, cada pasta <Code>accounts/&lt;número&gt;</Code> é uma conta: escolha aquela cujo
+        msgstore.db.crypt15 é o mais recente, logo depois de você tocar em Fazer backup. Arquivos terminados em .crypt14 e
+        arquivos com data ou “increment” não podem ser usados.
+      </>
+    ),
+    chooseTitle: "Escolha o arquivo",
+    searching: "Procurando…",
+    noneFound: "Nenhum backup do WhatsApp encontrado ainda.",
+    chooseFile: "Escolher um arquivo…",
+    copyingFile: (name) => `Copiando ${name}…`,
+    searchHint: (folders) => (
+      <>Procurar de novo busca backups do WhatsApp em {folders}. Está em outro lugar? Use Escolher um arquivo.</>
+    ),
+    listAnd: " e ",
+    listSep: ", ",
+    keyTitle: "Digite a chave",
+    keyLabel: "Chave de 64 dígitos",
+    keyPlaceholder: "64 caracteres, espaços não tem problema",
+    showKey: "Mostrar chave",
+    hideKey: "Ocultar chave",
+    keyHint: "Usada uma vez para descriptografar e depois esquecida. Não é necessária se você escolheu um msgstore.db já descriptografado.",
+    decrypting: "Descriptografando e verificando o backup…",
+    decrypt: "Descriptografar e verificar",
+    checkAgain: "Verificar de novo",
+    resultLine: (version, db, checked) => `WhatsApp ${version} · versão do banco de dados ${db} · verificado ${checked}`,
+    legacy: "Este backup usa o formato antigo do WhatsApp. Atualize o WhatsApp no celular e faça o backup de novo.",
+    jidTitle: "Identificadores de contato por tipo",
+    jidHead: ["Servidor", "Quantidade"],
+    decryptedCopy: "Cópia descriptografada:",
+    accountsTitle: "Contas do Android",
+    accountsLead: "Cada conta é transferida separadamente. Para adicionar outra, escolha o arquivo de backup dela abaixo e descriptografe; mude aqui para trabalhar em uma.",
+    accountRow: (ends, messages) => `Número terminado em ${ends ?? "?"} · ${messages} mensagens`,
+    accountProgress: (destination, secondDone) =>
+      [destination ? `vai para: ${destination}` : "destino ainda não escolhido", secondDone ? "segundo backup verificado" : null]
+        .filter(Boolean).join(" · "),
+    destinationNames: { setup: "configurar o WhatsApp", second: "segunda conta", existing: "conta existente" },
+    workingOn: "Trabalhando nesta",
+    switchTo: "Mudar para esta conta",
+    movingAccount: (ends) => `Conta do Android terminada em ${ends ?? "?"}`,
+  },
+  phone: {
+    intro: (folder) => (
+      <>
+        Conecte o celular a este computador e o whatferry copia o backup sozinho, direto para <Code>{folder}</Code>.
+        Precisa da depuração USB no celular e do adb neste computador; depois você pode desativar a depuração de novo.
+      </>
+    ),
+    looking: "Procurando o adb e celulares conectados…",
+    noAdbTitle: "O adb não está instalado neste computador",
+    noAdbIntro: "O adb é a ferramenta gratuita do Google para se comunicar com celulares Android por USB.",
+    install: {
+      darwin: ["Com Homebrew: brew install --cask android-platform-tools", "Ou baixe o platform-tools do Google (abaixo) e descompacte."],
+      win32: ["Em um terminal: winget install Google.PlatformTools", "Ou baixe o platform-tools do Google (abaixo) e descompacte."],
+      other: ["Debian ou Ubuntu: sudo apt install adb · Fedora: sudo dnf install android-tools", "Ou baixe o platform-tools do Google (abaixo) e descompacte."],
+    },
+    download: (
+      <>
+        Download do Google: <Code>developer.android.com/tools/releases/platform-tools</Code>. Se o adb estiver em um lugar
+        onde o whatferry não procura, inicie-o com <Code>WHATFERRY_ADB=/path/to/adb</Code>.
+      </>
+    ),
+    debugTitle: "Ative a depuração USB",
+    debug: [
+      "No celular, abra Configurações → Sobre o telefone e toque em Número da versão sete vezes. Digite seu PIN se for pedido; aparece “Agora você é um desenvolvedor”. (Samsung: Configurações → Sobre o telefone → Informações do software → Número de compilação.)",
+      "Volte para Configurações → Sistema → Opções do desenvolvedor e ative a Depuração USB.",
+      "Conecte o celular a este computador com um cabo USB e desbloqueie-o.",
+      "Toque em Permitir em “Permitir a depuração USB?”. Marcar “Sempre permitir a partir deste computador” evita fazer isso de novo.",
+      "Clique em Encontrar celular, abaixo.",
+    ],
+    debugOff: "Quando terminar: Opções do desenvolvedor → desative a Depuração USB.",
+    notReady: (model) => `${model} não está pronto`,
+    advice: {
+      unauthorized: "Desbloqueie o celular e toque em Permitir em “Permitir a depuração USB?”.",
+      offline: "O celular não está respondendo: desconecte, conecte de novo e desbloqueie-o.",
+      "no permissions": "Este computador não tem permissão para se comunicar com o celular (no Linux, adicione uma regra udev para Android).",
+      authorizing: "Esperando você tocar em Permitir no celular.",
+    },
+    otherState: (state) => `O adb diz “${state}”.`,
+    phone: "Celular Android",
+    connected: "Conectado",
+    account: (app, account) => (account ? `${app} · conta ${account}` : app),
+    noBackups: "Ainda não há backup do WhatsApp neste celular. Faça um primeiro (etapa 1) e clique em Encontrar celular de novo.",
+    noUsable: "Ainda não há backup utilizável: ative o backup criptografado com chave de 64 dígitos e toque em Fazer backup (etapa 1), depois clique em Encontrar celular de novo.",
+    otherFiles: (n) => `${n} ${n <= 1 ? "outro arquivo que não pode ser usado" : "outros arquivos que não podem ser usados"}`,
+    notes: {
+      rooted: "Criptografia antiga: a chave dela só existe em um celular com root. Ative o backup criptografado com chave de 64 dígitos e faça o backup de novo para obter um arquivo .crypt15.",
+      increment: "Um backup parcial (incremental); use o arquivo msgstore completo.",
+      other: "Não é um backup de conversas do WhatsApp.",
+    },
+    copy: "Copiar",
+    copying: "Copiando…",
+    copiedTitle: (name) => `${name} copiado`,
+    copiedBody: "Ele já está escolhido abaixo, na etapa 3.",
+    findPhone: "Encontrar celular",
+  },
+  backup: {
+    title: { before: "Backup do iPhone", after: "Segundo backup do iPhone" },
+    lead: {
+      before: "Um backup mostra como o WhatsApp no iPhone guarda os dados hoje. O assistente o lê; nunca o altera.",
+      after: "Com a segunda conta adicionada, um novo backup mostra quais arquivos a nova conta criou. É ali que as conversas do Android vão ficar.",
+    },
+    needFirst: "Verifique o primeiro backup do iPhone antes deste.",
+    goFirst: "Ir para o primeiro backup",
+    makeTitle: { before: "Faça backup do iPhone", after: "Faça backup do iPhone de novo" },
+    make: {
+      darwin: [
+        "Conecte o iPhone a este Mac com um cabo e desbloqueie-o. Toque em Confiar se for pedido.",
+        "Abra o Finder e selecione o iPhone na barra lateral.",
+        "Em Backups, escolha “Fazer backup de todos os dados do iPhone neste Mac”.",
+        "Marque “Criptografar backup local” e escolha uma senha de que você vai se lembrar. Você vai digitá-la aqui daqui a pouco.",
+        "Clique em Fazer Backup Agora e espere terminar.",
+      ],
+      win32: [
+        "Conecte o iPhone a este PC com um cabo e desbloqueie-o. Toque em Confiar se for pedido.",
+        "Abra o app Dispositivos Apple (ou o iTunes) e selecione o iPhone.",
+        "Em Backups, escolha “Fazer backup de todos os dados do iPhone neste computador”.",
+        "Marque “Criptografar backup local” e escolha uma senha de que você vai se lembrar. Você vai digitá-la aqui daqui a pouco.",
+        "Clique em Fazer Backup Agora e espere terminar.",
+      ],
+      other: [
+        "Instale o libimobiledevice e conecte o iPhone com um cabo. Desbloqueie-o e toque em Confiar.",
+        "Ative a criptografia uma vez: idevicebackup2 encryption on",
+        "Faça o backup: idevicebackup2 backup --full <pasta>",
+        "Inicie o assistente com WHATFERRY_BACKUP_ROOT=<pasta> para ele encontrar o backup.",
+      ],
+    },
+    now: {
+      title: "Fazer backup agora",
+      lead: "O whatferry faz o backup pelo cabo sozinho, como o Finder. Conecte o iPhone com um cabo e desbloqueie-o.",
+      looking: "Procurando o iPhone…",
+      connect: "Nenhum iPhone encontrado. Conecte-o com um cabo, desbloqueie-o e procure de novo.",
+      onlyOne: "Há mais de um iPhone conectado: deixe só aquele do qual quer fazer backup.",
+      trust: "O iPhone ainda não confia neste computador. Fazer backup agora pede isso a ele: toque em Confiar no celular e faça o backup de novo.",
+      found: (name) => `${name} encontrado.`,
+      encrypts: "Os backups dele são criptografados.",
+      turnOnTitle: "Este iPhone ainda não criptografa os backups",
+      turnOnBody: "As conversas do WhatsApp só ficam em um backup criptografado. Escolha uma senha: a partir de agora o iPhone criptografa todo backup com ela, e o Finder mostra “Criptografar backup local” marcado. O iPhone pode pedir o código dele.",
+      choose: "Escolha uma senha para o backup",
+      again: "Digite de novo",
+      mismatch: "As duas não coincidem.",
+      run: "Fazer backup agora",
+      lookAgain: "Procurar de novo",
+      working: (p) => `Fazendo backup… ${Math.round(p)}%`,
+      keepConnected: "Pode levar uma hora com um iPhone cheio. Mantenha-o conectado e desbloqueado.",
+      done: "Backup feito",
+      turnedOn: "A criptografia agora está ativada neste iPhone. Guarde a senha: nenhum backup dele abre sem ela.",
+      byHand: "Ou faça o backup manualmente",
+    },
+    samePassphrase: "Use a mesma senha de antes. O novo backup substitui o antigo na mesma pasta; o assistente já guardou o que precisa do primeiro.",
+    chooseTitle: "Escolha o backup",
+    looking: "Procurando backups…",
+    noneTitle: "Nenhum backup encontrado ainda",
+    lookedIn: (folders) => `Procurado em ${folders}.`,
+    noRoot: "Este sistema não tem uma pasta de backup padrão: defina WHATFERRY_BACKUP_ROOT.",
+    encrypted: "Criptografado",
+    notEncrypted: "Não criptografado",
+    iphone: "iPhone",
+    deviceLine: (model, ios, date) => `${model} · iOS ${ios} · backup em ${date}`,
+    notEncryptedTitle: "Este backup não está criptografado",
+    notEncryptedBody: "Serve para verificar, mas a transferência vai precisar de um criptografado: marque “Criptografar backup local” e faça o backup de novo.",
+    passLabel: "Senha do backup",
+    passHint: "A que você escolheu ao marcar “Criptografar backup local”. Usada uma vez, nunca salva.",
+    unlocking: "Desbloqueando o backup. Leva um ou dois minutos: a parte lenta é a criptografia fazendo o trabalho dela.",
+    reading: "Lendo o backup…",
+    check: { before: "Verificar este backup", after: "Verificar e comparar" },
+    checkAgain: "Verificar de novo",
+    resultLine: (model, ios, backed, checked) => `${model} · iOS ${ios} · backup em ${backed} · verificado ${checked}`,
+    noWhatsapp: "Este backup não tem dados do WhatsApp. O WhatsApp está instalado neste iPhone?",
+    chatsIn: (path) => (
+      <>
+        Conversas em <code className="font-mono text-xs">{path}</code>
+      </>
+    ),
+    messagesRange: (a, b) => `Mensagens de ${a} a ${b}`,
+    manyStores: (n) => `${n} bancos de dados de conversas: provavelmente um por conta.`,
+    areasTitle: "Áreas de armazenamento do WhatsApp",
+    areasHead: ["Área", "Arquivos", "Tamanho"],
+    savedList: "A lista de arquivos deste backup foi salva, para comparar com o próximo backup.",
+    diffTitle: "O que mudou ao adicionar a conta",
+    foundOne: "O banco de dados de conversas da nova conta foi encontrado",
+    foundMany: (n) => `${n} novos bancos de dados de conversas encontrados`,
+    whereGo: "É ali que as conversas do Android vão ficar.",
+    noneNewTitle: "Nenhum banco de dados de conversas novo apareceu",
+    noneNewBody: "A segunda conta pode compartilhar o existente, ou o WhatsApp não tinha terminado de configurá-la antes do backup. A lista completa de mudanças está abaixo.",
+    diffHead: ["Onde", "Adicionados", "Alterados", "Removidos"],
+    filesAdded: "Arquivos adicionados",
+    filesChanged: "Arquivos alterados",
+  },
+  destination: {
+    title: "Para onde as conversas do Android devem ir?",
+    lead: "Escolha qual conta do WhatsApp neste iPhone vai recebê-las. A sugestão vem do que os backups mostram.",
+    suggested: "Sugerida",
+    options: {
+      setup: {
+        title: "Configurar o WhatsApp neste iPhone com o número do Android",
+        body: "O WhatsApp ainda não está configurado neste iPhone: o número do Android passa a ser a única conta dele.",
+      },
+      second: {
+        title: "Adicionar o número do Android como segunda conta",
+        body: "O iPhone mantém a conta atual; as conversas do Android vão para uma conta nova e vazia ao lado dela.",
+      },
+      existing: {
+        title: "Uma conta aqui já usa o número do Android",
+        body: "As conversas do Android vão para essa conta. Se ela já tiver conversas, os dois históricos são mesclados.",
+      },
+    },
+    reasons: {
+      noWhatsapp: "Este backup não tem dados do WhatsApp.",
+      matches: (ends) =>
+        `Uma conta aqui tem um número terminado em ${ends}, como o do backup do Android (só os dois últimos dígitos são conhecidos, então confira se é mesmo o mesmo número).`,
+      different: (ends, accounts) =>
+        `O número do Android termina em ${ends}; os números das contas deste iPhone terminam em ${accounts}.`,
+      unknown: "O backup do Android não registra o número dele, então o assistente não consegue comparar.",
+      stale: "Esta verificação do iPhone foi salva com um jeito mais antigo de ler as contas do iPhone, que podia confundir uma conversa com uma conta. Clique em Verificar de novo, acima, para comparar os números.",
+      secondStarted: (ends) =>
+        `O número do Android (terminado em ${ends}) já está configurado aqui como segunda conta, mas ainda não tem conversas: o login provavelmente parou antes do código de confirmação. Termine de entrar no iPhone e faça o segundo backup.`,
+      iphoneUnknown: (ends) =>
+        `O número do Android termina em ${ends}, mas não foi possível ler os números das contas do iPhone neste backup.`,
+    },
+    full: "Este iPhone talvez já tenha uma segunda conta do WhatsApp: o backup tem uma pasta para ela. Se for o caso, o WhatsApp pode não permitir uma terceira, e talvez você precise remover uma antes.",
+    merge: (n) =>
+      `Essa conta já tem ${n} mensagens neste iPhone. Mesclar mantém os dois históricos, mas é o caso mais difícil de acertar.`,
+    notMatching: (ends, numbers) =>
+      `Nenhuma conta aqui tem um número terminado em ${ends}. Com esta escolha, as conversas do Android vão para uma conta com outro número (terminado em ${numbers}) e vão aparecer com esse número.`,
+    cantConfirm: "O assistente não consegue confirmar que uma conta aqui usa o número do Android: confira o WhatsApp no iPhone antes de escolher isto.",
+    replaceExisting: (numbers) =>
+      `O WhatsApp já está configurado neste iPhone${numbers ? ` (número terminado em ${numbers})` : ""}. Configurá-lo de novo com o número do Android desconectaria essa conta; adicione uma segunda conta para mantê-la.`,
+    accountsTitle: "Contas do WhatsApp neste iPhone",
+    account: (numberEnds, country, main, hasChats) =>
+      `Número terminado em ${numberEnds ?? "?"}${country ? ` (${country})` : ""} · ${main ? "conta principal" : "segunda conta"}${hasChats ? "" : " · sem conversas neste backup"}`,
+    secondNoChats: "As conversas dessa conta não estão no backup do iPhone: ou ela ainda não tem nenhuma, ou o WhatsApp deixa as conversas de uma segunda conta fora dos backups. A transferência precisa contornar isso, então é a próxima coisa a descobrir.",
+    folders: (n) =>
+      `O backup também tem ${n} ${n <= 1 ? "pasta" : "pastas"} que o WhatsApp mantém para outra conta, talvez uma segunda; o número dela não pode ser lido.`,
+    chooseFirst: "Verifique primeiro o backup do iPhone; depois escolha para onde as conversas vão.",
+  },
+  account: {
+    setup: {
+      title: "Configure o WhatsApp com o número do Android",
+      lead: "O WhatsApp cria o banco de dados, as pastas e as chaves para o número do Android. O próximo backup mostra onde eles ficam.",
+      sectionTitle: "Configure o WhatsApp no iPhone",
+      steps: [
+        "Instale o WhatsApp pela App Store, se não estiver instalado.",
+        "Abra-o e registre o número do celular Android; digite o código que o WhatsApp enviar. O WhatsApp no celular Android é desconectado: isso é esperado, e seu arquivo de backup já está seguro neste computador.",
+        "Se o WhatsApp oferecer restaurar conversas, pule. A conta deve começar vazia.",
+      ],
+    },
+    existing: {
+      title: "Nada a adicionar no iPhone",
+      lead: "A conta que já usa o número do Android recebe as conversas. Não é preciso um segundo backup: continue para os resultados.",
+    },
+    none: "Escolha primeiro para onde as conversas vão: fica no final da etapa do backup do iPhone.",
+    goChoose: "Escolher para onde as conversas vão",
+    notNeeded: "Não é necessário com esta escolha",
+    skipNote: "A conta que recebe as conversas já existe, então não há nada novo para encontrar. Continue para os resultados.",
+    title: "Adicione o número do Android no iPhone",
+    lead: "O WhatsApp configura a segunda conta sozinho: um banco de dados vazio, pastas e chaves próprios. Depois, só essa nova conta é preenchida com as conversas do Android; sua conta atual não é tocada.",
+    addTitle: "Adicione a conta no iPhone",
+    steps: [
+      "No iPhone, abra o WhatsApp → Configurações e escolha Adicionar conta (ao lado do seu nome, no topo).",
+      "Registre o número do celular Android e digite o código que o WhatsApp enviar. O WhatsApp no celular Android é desconectado: isso é esperado, e seu arquivo de backup já está seguro neste computador.",
+      "Se o WhatsApp oferecer restaurar conversas para a nova conta, pule. A nova conta deve começar vazia.",
+    ],
+    keepAndroid: "Mantenha o WhatsApp instalado no celular Android até a transferência terminar. Se algo der errado, você pode entrar de novo lá e suas conversas ainda estarão nele.",
+  },
+  convert: {
+    title: "Converta as conversas",
+    lead: "Mescla o histórico da conta do Android em uma cópia do banco de dados de conversas da conta do iPhone. Nada muda ainda em nenhum dos celulares nem no backup: confira o resultado abaixo antes de gravar, e converta de novo com outra escolha se não estiver certo.",
+    needBackups: "Verifique primeiro o backup do Android e um backup do iPhone.",
+    goAndroid: "Ir para o backup do Android",
+    goIphone: "Ir para o backup do iPhone",
+    targetTitle: "Qual conta do iPhone recebe as conversas",
+    leadToAndroid: "Mescla o histórico da conta do iPhone em uma cópia do banco de dados de conversas da conta do Android. Nada muda ainda em nenhum dos celulares nem em nenhum dos backups: confira o resultado abaixo antes de gravar, e converta de novo com outra escolha se não estiver certo.",
+    sourceTitle: "De qual conta do iPhone as conversas são transferidas",
+    fromIphoneBackup: (date) => `Do backup do iPhone verificado ${date}.`,
+    mediaFromBackup: "Do backup do iPhone",
+    mediaFromBackupNote: "Fotos, vídeos, mensagens de voz e documentos que o iPhone tem, tirados do backup dele. Os mais antigos que o WhatsApp já removeu do iPhone para liberar espaço não estão lá para tirar.",
+    androidNotWritableTitle: "O backup do Android não pode ser regravado",
+    androidNotWritable: "Verifique na etapa do Android o backup protegido com a criptografia de ponta a ponta do WhatsApp (msgstore.db.crypt15, com a chave de 64 dígitos): é dele que o WhatsApp restaura.",
+    notYetToAndroid: "Respostas, reações, enquetes e ligações ainda não são transferidas; as mensagens em si, sim.",
+    versionTitle: (kind) => `Não é a versão ${kind} do WhatsApp em que o whatferry foi verificado`,
+    fromBackup: (second, date) =>
+      `Do ${second ? "segundo" : "primeiro"} backup do iPhone, verificado ${date}.`,
+    mainAccount: (ends) => `Conta principal${ends ? `, número terminado em ${ends}` : ""}`,
+    otherAccount: (ends) => `Conta adicionada${ends ? `, número terminado em ${ends}` : ""}`,
+    suggested: "Sugerida",
+    hasMessages: (n) => `${n} ${one(n) ? "mensagem" : "mensagens"} lá agora`,
+    mergeNote: (n) =>
+      `Esta conta já tem ${n} ${one(n) ? "mensagem" : "mensagens"}. As conversas do Android são adicionadas ao lado delas; conversas com a mesma pessoa ou grupo são unidas.`,
+    mediaTitle: "Fotos, vídeos e mensagens de voz",
+    mediaLead: "A pasta Media do WhatsApp do Android, copiada para este computador. Cada pasta encontrada é comparada com os arquivos mais recentes citados nas conversas do Android.",
+    mediaFound: (found, sampled) =>
+      sampled ? `Tem ${found} dos ${sampled} arquivos mais recentes citados nas conversas` : "As conversas não citam nenhum arquivo de mídia",
+    mediaOther: "Outra pasta",
+    mediaPlaceholder: "Caminho para uma cópia de WhatsApp/Media",
+    mediaNone: "Sem mídia",
+    mediaNoneNote: "As mensagens mantêm as legendas; as fotos e os vídeos em si ficam para trás.",
+    working: "Convertendo… um ou dois minutos.",
+    run: "Converter",
+    again: "Converter de novo",
+    doneTitle: (converted, total) => `${converted} de ${total} mensagens convertidas`,
+    doneLine: (at) => `Convertido ${at}.`,
+    checksClean: "O banco de dados mesclado passou em todas as verificações de consistência.",
+    checksFailed: "O banco de dados mesclado falhou em uma verificação de consistência",
+    integrity: (result) => `integridade: ${result}`,
+    skipped: (n) =>
+      one(n)
+        ? `${n} evento que o WhatsApp guarda de forma diferente em cada celular (avisos do sistema, ligações, enquetes e afins) fica de fora.`
+        : `${n} eventos que o WhatsApp guarda de forma diferente em cada celular (avisos do sistema, ligações, enquetes e afins) ficam de fora.`,
+    notYet: (what, n) => `${what}: ${n}, ainda não transferidos (as mensagens em si, sim).`,
+  },
+  preview: {
+    title: "O que a conta vai ter",
+    loading: "Lendo o resultado…",
+    // Each includes its preposition: the templates below put it straight after "mensagens".
+    android: "do Android",
+    iphone: "do iPhone",
+    totals: (fresh, joined, unchanged, messages, from) =>
+      `${fresh} ${one(fresh) ? "conversa nova" : "conversas novas"} e ${joined} unidas a conversas que já existiam (${messages} ${one(messages) ? "mensagem" : "mensagens"} ${from}); ${unchanged} ${one(unchanged) ? "conversa intocada" : "conversas intocadas"}.`,
+    fromSource: (from) => from.charAt(0).toUpperCase() + from.slice(1),
+    all: "Todas as conversas",
+    search: "Buscar por nome ou número",
+    noChats: "Nenhuma conversa corresponde.",
+    group: "Grupo",
+    change: { new: "Nova", joined: "Unida", unchanged: "Intocada" },
+    chatLine: (moved, total, first, last, from) => `${moved} de ${total} mensagens ${from} · de ${first} a ${last}`,
+    showAll: (n) => `Mostrar todas as ${n}`,
+    newest: (n, from) => `mensagens mais recentes de ${n}; as com contorno vêm ${from}`,
+    kinds: {
+      image: "Foto",
+      video: "Vídeo",
+      audio: "Mensagem de voz ou áudio",
+      contact: "Cartão de contato",
+      location: "Localização",
+      document: "Documento",
+      gif: "GIF",
+      sticker: "Figurinha",
+      deleted: "Mensagem apagada",
+      link: "Link",
+      system: "Evento da conversa",
+      other: "Outra mensagem",
+    },
+  },
+  write: {
+    title: "Grave um novo backup",
+    lead: "Copia o backup do iPhone e coloca as conversas convertidas na cópia, criptografadas como o iOS faz. Cada arquivo gravado é lido de volta e verificado.",
+    needConvert: "Converta as conversas primeiro.",
+    goConvert: "Ir para Converter",
+    fromTitle: "O backup de partida",
+    from: (date) => `O backup do iPhone de ${date}, no qual as conversas foram convertidas:`,
+    untouched: "Esse backup fica como está; o novo vai para a pasta própria do whatferry.",
+    previewFirst: "O que é gravado é a conversão como a prévia dela mostra.",
+    openPreview: "Conferir a prévia",
+    passTitle: "Senha",
+    leadToAndroid: "Criptografa o banco de dados convertido como um backup próprio do WhatsApp, com a chave de 64 dígitos do backup do Android, e o organiza com as fotos e os vídeos como o WhatsApp os guarda. Ele é descriptografado de novo e verificado.",
+    fromAndroid: "O backup do Android no qual as conversas foram convertidas:",
+    keyTitle: "A chave do backup do Android",
+    keyLabel: "Chave de 64 dígitos",
+    keyHint: "A chave que o WhatsApp mostrou quando você ativou o backup protegido com a criptografia de ponta a ponta. Usada uma vez, nunca salva.",
+    skipNoteToAndroid: "Normalmente é recusado: o backup do Android deve ser aquele no qual as conversas foram convertidas. Com isto, o que o WhatsApp no celular Android recebeu depois desse backup se perde ao restaurar.",
+    changedBodyToAndroid: "Verifique de novo o backup mais recente do Android na etapa dele e converta de novo. Assim, tudo o que a conta tem agora é mantido.",
+    addedToAndroid: (bytes, media) =>
+      `msgstore.db.crypt15 (${bytes}), descriptografado de novo e verificado, e ${media} arquivos de mídia, prontos para copiar para o celular.`,
+    noPass: "Este backup não está criptografado: não precisa de senha.",
+    skipLabel: "Gravar mesmo se o backup mudou depois da conversão",
+    skipNote: "Normalmente é recusado: o backup deve ser aquele no qual as conversas foram convertidas. Com isto, o que a conta recebeu no iPhone depois da conversão se perde ao restaurar.",
+    changedTitle: "Este backup mudou depois da conversão",
+    changedBody: "Verifique de novo o backup mais recente do iPhone na etapa dele e converta de novo. Assim, tudo o que a conta tem agora é mantido.",
+    working: "Gravando… alguns minutos para um backup grande.",
+    run: "Gravar o novo backup",
+    again: "Gravar de novo",
+    doneTitle: "Novo backup gravado e verificado",
+    unchecked: "origem não verificada",
+    doneLine: (at) => `Gravado ${at}.`,
+    added: (files, bytes, verified) =>
+      `${files} arquivos adicionados (${bytes}); ${verified} arquivos lidos de volta e verificados.`,
+  },
+  copy: {
+    title: "Copie para o celular Android",
+    lead: "Coloca o novo backup e as mídias dele na pasta do WhatsApp no celular, por USB. Depois o WhatsApp o restaura, como faria com qualquer backup próprio.",
+    warnTitle: "O WhatsApp no celular Android recomeça a partir deste backup",
+    warnBody: "Restaurar substitui as conversas do WhatsApp no celular Android pelas do backup: as conversas da própria conta como estavam no backup dela, mais as do iPhone. Nada mais muda no celular.",
+    beforeTitle: "Antes de começar",
+    before: [
+      "Se algo chegou ao WhatsApp no celular Android depois do backup que você verificou, faça o backup de novo e repita a etapa do Android, Converter e Gravar.",
+      "Limpe os dados do WhatsApp: Configurações → Apps → WhatsApp → Armazenamento → Limpar armazenamento. O WhatsApp é desconectado neste celular; as conversas voltam do backup.",
+      "Conecte o celular com um cabo, com a depuração USB ativada (como na etapa do Android), e desbloqueie-o.",
+    ],
+    phoneTitle: "O celular Android",
+    looking: "Procurando o celular…",
+    noAdbTitle: "O adb não está instalado",
+    noAdb: "Instale-o como a etapa do Android explica, ou copie a pasta manualmente (abaixo).",
+    noPhoneTitle: "Nenhum celular encontrado",
+    noPhone: "Conecte o celular com um cabo, ative a depuração USB, desbloqueie-o e procure de novo.",
+    ready: "Pronto",
+    whichFolder: "Qual pasta do WhatsApp no celular (uma por conta):",
+    lookAgain: "Procurar de novo",
+    confirmTitle: "Confirmar",
+    cleared: "Limpei o armazenamento do WhatsApp no celular (etapa 1.2).",
+    working: "Copiando… alguns minutos com muitas fotos.",
+    run: "Copiar para o celular",
+    again: "Copiar de novo",
+    doneTitle: "Copiado para o celular",
+    doneLine: (at, media) => `Copiado ${at}, com ${media} arquivos de mídia. Depois:`,
+    kept: (path) => `O backup próprio do celular foi mantido como ${path}.`,
+    after: [
+      "Abra o WhatsApp, aceite os termos e confirme o mesmo número.",
+      "Quando o WhatsApp encontrar o backup, toque em Restaurar e digite a chave de 64 dígitos.",
+      "Espere terminar e confira as conversas.",
+    ],
+    manualTitle: "Sem depuração USB",
+    manual: "Copie o conteúdo desta pasta:",
+    manualInto: "para esta pasta do celular com a transferência de arquivos por USB, depois de renomear o Databases/msgstore.db.crypt15 do próprio celular para mantê-lo:",
+  },
+  restore: {
+    title: "Restaure no iPhone",
+    lead: "Coloca o novo backup no iPhone pelo cabo, como o Restaurar Backup do Finder faz.",
+    needWrite: "Grave o novo backup primeiro.",
+    goWrite: "Ir para Gravar",
+    warnTitle: "Isto substitui tudo no iPhone",
+    warnBody: (date) =>
+      `O iPhone volta a como estava no backup de ${date}, mais as conversas convertidas. Tudo o que chegou depois disso (mensagens, fotos, dados de apps) é perdido.`,
+    beforeTitle: "Antes de começar",
+    before: [
+      "No WhatsApp do iPhone, faça backup das conversas de cada conta no iCloud (Configurações → Conversas → Backup de conversas → Fazer Backup Agora). É o caminho de volta se algo der errado.",
+      "Deixe o iPhone no modo avião desde o backup até a restauração terminar, ou faça um novo backup e repita Converter.",
+      "Desative o Buscar. Se a Proteção de Dispositivo Roubado estiver ativada, o iOS pede isso antes: Ajustes → Face ID e Código → Proteção de Dispositivo Roubado → desativar (longe de um local conhecido, o iOS faz você esperar uma hora). Depois, Ajustes → seu nome → Buscar → Buscar iPhone → desativar.",
+      "Conecte o iPhone com um cabo, desbloqueie-o e mantenha-o desbloqueado. Feche a janela dele no Finder.",
+    ],
+    phoneTitle: "O iPhone",
+    looking: "Procurando o iPhone…",
+    noPhone: "O iPhone deste backup não está conectado",
+    noPhoneBody: (others) =>
+      others
+        ? `${others > 1 ? `${others} outros iPhones estão conectados` : "Outro iPhone está conectado"}, mas não o deste backup. Conecte o certo e procure de novo.`
+        : "Conecte-o com um cabo, desbloqueie-o e procure de novo.",
+    phoneLine: (ios) => `iOS ${ios}, conectado por cabo`,
+    matches: "O novo backup é deste iPhone",
+    trusted: "Este computador é confiável",
+    notTrusted: "Ainda não é confiável: desbloqueie o iPhone, toque em Confiar e procure de novo",
+    findMyOff: "O Buscar está desativado",
+    findMyOn: "O Buscar está ativado: desative-o (antes a Proteção de Dispositivo Roubado, se estiver ativada) e procure de novo",
+    findMyUnknown: "Buscar: não foi possível saber. Desbloqueie o iPhone e procure de novo",
+    lookAgain: "Procurar de novo",
+    confirmTitle: "Confirmar",
+    typeName: (name) => `Digite ${name} para confirmar`,
+    working: (percent) => `Restaurando… ${Math.round(percent)}%`,
+    keepConnected: "Mantenha o iPhone conectado e desbloqueado até ele reiniciar.",
+    run: "Restaurar o iPhone",
+    doneTitle: "Restaurado",
+    doneLine: (at) => `Restaurado ${at}. Depois:`,
+    after: [
+      "O iPhone reinicia e termina de restaurar. Mantenha-o conectado até aparecer a Tela Bloqueada e então desbloqueie-o.",
+      "Os apps são reinstalados da App Store em segundo plano: espere o WhatsApp.",
+      "Abra o WhatsApp, mude para a conta que recebeu as conversas e confira. Se pedir para confirmar o número, confirme. Se oferecer restaurar o histórico de conversas do iCloud, pule: isso substituiria as conversas convertidas.",
+      "Ative o Buscar de novo e depois a Proteção de Dispositivo Roubado.",
+    ],
+  },
+  results: {
+    title: "Resultados",
+    lead: "Este resumo contém contagens, versões e locais de arquivos: nenhuma mensagem, nome ou número de telefone. Envie-o se algo precisar ser investigado.",
+    summaryLabel: "Resumo",
+    summaryLanguage: "O resumo está em inglês para poder ser enviado ao desenvolvedor.",
+    copy: "Copiar resumo",
+    copied: "Copiado",
+    nextTitle: "O que acontece agora",
+    next: "Depois que o iPhone reiniciar, abra o WhatsApp e confira a conta que recebeu as conversas. Para transferir outra conta do Android, verifique o backup dela na etapa do Android e repita as etapas.",
+    cleanTitle: "Limpeza",
+    clean: (home) => (
+      <>
+        As cópias descriptografadas estão em <Code>{home}</Code>. Apague essa pasta quando quiser; o resumo acima não
+        precisa dela.
+      </>
+    ),
+    startOver: "Recomeçar",
+    confirmReset: "Esquecer todo o progresso? As cópias descriptografadas ficam no disco até você apagá-las.",
+  },
+}

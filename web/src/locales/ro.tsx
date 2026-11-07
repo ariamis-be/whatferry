@@ -1,4 +1,649 @@
-// Placeholder until translated.
-import { en, type Messages } from "./en"
+// Romanian. Menu names follow what WhatsApp, Android and Apple show in Romanian.
+import { Code } from "@/components/code"
 
-export const ro: Messages = en
+import type { Messages } from "./en"
+
+// Romanian has three forms: 1, 0 and 2–19 (and numbers ending in 01–19), and the rest, which take "de".
+// Counts may arrive already formatted, so read the digits back.
+const count = (n: number | string, one: string, many: string) => {
+  const v = typeof n === "number" ? n : Number(n.replace(/\D/g, ""))
+  if (v === 1) return `${n} ${one}`
+  const h = v % 100
+  return v !== 0 && (h === 0 || h >= 20) ? `${n} de ${many}` : `${n} ${many}`
+}
+
+const msgs = (n: string) => count(n, "mesaj", "mesaje")
+const files = (n: string) => count(n, "fișier", "fișiere")
+const mediaFiles = (n: string) => count(n, "fișier media", "fișiere media")
+
+export const ro: Messages = {
+  header: {
+    tagline: "Rămâne pe acest computer · scrie pe un telefon doar la final, când spui tu",
+    language: "Limbă",
+    theme: "Temă",
+    light: "Luminoasă",
+    dark: "Întunecată",
+    system: "Sistem",
+  },
+  steps: {
+    start: "Start",
+    android: "Android",
+    before: "iPhone",
+    account: "Cont",
+    after: "Comparare",
+    convert: "Conversie",
+    write: "Scriere",
+    restore: "Restaurare",
+    copy: "Copiere",
+    done: "Rezultate",
+  },
+  stepOf: (n, total) => `Pasul ${n} din ${total}`,
+  stepLabel: (n, title, done) => `Pasul ${n}: ${title}${done ? " (gata)" : ""}`,
+  stepSkipped: "nu e necesar",
+  nav: { back: "Înapoi", continue: "Continuă", start: "Începe", first: (step) => `Mai întâi: ${step}` },
+  common: {
+    loading: "Se încarcă…",
+    openWithLink: "Deschide asistentul cu linkul afișat de `whatferry ui`.",
+    cantReach: (m) => `Nu se poate contacta whatferry: ${m}. Mai rulează \`whatferry ui\`?`,
+    failed: "Nu a funcționat",
+    checked: "Verificat",
+    searchAgain: "Caută din nou",
+    messagesRange: (a, b) => (
+      <>
+        Mesaje de la <strong>{a}</strong> până la <strong>{b}</strong>.
+      </>
+    ),
+    noMessages: "Încă nu sunt mesaje.",
+  },
+  counts: {
+    chats: "conversații",
+    messages: "mesaje",
+    media: "media",
+    "quoted replies": "răspunsuri cu citat",
+    "reactions and other add-ons": "reacții și alte adăugiri",
+    "contact cards": "carduri de contact",
+    locations: "locații",
+    calls: "apeluri",
+    "contacts and groups (jid)": "contacte și grupuri (jid)",
+    "group members": "membri ai grupurilor",
+    "group info": "informații despre grupuri",
+    "message info (receipts)": "informații mesaj (confirmări)",
+    "profile push names": "nume de profil",
+    "files added": "fișiere adăugate",
+    "files changed": "fișiere modificate",
+    "files removed": "fișiere eliminate",
+    "chats matched": "conversații deja existente",
+    "chats created": "conversații adăugate",
+    "media placed": "fișiere media plasate",
+    "media missing": "fișiere media negăsite",
+  },
+  start: {
+    title: "Mută conversațiile WhatsApp de pe Android pe iPhone",
+    titleToAndroid: "Mută conversațiile WhatsApp de pe iPhone pe Android",
+    lead: "Acest asistent mută conversațiile unui cont WhatsApp de pe Android în WhatsApp pe iPhone-ul tău, fără să ștergă iPhone-ul. Backupurile tale sunt doar citite; pe iPhone se scrie o singură dată, la final, când alegi restaurarea.",
+    leadToAndroid: "Acest asistent mută conversațiile unui cont WhatsApp de pe iPhone în WhatsApp pe telefonul tău Android. Backupurile tale sunt doar citite; pe telefonul Android se scrie o singură dată, la final, când copiezi noul backup pe el.",
+    directionTitle: "În ce direcție",
+    android: "Android",
+    iphone: "iPhone",
+    directionNote: {
+      "to-iphone": "În WhatsApp pe un iPhone deja configurat, ca al doilea cont sau ca unicul cont.",
+      "to-android": "În WhatsApp pe un telefon Android, prin restaurarea din backup proprie WhatsApp.",
+    },
+    needsToAndroid: [
+      "iPhone-ul, cu WhatsApp și conversațiile pe care vrei să le muți.",
+      "Telefonul Android, cu WhatsApp conectat la numărul pe care îl muți.",
+      "Câte un cablu pentru fiecare telefon și remedierea erorilor prin USB pe telefonul Android.",
+      "Cam o oră, mai ales așteptând backupurile. Poți închide pagina și reveni mai târziu: progresul se salvează.",
+    ],
+    happensToAndroid: [
+      "Fă backup pentru iPhone, ca asistentul să poată citi conversațiile, pozele și videoclipurile contului.",
+      "Fă backupul criptat WhatsApp pe telefonul Android, cu o cheie din 64 de cifre, și adu fișierul aici.",
+      "Convertește conversațiile de pe iPhone în acel backup și verifică o previzualizare a rezultatului.",
+      "Scrie noul backup, copiază-l pe telefonul Android și restaurează-l în WhatsApp cu cheia.",
+    ],
+    needTitle: "Ai nevoie de",
+    needs: [
+      "Telefonul Android, cu WhatsApp și conversațiile pe care vrei să le muți.",
+      "iPhone-ul, cu WhatsApp deja configurat pentru propriul număr.",
+      "Un cablu pentru a conecta iPhone-ul la acest computer.",
+      "Cam o oră, mai ales așteptând backupurile. Poți închide pagina și reveni mai târziu: progresul se salvează.",
+    ],
+    happensTitle: "Ce se întâmplă",
+    happens: [
+      "Fă un backup criptat WhatsApp pe telefonul Android și adu fișierul aici.",
+      "Fă backup pentru iPhone, ca asistentul să vadă cum stochează WhatsApp contul tău actual.",
+      "Adaugă numărul de pe Android în WhatsApp pe iPhone, ca al doilea cont.",
+      "Fă din nou backup pentru iPhone. Comparând cele două backupuri se vede exact unde vor ajunge conversațiile noului cont.",
+      "Convertește conversațiile de pe Android și verifică o previzualizare a rezultatului.",
+      "Scrie o nouă copie a backupului iPhone cu conversațiile în ea, apoi restaureaz-o pe iPhone.",
+    ],
+    privateTitle: "Ce rămâne privat",
+    privateLead: "Nimic nu părăsește acest computer.",
+    private: (home) => [
+      "Pagina comunică doar cu whatferry de pe acest computer. Nu se încarcă nimic nicăieri.",
+      "Cheile și parolele sunt folosite o dată și nu sunt salvate niciodată.",
+      <>
+        Copiile decriptate sunt păstrate în <Code>{home}</Code>, care poate fi citit doar de tine. Șterge-l când ai terminat.
+      </>,
+    ],
+  },
+  android: {
+    title: "Backup Android",
+    lead: "Backupul criptat WhatsApp, cu o cheie din 64 de cifre pe care o notezi, poate fi citit aici fără root pe telefon.",
+    makeTitle: "Fă backupul pe telefonul Android",
+    make: [
+      "Deschide WhatsApp → Setări → Conversații → Backup conversații → Backup criptat integral → Activează.",
+      "Alege „Folosește în schimb cheia de criptare din 64 de cifre”, apoi generează cheia. Noteaz-o sau fă o captură de ecran: WhatsApp nu o mai poate afișa.",
+      "Înapoi în Backup conversații, atinge Fă backup. Așa se salvează un fișier pe telefon chiar dacă backupurile pe Google Drive sunt dezactivate.",
+    ],
+    toAndroidTitle: "Mai întâi, WhatsApp pe telefonul Android",
+    toAndroidBody: "Instalează WhatsApp și conectează-te cu numărul pe care îl muți. Dacă îți oferă restaurarea unui backup, sari peste. Apoi fă backupul de mai jos: îi dă asistentului baza de date goală a contului din WhatsApp, în care ajung conversațiile de pe iPhone.",
+    multiTitle: "Mai mult de un cont WhatsApp pe telefon?",
+    multiBody: "Fiecare cont are propriul backup și propria cheie. Comută pe contul pe care vrei să-l muți (atinge poza de profil → schimbă contul) înainte de pașii de mai sus și repetă-i pentru fiecare cont dorit.",
+    bringTitle: "Adu fișierul pe acest computer",
+    bringLead: "Oricare dintre acestea merge; alege ce e mai simplu.",
+    tabs: { share: "Trimite de pe telefon", cable: "Transfer de fișiere prin USB", adb: "Copiază prin remedierea erorilor prin USB" },
+    share: [
+      <>
+        Deschide aplicația de fișiere a telefonului (Files by Google sau Fișierele mele pe Samsung) și mergi la{" "}
+        <Code>Android/media/com.whatsapp/WhatsApp</Code>. Unele aplicații de fișiere ascund dosarul <Code>Android</Code>;
+        Files by Google îl afișează.
+      </>,
+      <>
+        Deschide <Code>Databases</Code> sau, cu mai multe conturi, <Code>accounts</Code> → numărul contului →{" "}
+        <Code>Databases</Code>.
+      </>,
+      <>
+        Ține apăsat pe <Code>msgstore.db.crypt15</Code> (cel fără dată) și atinge Trimite.
+      </>,
+      "Trimite-l pe acest computer cu ce ai la îndemână: LocalSend (gratuit, telefonul și computerul în aceeași rețea Wi-Fi, nimic nu ajunge pe internet), Quick Share (Windows), Google Drive sau un e-mail ori un mesaj către tine.",
+      "Salvează-l în Descărcări, apoi dă clic mai jos pe Caută din nou.",
+    ],
+    cable: (platform) => [
+      "Conectează telefonul la acest computer cu un cablu USB și deblochează-l.",
+      "Pe telefon, atinge notificarea „Dispozitivul se încarcă prin USB” și alege Transfer de fișiere.",
+      {
+        darwin: "Un Mac nu poate deschide singur telefoane Android: instalează OpenMTP (gratuit, openmtp.ganeshrvel.com) și deschide telefonul în el.",
+        win32: "Deschide Explorer: telefonul apare la Acest PC.",
+        other: "Managerul de fișiere afișează telefonul în bara laterală.",
+      }[platform],
+      "Copiază msgstore.db.crypt15 din dosarul de mai jos în Descărcări, apoi dă clic mai jos pe Caută din nou.",
+    ],
+    foldersTitle: "Unde păstrează WhatsApp backupurile pe telefon",
+    folders: ["Un cont", "Mai multe conturi", "WhatsApp Business", "Android 10 sau mai vechi"],
+    foldersNote: (
+      <>
+        Cu mai multe conturi, fiecare dosar <Code>accounts/&lt;număr&gt;</Code> este un cont: alege-l pe cel al cărui
+        msgstore.db.crypt15 e cel mai nou, imediat după ce ai atins Fă backup. Fișierele care se termină în .crypt14 și cele
+        cu dată sau „increment” nu pot fi folosite.
+      </>
+    ),
+    chooseTitle: "Alege fișierul",
+    searching: "Se caută…",
+    noneFound: "Încă nu s-a găsit niciun backup WhatsApp.",
+    chooseFile: "Alege un fișier…",
+    copyingFile: (name) => `Se copiază ${name}…`,
+    searchHint: (folders) => (
+      <>Caută din nou caută backupuri WhatsApp în {folders}. În altă parte? Folosește Alege un fișier.</>
+    ),
+    listAnd: " și ",
+    listSep: ", ",
+    keyTitle: "Introdu cheia",
+    keyLabel: "Cheie din 64 de cifre",
+    keyPlaceholder: "64 de caractere, spațiile sunt permise",
+    showKey: "Afișează cheia",
+    hideKey: "Ascunde cheia",
+    keyHint: "Folosită o dată pentru decriptare, apoi uitată. Nu e necesară dacă ai ales un msgstore.db deja decriptat.",
+    decrypting: "Se decriptează și se verifică backupul…",
+    decrypt: "Decriptează și verifică",
+    checkAgain: "Verifică din nou",
+    resultLine: (version, db, checked) => `WhatsApp ${version} · versiunea bazei de date ${db} · verificat ${checked}`,
+    legacy: "Acest backup folosește formatul vechi WhatsApp. Actualizează WhatsApp pe telefon și fă din nou backup.",
+    jidTitle: "Identificatori de contact după tip",
+    jidHead: ["Server", "Număr"],
+    decryptedCopy: "Copie decriptată:",
+    accountsTitle: "Conturi Android",
+    accountsLead: "Fiecare cont se mută separat. Pentru a adăuga altul, alege-i fișierul de backup mai jos și decriptează-l; comută aici ca să lucrezi la unul.",
+    accountRow: (ends, messages) => `Numărul se termină în ${ends ?? "?"} · ${msgs(messages)}`,
+    accountProgress: (destination, secondDone) =>
+      [destination ? `merge în: ${destination}` : "destinația nu e aleasă încă", secondDone ? "al doilea backup verificat" : null]
+        .filter(Boolean).join(" · "),
+    destinationNames: { setup: "configurare WhatsApp", second: "al doilea cont", existing: "cont existent" },
+    workingOn: "Lucrezi la acesta",
+    switchTo: "Comută pe acest cont",
+    movingAccount: (ends) => `Contul Android care se termină în ${ends ?? "?"}`,
+  },
+  phone: {
+    intro: (folder) => (
+      <>
+        Conectează telefonul la acest computer și whatferry copiază singur backupul, direct în <Code>{folder}</Code>. E nevoie
+        de remedierea erorilor prin USB pe telefon și de adb pe acest computer; poți dezactiva remedierea erorilor după aceea.
+      </>
+    ),
+    looking: "Se caută adb și telefoanele conectate…",
+    noAdbTitle: "adb nu e instalat pe acest computer",
+    noAdbIntro: "adb este instrumentul gratuit Google pentru comunicarea cu telefoanele Android prin USB.",
+    install: {
+      darwin: ["Cu Homebrew: brew install --cask android-platform-tools", "Sau descarcă platform-tools de la Google (mai jos) și dezarhivează-l."],
+      win32: ["Într-un terminal: winget install Google.PlatformTools", "Sau descarcă platform-tools de la Google (mai jos) și dezarhivează-l."],
+      other: ["Debian sau Ubuntu: sudo apt install adb · Fedora: sudo dnf install android-tools", "Sau descarcă platform-tools de la Google (mai jos) și dezarhivează-l."],
+    },
+    download: (
+      <>
+        Descărcare de la Google: <Code>developer.android.com/tools/releases/platform-tools</Code>. Dacă adb e într-un loc unde
+        whatferry nu caută, pornește-l cu <Code>WHATFERRY_ADB=/path/to/adb</Code>.
+      </>
+    ),
+    debugTitle: "Activează remedierea erorilor prin USB",
+    debug: [
+      "Pe telefon, deschide Setări → Despre telefon și atinge de șapte ori Numărul versiunii. Introdu PIN-ul dacă ți se cere; apare „Acum sunteți dezvoltator!”. (Samsung: Setări → Despre telefon → Informații software → Număr versiune.)",
+      "Revino la Setări → Sistem → Opțiuni pentru dezvoltatori și activează Remedierea erorilor prin USB.",
+      "Conectează telefonul la acest computer cu un cablu USB și deblochează-l.",
+      "Atinge Permiteți la „Permiteți remedierea erorilor prin USB?”. Dacă bifezi „Permiteți întotdeauna de pe acest computer”, nu mai trebuie să o faci din nou.",
+      "Dă clic mai jos pe Găsește telefonul.",
+    ],
+    debugOff: "Când ai terminat: Opțiuni pentru dezvoltatori → dezactivează Remedierea erorilor prin USB.",
+    notReady: (model) => `${model} nu e pregătit`,
+    advice: {
+      unauthorized: "Deblochează telefonul și atinge Permiteți la „Permiteți remedierea erorilor prin USB?”.",
+      offline: "Telefonul nu răspunde: deconectează-l, conectează-l din nou și deblochează-l.",
+      "no permissions": "Acest computer nu are voie să comunice cu telefonul (pe Linux, adaugă o regulă udev pentru Android).",
+      authorizing: "Se așteaptă să atingi Permiteți pe telefon.",
+    },
+    otherState: (state) => `adb raportează „${state}”.`,
+    phone: "Telefon Android",
+    connected: "Conectat",
+    account: (app, account) => (account ? `${app} · cont ${account}` : app),
+    noBackups: "Încă nu există un backup WhatsApp pe acest telefon. Fă mai întâi unul (pasul 1), apoi dă din nou clic pe Găsește telefonul.",
+    noUsable: "Încă nu există un backup utilizabil: activează backupul criptat cu cheie din 64 de cifre și atinge Fă backup (pasul 1), apoi dă din nou clic pe Găsește telefonul.",
+    otherFiles: (n) =>
+      n === 1 ? `${n} alt fișier care nu poate fi folosit` : `${count(n, "alt fișier", "alte fișiere")} care nu pot fi folosite`,
+    notes: {
+      rooted: "Criptare mai veche: cheia ei există doar pe un telefon cu root. Activează backupul criptat cu cheie din 64 de cifre și fă din nou backup ca să obții un fișier .crypt15.",
+      increment: "Un backup parțial (incremental); folosește fișierul msgstore complet.",
+      other: "Nu este un backup de conversații WhatsApp.",
+    },
+    copy: "Copiază",
+    copying: "Se copiază…",
+    copiedTitle: (name) => `S-a copiat ${name}`,
+    copiedBody: "E ales mai jos, la pasul 3.",
+    findPhone: "Găsește telefonul",
+  },
+  backup: {
+    title: { before: "Backup iPhone", after: "Al doilea backup iPhone" },
+    lead: {
+      before: "Un backup arată cum își stochează azi datele WhatsApp pe iPhone. Asistentul îl citește; nu îl modifică niciodată.",
+      after: "După adăugarea celui de-al doilea cont, un nou backup arată ce fișiere a creat noul cont. Acolo vor ajunge conversațiile de pe Android.",
+    },
+    needFirst: "Verifică înainte primul backup iPhone.",
+    goFirst: "Mergi la primul backup",
+    makeTitle: { before: "Fă backup pentru iPhone", after: "Fă din nou backup pentru iPhone" },
+    make: {
+      darwin: [
+        "Conectează iPhone-ul la acest Mac cu un cablu și deblochează-l. Atinge Ai încredere dacă ți se cere.",
+        "Deschide Finder și selectează iPhone-ul în bara laterală.",
+        "La Backupuri, alege „Fă backup pentru toate datele de pe iPhone pe acest Mac”.",
+        "Bifează „Criptează backupul local” și alege o parolă pe care o vei ține minte. O vei tasta aici imediat.",
+        "Dă clic pe Fă backup acum și așteaptă până se termină.",
+      ],
+      win32: [
+        "Conectează iPhone-ul la acest PC cu un cablu și deblochează-l. Atinge Ai încredere dacă ți se cere.",
+        "Deschide aplicația Dispozitive Apple (sau iTunes) și selectează iPhone-ul.",
+        "La Backupuri, alege „Fă backup pentru toate datele de pe iPhone pe acest computer”.",
+        "Bifează „Criptează backupul local” și alege o parolă pe care o vei ține minte. O vei tasta aici imediat.",
+        "Dă clic pe Fă backup acum și așteaptă până se termină.",
+      ],
+      other: [
+        "Instalează libimobiledevice și conectează iPhone-ul cu un cablu. Deblochează-l și atinge Ai încredere.",
+        "Activează criptarea o singură dată: idevicebackup2 encryption on",
+        "Fă backupul: idevicebackup2 backup --full <dosar>",
+        "Pornește asistentul cu WHATFERRY_BACKUP_ROOT=<dosar> ca să poată găsi backupul.",
+      ],
+    },
+    now: {
+      title: "Fă backup acum",
+      lead: "whatferry face singur backupul prin cablu, ca Finder. Conectează iPhone-ul cu un cablu și deblochează-l.",
+      looking: "Se caută iPhone-ul…",
+      connect: "Nu s-a găsit niciun iPhone. Conectează-l cu un cablu, deblochează-l, apoi caută din nou.",
+      onlyOne: "Sunt conectate mai multe iPhone-uri: lasă doar pe cel pentru care faci backup.",
+      trust: "iPhone-ul nu are încă încredere în acest computer. Fă backup acum îi cere asta: atinge Ai încredere pe telefon, apoi fă din nou backup.",
+      found: (name) => `S-a găsit ${name}.`,
+      encrypts: "Backupurile lui sunt criptate.",
+      turnOnTitle: "Acest iPhone nu își criptează încă backupurile",
+      turnOnBody: "Conversațiile WhatsApp sunt doar într-un backup criptat. Alege o parolă: de acum iPhone-ul criptează fiecare backup cu ea, iar Finder arată „Criptează backupul local” bifat. iPhone-ul poate cere codul său.",
+      choose: "Alege o parolă pentru backup",
+      again: "Tasteaz-o din nou",
+      mismatch: "Cele două nu se potrivesc.",
+      run: "Fă backup acum",
+      lookAgain: "Caută din nou",
+      working: (p) => `Se face backup… ${Math.round(p)}%`,
+      keepConnected: "Pentru un iPhone plin poate dura o oră. Ține-l conectat și deblocat.",
+      done: "Backup făcut",
+      turnedOn: "Criptarea este acum activată pentru acest iPhone. Păstrează parola: fără ea nu se deschide niciun backup al lui.",
+      byHand: "Sau fă backup manual",
+    },
+    samePassphrase: "Folosește aceeași parolă ca înainte. Noul backup îl înlocuiește pe cel vechi în același dosar; asistentul a păstrat din primul ce îi trebuie.",
+    chooseTitle: "Alege backupul",
+    looking: "Se caută backupuri…",
+    noneTitle: "Încă nu s-au găsit backupuri",
+    lookedIn: (folders) => `S-a căutat în ${folders}.`,
+    noRoot: "Acest sistem nu are un dosar standard pentru backupuri: setează WHATFERRY_BACKUP_ROOT.",
+    encrypted: "Criptat",
+    notEncrypted: "Necriptat",
+    iphone: "iPhone",
+    deviceLine: (model, ios, date) => `${model} · iOS ${ios} · backup din ${date}`,
+    notEncryptedTitle: "Acest backup nu este criptat",
+    notEncryptedBody: "E bun pentru verificare, dar transferul va avea nevoie de unul criptat: bifează „Criptează backupul local” și fă din nou backup.",
+    passLabel: "Parola backupului",
+    passHint: "Cea aleasă când ai bifat „Criptează backupul local”. Folosită o dată, nu e salvată niciodată.",
+    unlocking: "Se deblochează backupul. Durează un minut sau două: partea lentă este criptarea, care își face treaba.",
+    reading: "Se citește backupul…",
+    check: { before: "Verifică acest backup", after: "Verifică și compară" },
+    checkAgain: "Verifică din nou",
+    resultLine: (model, ios, backed, checked) => `${model} · iOS ${ios} · backup din ${backed} · verificat ${checked}`,
+    noWhatsapp: "Acest backup nu are date WhatsApp. Este WhatsApp instalat pe acest iPhone?",
+    chatsIn: (path) => (
+      <>
+        Conversații în <code className="font-mono text-xs">{path}</code>
+      </>
+    ),
+    messagesRange: (a, b) => `Mesaje de la ${a} până la ${b}`,
+    manyStores: (n) => `${count(n, "bază de date", "baze de date")} cu conversații: probabil câte una pe cont.`,
+    areasTitle: "Zonele de stocare WhatsApp",
+    areasHead: ["Zonă", "Fișiere", "Dimensiune"],
+    savedList: "S-a salvat lista de fișiere a acestui backup, pentru comparare cu următorul.",
+    diffTitle: "Ce a schimbat adăugarea contului",
+    foundOne: "S-a găsit baza de date cu conversații a noului cont",
+    foundMany: (n) => `S-au găsit ${count(n, "bază de date nouă", "baze de date noi")} cu conversații`,
+    whereGo: "Acolo vor ajunge conversațiile de pe Android.",
+    noneNewTitle: "Nu a apărut nicio bază de date nouă cu conversații",
+    noneNewBody: "Al doilea cont poate o folosește pe cea existentă, sau WhatsApp nu terminase configurarea înainte de backup. Lista completă a modificărilor este mai jos.",
+    diffHead: ["Unde", "Adăugate", "Modificate", "Eliminate"],
+    filesAdded: "Fișiere adăugate",
+    filesChanged: "Fișiere modificate",
+  },
+  destination: {
+    title: "Unde să ajungă conversațiile de pe Android?",
+    lead: "Alege ce cont WhatsApp de pe acest iPhone le primește. Sugestia vine din ce arată backupurile.",
+    suggested: "Sugerat",
+    options: {
+      setup: {
+        title: "Configurează WhatsApp pe acest iPhone cu numărul de pe Android",
+        body: "WhatsApp nu e încă configurat pe acest iPhone: numărul de pe Android devine unicul lui cont.",
+      },
+      second: {
+        title: "Adaugă numărul de pe Android ca al doilea cont",
+        body: "iPhone-ul își păstrează contul actual; conversațiile de pe Android merg într-un cont nou, gol, alături.",
+      },
+      existing: {
+        title: "Un cont de aici folosește deja numărul de pe Android",
+        body: "Conversațiile de pe Android merg în acel cont. Dacă are deja conversații, cele două istorice sunt combinate.",
+      },
+    },
+    reasons: {
+      noWhatsapp: "Acest backup nu are date WhatsApp.",
+      matches: (ends) =>
+        `Un cont de aici are un număr care se termină în ${ends}, ca cel din backupul Android (se cunosc doar ultimele două cifre, așa că verifică dacă e chiar același număr).`,
+      different: (ends, accounts) =>
+        `Numărul de pe Android se termină în ${ends}; numerele conturilor de pe acest iPhone se termină în ${accounts}.`,
+      unknown: "Backupul Android nu își înregistrează numărul, așa că asistentul nu poate compara.",
+      stale: "Această verificare a iPhone-ului a fost salvată cu un mod mai vechi de citire a conturilor iPhone-ului, care putea confunda o conversație cu un cont. Dă clic mai sus pe Verifică din nou ca să compari numerele.",
+      secondStarted: (ends) =>
+        `Numărul de pe Android (care se termină în ${ends}) e deja configurat aici ca al doilea cont, dar încă nu are conversații: conectarea s-a oprit probabil înainte de codul de confirmare. Termină conectarea pe iPhone, apoi fă al doilea backup.`,
+      iphoneUnknown: (ends) =>
+        `Numărul de pe Android se termină în ${ends}, dar numerele conturilor iPhone-ului nu au putut fi citite din acest backup.`,
+    },
+    full: "Acest iPhone poate are deja un al doilea cont WhatsApp: backupul are un dosar pentru el. Dacă da, WhatsApp poate nu permite un al treilea și s-ar putea să trebuiască să elimini unul mai întâi.",
+    merge: (n) =>
+      `Acel cont are deja ${msgs(n)} pe acest iPhone. Combinarea păstrează ambele istorice, dar e cazul cel mai greu de făcut corect.`,
+    notMatching: (ends, numbers) =>
+      `Niciun cont de aici nu are un număr care se termină în ${ends}. Cu această alegere, conversațiile de pe Android merg într-un cont cu alt număr (care se termină în ${numbers}) și vor apărea sub acel număr.`,
+    cantConfirm: "Asistentul nu poate confirma că un cont de aici folosește numărul de pe Android: verifică WhatsApp pe iPhone înainte să alegi asta.",
+    replaceExisting: (numbers) =>
+      `WhatsApp este deja configurat pe acest iPhone${numbers ? ` (numărul se termină în ${numbers})` : ""}. Configurarea din nou cu numărul de pe Android ar deconecta acel cont; adaugă în schimb un al doilea cont ca să-l păstrezi.`,
+    accountsTitle: "Conturi WhatsApp pe acest iPhone",
+    account: (numberEnds, country, main, hasChats) =>
+      `Numărul se termină în ${numberEnds ?? "?"}${country ? ` (${country})` : ""} · ${main ? "cont principal" : "al doilea cont"}${hasChats ? "" : " · nicio conversație în acest backup"}`,
+    secondNoChats: "Conversațiile acelui cont nu sunt în backupul iPhone: fie nu are încă niciuna, fie WhatsApp ține conversațiile unui al doilea cont în afara backupurilor. Transferul trebuie să ocolească asta, așa că e următorul lucru de aflat.",
+    folders: (n) =>
+      `Backupul mai are ${count(n, "dosar", "dosare")} pe care WhatsApp le păstrează pentru alt cont, posibil un al doilea; numărul lui nu poate fi citit.`,
+    chooseFirst: "Verifică mai întâi backupul iPhone; apoi alege unde ajung conversațiile.",
+  },
+  account: {
+    setup: {
+      title: "Configurează WhatsApp cu numărul de pe Android",
+      lead: "WhatsApp își creează baza de date, dosarele și cheile pentru numărul de pe Android. Următorul backup arată unde sunt.",
+      sectionTitle: "Configurează WhatsApp pe iPhone",
+      steps: [
+        "Instalează WhatsApp din App Store, dacă nu e instalat.",
+        "Deschide-l și înregistrează numărul telefonului Android; introdu codul trimis de WhatsApp. WhatsApp de pe telefonul Android se deconectează: e normal, iar fișierul tău de backup e deja în siguranță pe acest computer.",
+        "Dacă WhatsApp îți oferă restaurarea conversațiilor, sari peste. Contul trebuie să înceapă gol.",
+      ],
+    },
+    existing: {
+      title: "Nimic de adăugat pe iPhone",
+      lead: "Contul care folosește deja numărul de pe Android primește conversațiile. Nu e nevoie de un al doilea backup: continuă la rezultate.",
+    },
+    none: "Alege mai întâi unde ajung conversațiile: e la finalul pasului de backup iPhone.",
+    goChoose: "Alege unde ajung conversațiile",
+    notNeeded: "Nu e necesar pentru această alegere",
+    skipNote: "Contul care primește conversațiile există deja, așa că nu e nimic nou de găsit. Continuă la rezultate.",
+    title: "Adaugă numărul de pe Android pe iPhone",
+    lead: "WhatsApp configurează singur al doilea cont: propria bază de date goală, dosare și chei. Mai târziu, doar acel cont nou este umplut cu conversațiile de pe Android; contul tău actual nu este atins.",
+    addTitle: "Adaugă contul pe iPhone",
+    steps: [
+      "Pe iPhone, deschide WhatsApp → Setări și alege Adaugă cont (lângă numele tău, sus).",
+      "Înregistrează numărul telefonului Android și introdu codul trimis de WhatsApp. WhatsApp de pe telefonul Android se deconectează: e normal, iar fișierul tău de backup e deja în siguranță pe acest computer.",
+      "Dacă WhatsApp îți oferă restaurarea conversațiilor pentru noul cont, sari peste. Noul cont trebuie să înceapă gol.",
+    ],
+    keepAndroid: "Păstrează WhatsApp instalat pe telefonul Android până se termină transferul. Dacă ceva merge prost, te poți conecta din nou acolo, iar conversațiile tale sunt încă pe el.",
+  },
+  convert: {
+    title: "Convertește conversațiile",
+    lead: "Combină istoricul contului Android într-o copie a bazei de date cu conversații a contului de pe iPhone. Încă nu se schimbă nimic pe niciun telefon sau în backup: verifică rezultatul de mai jos înainte de scriere și convertește din nou cu altă alegere dacă nu e corect.",
+    needBackups: "Verifică mai întâi backupul Android și un backup iPhone.",
+    goAndroid: "Mergi la backupul Android",
+    goIphone: "Mergi la backupul iPhone",
+    targetTitle: "Ce cont de pe iPhone primește conversațiile",
+    leadToAndroid: "Combină istoricul contului de pe iPhone într-o copie a bazei de date cu conversații a contului Android. Încă nu se schimbă nimic pe niciun telefon sau în vreun backup: verifică rezultatul de mai jos înainte de scriere și convertește din nou cu altă alegere dacă nu e corect.",
+    sourceTitle: "Conversațiile cărui cont de pe iPhone se mută",
+    fromIphoneBackup: (date) => `Din backupul iPhone verificat ${date}.`,
+    mediaFromBackup: "Din backupul iPhone",
+    mediaFromBackupNote: "Pozele, videoclipurile, mesajele vocale și documentele pe care le are iPhone-ul, scoase din backupul lui. Cele mai vechi, pe care WhatsApp le-a eliminat de pe iPhone, nu sunt acolo.",
+    androidNotWritableTitle: "Backupul Android nu poate fi rescris",
+    androidNotWritable: "Verifică la pasul Android backupul criptat integral WhatsApp (msgstore.db.crypt15, cu cheia lui din 64 de cifre): din el restaurează WhatsApp.",
+    notYetToAndroid: "Răspunsurile, reacțiile, sondajele și apelurile nu sunt încă transferate; mesajele în sine, da.",
+    versionTitle: (kind) => `Nu este versiunea ${kind} de WhatsApp pe care a fost verificat whatferry`,
+    fromBackup: (second, date) => `Din ${second ? "al doilea" : "primul"} backup iPhone, verificat ${date}.`,
+    mainAccount: (ends) => `Cont principal${ends ? `, numărul se termină în ${ends}` : ""}`,
+    otherAccount: (ends) => `Cont adăugat${ends ? `, numărul se termină în ${ends}` : ""}`,
+    suggested: "Sugerat",
+    hasMessages: (n) => `acum are ${msgs(n)}`,
+    mergeNote: (n) =>
+      `Acest cont are deja ${msgs(n)}. Conversațiile de pe Android se adaugă alături; conversațiile cu aceeași persoană sau grup sunt unite.`,
+    mediaTitle: "Poze, videoclipuri și mesaje vocale",
+    mediaLead: "Dosarul WhatsApp Media de pe Android, copiat pe acest computer. Fiecare dosar găsit este verificat față de cele mai noi fișiere menționate în conversațiile de pe Android.",
+    mediaFound: (found, sampled) =>
+      sampled ? `Conține ${found} din cele mai noi ${sampled} fișiere menționate în conversații` : "Conversațiile nu menționează fișiere media",
+    mediaOther: "Alt dosar",
+    mediaPlaceholder: "Calea către o copie a WhatsApp/Media",
+    mediaNone: "Fără media",
+    mediaNoneNote: "Mesajele își păstrează descrierile; pozele și videoclipurile în sine rămân în urmă.",
+    working: "Se convertește… un minut sau două.",
+    run: "Convertește",
+    again: "Convertește din nou",
+    doneTitle: (converted, total) => `${converted} din ${msgs(total)} convertite`,
+    doneLine: (at) => `Convertit ${at}.`,
+    checksClean: "Baza de date combinată a trecut toate verificările de consistență.",
+    checksFailed: "Baza de date combinată nu a trecut o verificare de consistență",
+    integrity: (result) => `integritate: ${result}`,
+    skipped: (n) =>
+      `${count(n, "eveniment", "evenimente")} pe care WhatsApp le păstrează diferit pe fiecare telefon (notificări de sistem, apeluri, sondaje și altele) ${n === "1" ? "este omis" : "sunt omise"}.`,
+    notYet: (what, n) => `${what}: ${n}, încă netransferate (mesajele în sine, da).`,
+  },
+  preview: {
+    title: "Ce va avea contul",
+    loading: "Se citește rezultatul…",
+    android: "de pe Android",
+    iphone: "de pe iPhone",
+    totals: (fresh, joined, unchanged, messages, from) =>
+      `${count(fresh, "conversație nouă", "conversații noi")} și ${joined} unite cu conversații existente (${msgs(messages)} ${from}); ${count(unchanged, "conversație neatinsă", "conversații neatinse")}.`,
+    fromSource: (from) => from.charAt(0).toUpperCase() + from.slice(1),
+    all: "Toate conversațiile",
+    search: "Caută după nume sau număr",
+    noChats: "Nicio conversație nu se potrivește.",
+    group: "Grup",
+    change: { new: "Nouă", joined: "Unită", unchanged: "Neatinsă" },
+    chatLine: (moved, total, first, last, from) => `${moved} din ${msgs(total)} ${from} · ${first} până la ${last}`,
+    showAll: (n) => `Afișează toate cele ${n}`,
+    newest: (n, from) => `cele mai noi mesaje din ${n}; cele conturate sunt ${from}`,
+    kinds: {
+      image: "Poză",
+      video: "Videoclip",
+      audio: "Mesaj vocal sau audio",
+      contact: "Card de contact",
+      location: "Locație",
+      document: "Document",
+      gif: "GIF",
+      sticker: "Autocolant",
+      deleted: "Acest mesaj a fost șters",
+      link: "Link",
+      system: "Eveniment de conversație",
+      other: "Alt mesaj",
+    },
+  },
+  write: {
+    title: "Scrie un backup nou",
+    lead: "Copiază backupul iPhone și pune conversațiile convertite în copie, criptate cum face iOS. Fiecare fișier scris este recitit și verificat.",
+    needConvert: "Convertește mai întâi conversațiile.",
+    goConvert: "Mergi la Conversie",
+    fromTitle: "Backupul de la care pornește",
+    from: (date) => `Backupul iPhone din ${date}, în care au fost convertite conversațiile:`,
+    untouched: "Acel backup rămâne cum este; cel nou merge în dosarul propriu al whatferry.",
+    previewFirst: "Se scrie conversia exact așa cum o arată previzualizarea.",
+    openPreview: "Vezi previzualizarea",
+    passTitle: "Parolă",
+    leadToAndroid: "Criptează baza de date convertită ca backup propriu WhatsApp, cu cheia din 64 de cifre a backupului Android, și o așază împreună cu pozele și videoclipurile cum le păstrează WhatsApp. Apoi este decriptată din nou și verificată.",
+    fromAndroid: "Backupul Android în care au fost convertite conversațiile:",
+    keyTitle: "Cheia backupului Android",
+    keyLabel: "Cheie din 64 de cifre",
+    keyHint: "Cheia afișată de WhatsApp când ai activat backupul criptat integral. Folosită o dată, nu e salvată niciodată.",
+    skipNoteToAndroid: "În mod normal e refuzat: backupul Android trebuie să fie cel în care au fost convertite conversațiile. Cu această opțiune, tot ce a primit WhatsApp pe telefonul Android după acel backup se pierde la restaurare.",
+    changedBodyToAndroid: "Verifică din nou cel mai nou backup Android la pasul lui, apoi convertește din nou. Așa se păstrează tot ce are contul acum.",
+    addedToAndroid: (bytes, media) =>
+      `msgstore.db.crypt15 (${bytes}), decriptat din nou și verificat, plus ${mediaFiles(media)}, gata de copiat pe telefon.`,
+    noPass: "Acest backup nu este criptat: nu e nevoie de parolă.",
+    skipLabel: "Scrie chiar dacă backupul s-a schimbat de la conversie",
+    skipNote: "În mod normal e refuzat: backupul trebuie să fie cel în care au fost convertite conversațiile. Cu această opțiune, tot ce a primit contul pe iPhone după conversie se pierde la restaurare.",
+    changedTitle: "Acest backup s-a schimbat după conversie",
+    changedBody: "Verifică din nou cel mai nou backup iPhone la pasul lui, apoi convertește din nou. Așa se păstrează tot ce are contul acum.",
+    working: "Se scrie… câteva minute pentru un backup mare.",
+    run: "Scrie backupul nou",
+    again: "Scrie din nou",
+    doneTitle: "Backup nou scris și verificat",
+    unchecked: "sursă neverificată",
+    doneLine: (at) => `Scris ${at}.`,
+    added: (fileCount, bytes, verified) =>
+      `${files(fileCount)} adăugate (${bytes}); ${files(verified)} recitite și verificate.`,
+  },
+  copy: {
+    title: "Copiază pe telefonul Android",
+    lead: "Pune noul backup și fișierele lui media în dosarul WhatsApp de pe telefon, prin USB. Apoi WhatsApp îl restaurează, ca pe orice backup propriu.",
+    warnTitle: "WhatsApp de pe telefonul Android o ia de la capăt din acest backup",
+    warnBody: "Restaurarea înlocuiește conversațiile WhatsApp de pe telefonul Android cu cele din backup: conversațiile proprii ale contului, așa cum erau la backup, plus cele de pe iPhone. Nimic altceva nu se schimbă pe telefon.",
+    beforeTitle: "Înainte să începi",
+    before: [
+      "Dacă a ajuns ceva în WhatsApp pe telefonul Android după backupul verificat, fă din nou backup și parcurge iar pasul Android, Conversie și Scriere.",
+      "Șterge datele WhatsApp: Setări → Aplicații → WhatsApp → Stocare → Ștergeți spațiul de stocare. WhatsApp se deconectează pe acest telefon; conversațiile revin din backup.",
+      "Conectează telefonul cu un cablu, cu remedierea erorilor prin USB activată (ca la pasul Android), și deblochează-l.",
+    ],
+    phoneTitle: "Telefonul Android",
+    looking: "Se caută telefonul…",
+    noAdbTitle: "adb nu e instalat",
+    noAdb: "Instalează-l cum explică pasul Android sau copiază dosarul manual (mai jos).",
+    noPhoneTitle: "Nu s-a găsit niciun telefon",
+    noPhone: "Conectează telefonul cu un cablu, activează remedierea erorilor prin USB, deblochează-l și caută din nou.",
+    ready: "Pregătit",
+    whichFolder: "Ce dosar WhatsApp de pe telefon (câte unul pe cont):",
+    lookAgain: "Caută din nou",
+    confirmTitle: "Confirmă",
+    cleared: "Am șters spațiul de stocare al WhatsApp pe telefon (pasul 1.2).",
+    working: "Se copiază… câteva minute dacă sunt multe poze.",
+    run: "Copiază pe telefon",
+    again: "Copiază din nou",
+    doneTitle: "Copiat pe telefon",
+    doneLine: (at, media) => `Copiat ${at}, cu ${mediaFiles(media)}. Apoi:`,
+    kept: (path) => `Backupul propriu al telefonului este păstrat ca ${path}.`,
+    after: [
+      "Deschide WhatsApp, acceptă termenii și verifică același număr.",
+      "Când WhatsApp găsește backupul, atinge Restaurează și tastează cheia din 64 de cifre.",
+      "Așteaptă să se termine, apoi verifică conversațiile.",
+    ],
+    manualTitle: "Fără remedierea erorilor prin USB",
+    manual: "Copiază conținutul acestui dosar:",
+    manualInto: "în acest dosar de pe telefon, prin transfer de fișiere USB, după ce redenumești fișierul propriu al telefonului Databases/msgstore.db.crypt15 ca să fie păstrat:",
+  },
+  restore: {
+    title: "Restaurează pe iPhone",
+    lead: "Pune noul backup pe iPhone prin cablu, cum face Restaurează backupul în Finder.",
+    needWrite: "Scrie mai întâi backupul nou.",
+    goWrite: "Mergi la Scriere",
+    warnTitle: "Asta înlocuiește tot de pe iPhone",
+    warnBody: (date) =>
+      `iPhone-ul revine la starea de la backupul din ${date}, plus conversațiile convertite. Tot ce a ajuns pe el după aceea (mesaje, poze, date ale aplicațiilor) dispare.`,
+    beforeTitle: "Înainte să începi",
+    before: [
+      "În WhatsApp pe iPhone, fă backup pentru conversațiile fiecărui cont în iCloud (Setări → Conversații → Backup conversații → Fă backup acum). Asta e calea de întoarcere dacă ceva merge prost.",
+      "Ține iPhone-ul în modul Avion de la backup până se termină restaurarea, sau fă un backup nou și parcurge iar Conversie.",
+      "Dezactivează Găsire. Dacă Protecție dispozitiv furat e activată, iOS cere mai întâi asta: Setări → Face ID și cod → Protecție dispozitiv furat → dezactivat (departe de un loc familiar, iOS te pune să aștepți o oră). Apoi Setări → numele tău → Găsire → Găsire iPhone → dezactivat.",
+      "Conectează iPhone-ul cu un cablu, deblochează-l și ține-l deblocat. Închide fereastra Finder pentru el.",
+    ],
+    phoneTitle: "iPhone-ul",
+    looking: "Se caută iPhone-ul…",
+    noPhone: "iPhone-ul de la care provine acest backup nu este conectat",
+    noPhoneBody: (others) =>
+      others
+        ? `${others > 1 ? `Sunt conectate ${count(others, "alt iPhone", "alte iPhone-uri")}` : "Este conectat alt iPhone"}, dar nu cel al acestui backup. Conectează-l pe cel corect și caută din nou.`
+        : "Conectează-l cu un cablu, deblochează-l și caută din nou.",
+    phoneLine: (ios) => `iOS ${ios}, conectat prin cablu`,
+    matches: "Noul backup provine de la acest iPhone",
+    trusted: "Acest computer este de încredere",
+    notTrusted: "Încă nu e de încredere: deblochează iPhone-ul, atinge Ai încredere și caută din nou",
+    findMyOff: "Găsire este dezactivat",
+    findMyOn: "Găsire este activat: dezactivează-l (mai întâi Protecție dispozitiv furat, dacă e activată), apoi caută din nou",
+    findMyUnknown: "Găsire: nu se poate stabili. Deblochează iPhone-ul și caută din nou",
+    lookAgain: "Caută din nou",
+    confirmTitle: "Confirmă",
+    typeName: (name) => `Tastează ${name} pentru a confirma`,
+    working: (percent) => `Se restaurează… ${Math.round(percent)}%`,
+    keepConnected: "Ține iPhone-ul conectat și deblocat până repornește.",
+    run: "Restaurează iPhone-ul",
+    doneTitle: "Restaurat",
+    doneLine: (at) => `Restaurat ${at}. Apoi:`,
+    after: [
+      "iPhone-ul repornește și termină restaurarea. Ține-l conectat până apare ecranul de blocare, apoi deblochează-l.",
+      "Aplicațiile se reinstalează din App Store în fundal: așteaptă WhatsApp.",
+      "Deschide WhatsApp, comută pe contul în care au ajuns conversațiile și verifică-le. Dacă cere să verifici numărul, fă-o. Dacă oferă restaurarea istoricului conversațiilor din iCloud, sari peste: ar înlocui conversațiile convertite.",
+      "Activează din nou Găsire, apoi Protecție dispozitiv furat.",
+    ],
+  },
+  results: {
+    title: "Rezultate",
+    lead: "Acest rezumat conține numere, versiuni și locații de fișiere: niciun mesaj, nume sau număr de telefon. Trimite-l mai departe dacă ceva trebuie investigat.",
+    summaryLabel: "Rezumat",
+    summaryLanguage: "Rezumatul este în engleză, ca să poată fi trimis dezvoltatorului.",
+    copy: "Copiază rezumatul",
+    copied: "Copiat",
+    nextTitle: "Ce urmează",
+    next: "După ce iPhone-ul a repornit, deschide WhatsApp și verifică contul în care au ajuns conversațiile. Pentru a muta alt cont Android, verifică-i backupul la pasul Android și parcurge din nou pașii.",
+    cleanTitle: "Curățenie",
+    clean: (home) => (
+      <>
+        Copiile decriptate sunt în <Code>{home}</Code>. Șterge acel dosar oricând vrei; rezumatul de mai sus nu are nevoie de
+        el.
+      </>
+    ),
+    startOver: "Ia-o de la capăt",
+    confirmReset: "Uiți tot progresul? Copiile decriptate rămân pe disc până le ștergi.",
+  },
+}

@@ -1,4 +1,640 @@
-// Placeholder until translated.
-import { en, type Messages } from "./en"
+// Spanish. Menu names follow what WhatsApp, Android and Apple show in Spanish.
+import { Code } from "@/components/code"
 
-export const es: Messages = en
+import type { Messages } from "./en"
+
+export const es: Messages = {
+  header: {
+    tagline: "Se queda en este ordenador · solo escribe en un teléfono al final, cuando tú lo decidas",
+    language: "Idioma",
+    theme: "Tema",
+    light: "Claro",
+    dark: "Oscuro",
+    system: "Sistema",
+  },
+  steps: {
+    start: "Inicio",
+    android: "Android",
+    before: "iPhone",
+    account: "Cuenta",
+    after: "Comparar",
+    convert: "Convertir",
+    write: "Escribir",
+    restore: "Restaurar",
+    copy: "Copiar",
+    done: "Resultados",
+  },
+  stepOf: (n, total) => `Paso ${n} de ${total}`,
+  stepLabel: (n, title, done) => `Paso ${n}: ${title}${done ? " (hecho)" : ""}`,
+  stepSkipped: "no hace falta",
+  nav: { back: "Atrás", continue: "Continuar", start: "Empezar", first: (step) => `Primero: ${step}` },
+  common: {
+    loading: "Cargando…",
+    openWithLink: "Abre el asistente con el enlace que mostró `whatferry ui`.",
+    cantReach: (m) => `No se puede conectar con whatferry: ${m}. ¿Sigue en marcha \`whatferry ui\`?`,
+    failed: "No ha funcionado",
+    checked: "Comprobado",
+    searchAgain: "Buscar de nuevo",
+    messagesRange: (a, b) => (
+      <>
+        Mensajes del <strong>{a}</strong> al <strong>{b}</strong>.
+      </>
+    ),
+    noMessages: "Aún no hay mensajes.",
+  },
+  counts: {
+    chats: "chats",
+    messages: "mensajes",
+    media: "archivos multimedia",
+    "quoted replies": "respuestas citadas",
+    "reactions and other add-ons": "reacciones y otros añadidos",
+    "contact cards": "tarjetas de contacto",
+    locations: "ubicaciones",
+    calls: "llamadas",
+    "contacts and groups (jid)": "contactos y grupos (jid)",
+    "group members": "miembros de grupos",
+    "group info": "info. de grupos",
+    "message info (receipts)": "info. de mensajes (confirmaciones)",
+    "profile push names": "nombres de perfil",
+    "files added": "archivos añadidos",
+    "files changed": "archivos modificados",
+    "files removed": "archivos eliminados",
+    "chats matched": "chats que ya estaban",
+    "chats created": "chats añadidos",
+    "media placed": "archivos multimedia colocados",
+    "media missing": "archivos multimedia no encontrados",
+  },
+  start: {
+    title: "Pasa tus chats de WhatsApp de Android a iPhone",
+    titleToAndroid: "Pasa tus chats de WhatsApp de iPhone a Android",
+    lead: "Este asistente pasa los chats de una cuenta de WhatsApp de Android a WhatsApp en tu iPhone, sin borrar el iPhone. Tus copias de seguridad solo se leen; en el iPhone se escribe una sola vez, al final, cuando decidas restaurar.",
+    leadToAndroid: "Este asistente pasa los chats de una cuenta de WhatsApp de iPhone a WhatsApp en tu teléfono Android. Tus copias de seguridad solo se leen; en el teléfono Android se escribe una sola vez, al final, cuando copies en él la nueva copia de seguridad.",
+    directionTitle: "En qué sentido",
+    android: "Android",
+    iphone: "iPhone",
+    directionNote: {
+      "to-iphone": "A WhatsApp en un iPhone ya configurado, como su segunda cuenta o como la única.",
+      "to-android": "A WhatsApp en un teléfono Android, mediante la propia restauración de WhatsApp desde una copia de seguridad.",
+    },
+    needsToAndroid: [
+      "El iPhone, con WhatsApp y los chats que quieres pasar.",
+      "El teléfono Android, con WhatsApp iniciado con el número que vas a pasar.",
+      "Un cable para cada teléfono, y la depuración por USB activada en el teléfono Android.",
+      "Alrededor de una hora, sobre todo esperando a las copias de seguridad. Puedes cerrar esto y volver: el progreso se guarda.",
+    ],
+    happensToAndroid: [
+      "Haz una copia de seguridad del iPhone, para que el asistente pueda leer los chats, fotos y vídeos de la cuenta.",
+      "Haz la copia de seguridad cifrada de WhatsApp en el teléfono Android, con una clave de 64 dígitos, y trae el archivo aquí.",
+      "Convierte los chats del iPhone dentro de esa copia y revisa una vista previa del resultado.",
+      "Escribe la nueva copia de seguridad, cópiala en el teléfono Android y restáurala en WhatsApp con la clave.",
+    ],
+    needTitle: "Necesitarás",
+    needs: [
+      "El teléfono Android, con WhatsApp y los chats que quieres pasar.",
+      "El iPhone, con WhatsApp ya configurado con su propio número.",
+      "Un cable para conectar el iPhone a este ordenador.",
+      "Alrededor de una hora, sobre todo esperando a las copias de seguridad. Puedes cerrar esto y volver: el progreso se guarda.",
+    ],
+    happensTitle: "Qué va a pasar",
+    happens: [
+      "Haz una copia de seguridad cifrada de WhatsApp en el teléfono Android y trae el archivo aquí.",
+      "Haz una copia de seguridad del iPhone, para que el asistente vea cómo guarda WhatsApp tu cuenta actual.",
+      "Añade el número de Android a WhatsApp en el iPhone como segunda cuenta.",
+      "Vuelve a hacer una copia de seguridad del iPhone. Al comparar las dos copias se ve exactamente dónde irán los chats de la nueva cuenta.",
+      "Convierte los chats de Android y revisa una vista previa del resultado.",
+      "Escribe una nueva copia de la copia de seguridad del iPhone con los chats dentro y restáurala en el iPhone.",
+    ],
+    privateTitle: "Qué sigue siendo privado",
+    privateLead: "Nada sale de este ordenador.",
+    private: (home) => [
+      "La página solo habla con whatferry en este ordenador. No se sube nada a ningún sitio.",
+      "Las claves y contraseñas se usan una vez y nunca se guardan.",
+      <>
+        Las copias descifradas se guardan en <Code>{home}</Code>, y solo tú puedes leerlas. Bórralas cuando termines.
+      </>,
+    ],
+  },
+  android: {
+    title: "Copia de seguridad de Android",
+    lead: "La copia de seguridad cifrada de WhatsApp, con una clave de 64 dígitos que anotas, se puede leer aquí sin rootear el teléfono.",
+    makeTitle: "Haz la copia de seguridad en el teléfono Android",
+    make: [
+      "Abre WhatsApp → Ajustes → Chats → Copia de seguridad → Copia de seguridad cifrada de extremo a extremo → Activar.",
+      "Elige «Usar clave de cifrado de 64 dígitos» y genera la clave. Anótala o haz una captura de pantalla: WhatsApp no puede volver a mostrarla.",
+      "De vuelta en Copia de seguridad, toca Guardar. Así se guarda un archivo en el teléfono aunque las copias en Google Drive estén desactivadas.",
+    ],
+    toAndroidTitle: "Primero, WhatsApp en el teléfono Android",
+    toAndroidBody: "Instala WhatsApp e inicia sesión con el número que vas a pasar. Si te ofrece restaurar una copia de seguridad, omítelo. Después haz la copia de seguridad de abajo: da al asistente la propia base de datos vacía de WhatsApp para la cuenta, donde entran los chats del iPhone.",
+    multiTitle: "¿Más de una cuenta de WhatsApp en el teléfono?",
+    multiBody: "Cada cuenta tiene su propia copia de seguridad y su propia clave. Cambia a la cuenta que quieres pasar (toca tu foto de perfil → cambiar de cuenta) antes de los pasos de arriba, y repítelos para cada cuenta que quieras.",
+    bringTitle: "Trae el archivo a este ordenador",
+    bringLead: "Cualquiera de estas opciones sirve; elige la que te resulte más fácil.",
+    tabs: { share: "Compartir desde el teléfono", cable: "Transferencia de archivos por USB", adb: "Copiar con depuración por USB" },
+    share: [
+      <>
+        Abre la app de archivos del teléfono (Files de Google, o Mis archivos en Samsung) y ve a{" "}
+        <Code>Android/media/com.whatsapp/WhatsApp</Code>. Algunas apps de archivos ocultan la carpeta <Code>Android</Code>;
+        Files de Google la muestra.
+      </>,
+      <>
+        Abre <Code>Databases</Code>, o con varias cuentas <Code>accounts</Code> → el número de la cuenta →{" "}
+        <Code>Databases</Code>.
+      </>,
+      <>
+        Mantén pulsado <Code>msgstore.db.crypt15</Code> (el que no tiene fecha) y toca Compartir.
+      </>,
+      "Envíalo a este ordenador con lo que tengas: LocalSend (gratis, teléfono y ordenador en la misma Wi-Fi, nada pasa por internet), Quick Share (Windows), Google Drive, o un correo o un mensaje a ti mismo.",
+      "Guárdalo en Descargas y haz clic en Buscar de nuevo, abajo.",
+    ],
+    cable: (platform) => [
+      "Conecta el teléfono a este ordenador con un cable USB y desbloquéalo.",
+      "En el teléfono, toca la notificación «Cargando este dispositivo por USB» y elige Transferencia de archivos.",
+      {
+        darwin: "Un Mac no puede abrir teléfonos Android por sí solo: instala OpenMTP (gratis, openmtp.ganeshrvel.com) y abre el teléfono con él.",
+        win32: "Abre el Explorador de archivos: el teléfono aparece en Este equipo.",
+        other: "Tu gestor de archivos muestra el teléfono en la barra lateral.",
+      }[platform],
+      "Copia msgstore.db.crypt15 de la carpeta de abajo a Descargas y haz clic en Buscar de nuevo, abajo.",
+    ],
+    foldersTitle: "Dónde guarda WhatsApp las copias de seguridad en el teléfono",
+    folders: ["Una cuenta", "Varias cuentas", "WhatsApp Business", "Android 10 o anterior"],
+    foldersNote: (
+      <>
+        Con varias cuentas, cada carpeta <Code>accounts/&lt;número&gt;</Code> es una cuenta: elige aquella cuyo
+        msgstore.db.crypt15 sea el más reciente, justo después de tocar Guardar. Los archivos que terminan en .crypt14 y
+        los archivos con fecha o «increment» no se pueden usar.
+      </>
+    ),
+    chooseTitle: "Elige el archivo",
+    searching: "Buscando…",
+    noneFound: "Aún no se ha encontrado ninguna copia de seguridad de WhatsApp.",
+    chooseFile: "Elegir un archivo…",
+    copyingFile: (name) => `Copiando ${name}…`,
+    searchHint: (folders) => (
+      <>Buscar de nuevo busca copias de seguridad de WhatsApp en {folders}. ¿Está en otro sitio? Usa Elegir un archivo.</>
+    ),
+    listAnd: " y ",
+    listSep: ", ",
+    keyTitle: "Introduce la clave",
+    keyLabel: "Clave de 64 dígitos",
+    keyPlaceholder: "64 caracteres, los espacios no importan",
+    showKey: "Mostrar clave",
+    hideKey: "Ocultar clave",
+    keyHint: "Se usa una vez para descifrar y luego se olvida. No hace falta si elegiste un msgstore.db ya descifrado.",
+    decrypting: "Descifrando y comprobando la copia de seguridad…",
+    decrypt: "Descifrar y comprobar",
+    checkAgain: "Comprobar de nuevo",
+    resultLine: (version, db, checked) => `WhatsApp ${version} · versión de base de datos ${db} · comprobada ${checked}`,
+    legacy: "Esta copia de seguridad usa el formato antiguo de WhatsApp. Actualiza WhatsApp en el teléfono y vuelve a hacer la copia.",
+    jidTitle: "Identificadores de contacto por tipo",
+    jidHead: ["Servidor", "Cantidad"],
+    decryptedCopy: "Copia descifrada:",
+    accountsTitle: "Cuentas de Android",
+    accountsLead: "Cada cuenta se pasa por separado. Para añadir otra, elige su archivo de copia de seguridad abajo y descífralo; cambia aquí para trabajar con una.",
+    accountRow: (ends, messages) => `Número que termina en ${ends ?? "?"} · ${messages} mensajes`,
+    accountProgress: (destination, secondDone) =>
+      [destination ? `va a: ${destination}` : "destino aún sin elegir", secondDone ? "segunda copia comprobada" : null]
+        .filter(Boolean).join(" · "),
+    destinationNames: { setup: "configurar WhatsApp", second: "segunda cuenta", existing: "cuenta existente" },
+    workingOn: "Trabajando con esta",
+    switchTo: "Cambiar a esta cuenta",
+    movingAccount: (ends) => `Cuenta de Android que termina en ${ends ?? "?"}`,
+  },
+  phone: {
+    intro: (folder) => (
+      <>
+        Conecta el teléfono a este ordenador y whatferry copia la copia de seguridad por sí mismo, directamente en{" "}
+        <Code>{folder}</Code>. Necesita la depuración por USB en el teléfono y adb en este ordenador; después puedes
+        volver a desactivar la depuración.
+      </>
+    ),
+    looking: "Buscando adb y teléfonos conectados…",
+    noAdbTitle: "adb no está instalado en este ordenador",
+    noAdbIntro: "adb es la herramienta gratuita de Google para comunicarse con teléfonos Android por USB.",
+    install: {
+      darwin: ["Con Homebrew: brew install --cask android-platform-tools", "O descarga platform-tools de Google (abajo) y descomprímelo."],
+      win32: ["En un terminal: winget install Google.PlatformTools", "O descarga platform-tools de Google (abajo) y descomprímelo."],
+      other: ["Debian o Ubuntu: sudo apt install adb · Fedora: sudo dnf install android-tools", "O descarga platform-tools de Google (abajo) y descomprímelo."],
+    },
+    download: (
+      <>
+        Descarga de Google: <Code>developer.android.com/tools/releases/platform-tools</Code>. Si adb está en un sitio
+        donde whatferry no busca, inícialo con <Code>WHATFERRY_ADB=/path/to/adb</Code>.
+      </>
+    ),
+    debugTitle: "Activa la depuración por USB",
+    debug: [
+      "En el teléfono, abre Ajustes → Información del teléfono y toca Número de compilación siete veces. Introduce tu PIN si te lo pide; aparecerá «Ya eres desarrollador». (Samsung: Ajustes → Información del teléfono → Información de software → Número de compilación.)",
+      "Vuelve a Ajustes → Sistema → Opciones para desarrolladores y activa Depuración por USB.",
+      "Conecta el teléfono a este ordenador con un cable USB y desbloquéalo.",
+      "Toca Permitir en «¿Permitir depuración por USB?». Si marcas «Permitir siempre desde este ordenador», no tendrás que volver a hacerlo.",
+      "Haz clic en Buscar teléfono, abajo.",
+    ],
+    debugOff: "Cuando termines: Opciones para desarrolladores → desactiva Depuración por USB.",
+    notReady: (model) => `${model} no está listo`,
+    advice: {
+      unauthorized: "Desbloquea el teléfono y toca Permitir en «¿Permitir depuración por USB?».",
+      offline: "El teléfono no responde: desconéctalo, vuelve a conectarlo y desbloquéalo.",
+      "no permissions": "Este ordenador no tiene permiso para comunicarse con el teléfono (en Linux, añade una regla udev para Android).",
+      authorizing: "Esperando a que toques Permitir en el teléfono.",
+    },
+    otherState: (state) => `adb dice «${state}».`,
+    phone: "Teléfono Android",
+    connected: "Conectado",
+    account: (app, account) => (account ? `${app} · cuenta ${account}` : app),
+    noBackups: "Aún no hay ninguna copia de seguridad de WhatsApp en este teléfono. Haz una primero (paso 1) y vuelve a hacer clic en Buscar teléfono.",
+    noUsable: "Aún no hay ninguna copia utilizable: activa la copia de seguridad cifrada con clave de 64 dígitos y toca Guardar (paso 1), y vuelve a hacer clic en Buscar teléfono.",
+    otherFiles: (n) => `${n} ${n === 1 ? "archivo más que no se puede usar" : "archivos más que no se pueden usar"}`,
+    notes: {
+      rooted: "Cifrado antiguo: su clave solo existe en un teléfono rooteado. Activa la copia de seguridad cifrada con clave de 64 dígitos y vuelve a hacer la copia para obtener un archivo .crypt15.",
+      increment: "Una copia de seguridad parcial (incremental); usa el archivo msgstore completo.",
+      other: "No es una copia de seguridad de chats de WhatsApp.",
+    },
+    copy: "Copiar",
+    copying: "Copiando…",
+    copiedTitle: (name) => `${name} copiado`,
+    copiedBody: "Está elegido abajo, en el paso 3.",
+    findPhone: "Buscar teléfono",
+  },
+  backup: {
+    title: { before: "Copia de seguridad del iPhone", after: "Segunda copia de seguridad del iPhone" },
+    lead: {
+      before: "Una copia de seguridad muestra cómo guarda hoy sus datos WhatsApp en el iPhone. El asistente la lee; nunca la modifica.",
+      after: "Con la segunda cuenta añadida, una nueva copia de seguridad muestra qué archivos ha creado la nueva cuenta. Ahí irán los chats de Android.",
+    },
+    needFirst: "Comprueba antes la primera copia de seguridad del iPhone.",
+    goFirst: "Ir a la primera copia de seguridad",
+    makeTitle: { before: "Haz una copia de seguridad del iPhone", after: "Vuelve a hacer una copia de seguridad del iPhone" },
+    make: {
+      darwin: [
+        "Conecta el iPhone a este Mac con un cable y desbloquéalo. Toca Confiar si te lo pide.",
+        "Abre el Finder y selecciona el iPhone en la barra lateral.",
+        "En Copias de seguridad, elige «Realizar copia de seguridad de todos los datos del iPhone en este Mac».",
+        "Marca «Encriptar copia de seguridad local» y elige una contraseña que vayas a recordar. La escribirás aquí en un momento.",
+        "Haz clic en Realizar copia de seguridad ahora y espera a que termine.",
+      ],
+      win32: [
+        "Conecta el iPhone a este PC con un cable y desbloquéalo. Toca Confiar si te lo pide.",
+        "Abre la app Dispositivos Apple (o iTunes) y selecciona el iPhone.",
+        "En Copias de seguridad, elige «Realizar copia de seguridad de todos los datos del iPhone en este ordenador».",
+        "Marca «Encriptar copia de seguridad local» y elige una contraseña que vayas a recordar. La escribirás aquí en un momento.",
+        "Haz clic en Realizar copia de seguridad ahora y espera a que termine.",
+      ],
+      other: [
+        "Instala libimobiledevice y conecta el iPhone con un cable. Desbloquéalo y toca Confiar.",
+        "Activa el cifrado una vez: idevicebackup2 encryption on",
+        "Haz la copia de seguridad: idevicebackup2 backup --full <carpeta>",
+        "Inicia el asistente con WHATFERRY_BACKUP_ROOT=<carpeta> para que encuentre la copia.",
+      ],
+    },
+    now: {
+      title: "Hacer la copia ahora",
+      lead: "whatferry hace la copia de seguridad por el cable por sí mismo, como el Finder. Conecta el iPhone con un cable y desbloquéalo.",
+      looking: "Buscando el iPhone…",
+      connect: "No se ha encontrado ningún iPhone. Conéctalo con un cable, desbloquéalo y vuelve a buscar.",
+      onlyOne: "Hay más de un iPhone conectado: deja solo el que quieres copiar.",
+      trust: "El iPhone aún no confía en este ordenador. Hacer la copia ahora se lo pregunta: toca Confiar en el teléfono y vuelve a hacer la copia.",
+      found: (name) => `Se ha encontrado ${name}.`,
+      encrypts: "Sus copias de seguridad están encriptadas.",
+      turnOnTitle: "Este iPhone aún no encripta sus copias de seguridad",
+      turnOnBody: "Los chats de WhatsApp solo están en una copia de seguridad encriptada. Elige una contraseña: a partir de ahora el iPhone encripta cada copia con ella, y el Finder muestra marcada la opción «Encriptar copia de seguridad local». Puede que el iPhone te pida su código.",
+      choose: "Elige una contraseña para la copia",
+      again: "Escríbela de nuevo",
+      mismatch: "No coinciden.",
+      run: "Hacer la copia ahora",
+      lookAgain: "Buscar de nuevo",
+      working: (p) => `Haciendo la copia… ${Math.round(p)}%`,
+      keepConnected: "Puede tardar una hora con un iPhone lleno. Mantenlo conectado y desbloqueado.",
+      done: "Copia hecha",
+      turnedOn: "El encriptado ya está activado en este iPhone. Guarda la contraseña: sin ella no se abre ninguna de sus copias.",
+      byHand: "O haz la copia a mano",
+    },
+    samePassphrase: "Usa la misma contraseña que antes. La nueva copia sustituye a la anterior en la misma carpeta; el asistente ya ha guardado lo que necesita de la primera.",
+    chooseTitle: "Elige la copia de seguridad",
+    looking: "Buscando copias de seguridad…",
+    noneTitle: "Aún no se ha encontrado ninguna copia de seguridad",
+    lookedIn: (folders) => `Se ha buscado en ${folders}.`,
+    noRoot: "Este sistema no tiene una carpeta de copias de seguridad estándar: define WHATFERRY_BACKUP_ROOT.",
+    encrypted: "Encriptada",
+    notEncrypted: "Sin encriptar",
+    iphone: "iPhone",
+    deviceLine: (model, ios, date) => `${model} · iOS ${ios} · copia del ${date}`,
+    notEncryptedTitle: "Esta copia de seguridad no está encriptada",
+    notEncryptedBody: "Sirve para comprobar, pero el traspaso necesitará una encriptada: marca «Encriptar copia de seguridad local» y vuelve a hacer la copia.",
+    passLabel: "Contraseña de la copia",
+    passHint: "La que elegiste al marcar «Encriptar copia de seguridad local». Se usa una vez y nunca se guarda.",
+    unlocking: "Desbloqueando la copia de seguridad. Tarda un minuto o dos: la parte lenta es el encriptado haciendo su trabajo.",
+    reading: "Leyendo la copia de seguridad…",
+    check: { before: "Comprobar esta copia", after: "Comprobar y comparar" },
+    checkAgain: "Comprobar de nuevo",
+    resultLine: (model, ios, backed, checked) => `${model} · iOS ${ios} · copia del ${backed} · comprobada ${checked}`,
+    noWhatsapp: "Esta copia de seguridad no tiene datos de WhatsApp. ¿Está WhatsApp instalado en este iPhone?",
+    chatsIn: (path) => (
+      <>
+        Chats en <code className="font-mono text-xs">{path}</code>
+      </>
+    ),
+    messagesRange: (a, b) => `Mensajes del ${a} al ${b}`,
+    manyStores: (n) => `${n} bases de datos de chats: probablemente una por cuenta.`,
+    areasTitle: "Zonas de almacenamiento de WhatsApp",
+    areasHead: ["Zona", "Archivos", "Tamaño"],
+    savedList: "Se ha guardado la lista de archivos de esta copia, para compararla con la siguiente.",
+    diffTitle: "Qué ha cambiado al añadir la cuenta",
+    foundOne: "Se ha encontrado la base de datos de chats de la nueva cuenta",
+    foundMany: (n) => `Se han encontrado ${n} nuevas bases de datos de chats`,
+    whereGo: "Ahí irán los chats de Android.",
+    noneNewTitle: "No ha aparecido ninguna base de datos de chats nueva",
+    noneNewBody: "Puede que la segunda cuenta comparta la existente, o que WhatsApp no hubiera terminado de configurarla antes de la copia. La lista completa de cambios está abajo.",
+    diffHead: ["Dónde", "Añadidos", "Modificados", "Eliminados"],
+    filesAdded: "Archivos añadidos",
+    filesChanged: "Archivos modificados",
+  },
+  destination: {
+    title: "¿Adónde deben ir los chats de Android?",
+    lead: "Elige qué cuenta de WhatsApp de este iPhone los recibe. La sugerencia sale de lo que muestran las copias de seguridad.",
+    suggested: "Sugerida",
+    options: {
+      setup: {
+        title: "Configurar WhatsApp en este iPhone con el número de Android",
+        body: "WhatsApp aún no está configurado en este iPhone: el número de Android pasa a ser su única cuenta.",
+      },
+      second: {
+        title: "Añadir el número de Android como segunda cuenta",
+        body: "El iPhone conserva su cuenta actual; los chats de Android van a una cuenta nueva y vacía junto a ella.",
+      },
+      existing: {
+        title: "Una cuenta de aquí ya usa el número de Android",
+        body: "Los chats de Android van a esa cuenta. Si ya tiene chats, los dos historiales se combinan.",
+      },
+    },
+    reasons: {
+      noWhatsapp: "Esta copia de seguridad no tiene datos de WhatsApp.",
+      matches: (ends) =>
+        `Una cuenta de aquí tiene un número que termina en ${ends}, como el de la copia de Android (solo se conocen los dos últimos dígitos, así que comprueba que es de verdad el mismo número).`,
+      different: (ends, accounts) =>
+        `El número de Android termina en ${ends}; los números de las cuentas de este iPhone terminan en ${accounts}.`,
+      unknown: "La copia de seguridad de Android no guarda su número, así que el asistente no puede comparar.",
+      stale: "Esta comprobación del iPhone se guardó con una forma más antigua de leer las cuentas del iPhone, que podía confundir un chat con una cuenta. Haz clic en Comprobar de nuevo, arriba, para comparar los números.",
+      secondStarted: (ends) =>
+        `El número de Android (que termina en ${ends}) ya está configurado aquí como segunda cuenta, pero aún no tiene chats: probablemente el inicio de sesión se quedó antes del código de confirmación. Termina de iniciar sesión en el iPhone y haz la segunda copia de seguridad.`,
+      iphoneUnknown: (ends) =>
+        `El número de Android termina en ${ends}, pero no se han podido leer los números de las cuentas del iPhone en esta copia.`,
+    },
+    full: "Puede que este iPhone ya tenga una segunda cuenta de WhatsApp: la copia de seguridad tiene una carpeta para ella. Si es así, puede que WhatsApp no permita una tercera y tengas que eliminar una antes.",
+    merge: (n) =>
+      `Esa cuenta ya tiene ${n} mensajes en este iPhone. Combinar conserva los dos historiales, pero es el caso más difícil de hacer bien.`,
+    notMatching: (ends, numbers) =>
+      `Ninguna cuenta de aquí tiene un número que termine en ${ends}. Con esta opción, los chats de Android van a una cuenta con otro número (que termina en ${numbers}) y aparecerán con ese número.`,
+    cantConfirm: "El asistente no puede confirmar que una cuenta de aquí use el número de Android: comprueba WhatsApp en el iPhone antes de elegir esto.",
+    replaceExisting: (numbers) =>
+      `WhatsApp ya está configurado en este iPhone${numbers ? ` (número que termina en ${numbers})` : ""}. Volver a configurarlo con el número de Android cerraría la sesión de esa cuenta; añade una segunda cuenta para conservarla.`,
+    accountsTitle: "Cuentas de WhatsApp en este iPhone",
+    account: (numberEnds, country, main, hasChats) =>
+      `Número que termina en ${numberEnds ?? "?"}${country ? ` (${country})` : ""} · ${main ? "cuenta principal" : "segunda cuenta"}${hasChats ? "" : " · sin chats en esta copia"}`,
+    secondNoChats: "Los chats de esa cuenta no están en la copia de seguridad del iPhone: o aún no tiene ninguno, o WhatsApp deja fuera de las copias los chats de una segunda cuenta. El traspaso tiene que sortear eso, así que es lo siguiente que hay que averiguar.",
+    folders: (n) =>
+      `La copia también tiene ${n} ${n === 1 ? "carpeta" : "carpetas"} que WhatsApp guarda para otra cuenta, posiblemente una segunda; no se puede leer su número.`,
+    chooseFirst: "Comprueba primero la copia de seguridad del iPhone; después elige adónde van los chats.",
+  },
+  account: {
+    setup: {
+      title: "Configura WhatsApp con el número de Android",
+      lead: "WhatsApp crea su base de datos, carpetas y claves para el número de Android. La siguiente copia de seguridad muestra dónde están.",
+      sectionTitle: "Configura WhatsApp en el iPhone",
+      steps: [
+        "Instala WhatsApp desde el App Store, si no está instalado.",
+        "Ábrelo y registra el número del teléfono Android; introduce el código que envía WhatsApp. WhatsApp cierra la sesión en el teléfono Android: es lo esperado, y tu archivo de copia de seguridad ya está a salvo en este ordenador.",
+        "Si WhatsApp te ofrece restaurar los chats, omítelo. La cuenta debe empezar vacía.",
+      ],
+    },
+    existing: {
+      title: "No hay nada que añadir en el iPhone",
+      lead: "La cuenta que ya usa el número de Android recibe los chats. No hace falta una segunda copia de seguridad: continúa a los resultados.",
+    },
+    none: "Elige primero adónde van los chats: está al final del paso de la copia de seguridad del iPhone.",
+    goChoose: "Elegir adónde van los chats",
+    notNeeded: "No hace falta con esta opción",
+    skipNote: "La cuenta que recibe los chats ya existe, así que no hay nada nuevo que encontrar. Continúa a los resultados.",
+    title: "Añade el número de Android en el iPhone",
+    lead: "WhatsApp configura la segunda cuenta por sí mismo: su propia base de datos vacía, carpetas y claves. Después, solo esa cuenta nueva se llena con los chats de Android; tu cuenta actual no se toca.",
+    addTitle: "Añade la cuenta en el iPhone",
+    steps: [
+      "En el iPhone, abre WhatsApp → Ajustes y elige Añadir cuenta (junto a tu nombre, arriba).",
+      "Registra el número del teléfono Android e introduce el código que envía WhatsApp. WhatsApp cierra la sesión en el teléfono Android: es lo esperado, y tu archivo de copia de seguridad ya está a salvo en este ordenador.",
+      "Si WhatsApp te ofrece restaurar los chats de la nueva cuenta, omítelo. La nueva cuenta debe empezar vacía.",
+    ],
+    keepAndroid: "Deja WhatsApp instalado en el teléfono Android hasta que termine el traspaso. Si algo sale mal, puedes volver a iniciar sesión allí y tus chats seguirán en él.",
+  },
+  convert: {
+    title: "Convierte los chats",
+    lead: "Combina el historial de la cuenta de Android en una copia de la base de datos de chats de la cuenta del iPhone. Todavía no cambia nada en ninguno de los teléfonos ni en la copia de seguridad: revisa el resultado abajo antes de escribir, y vuelve a convertir con otra opción si no es correcto.",
+    needBackups: "Comprueba primero la copia de seguridad de Android y una del iPhone.",
+    goAndroid: "Ir a la copia de seguridad de Android",
+    goIphone: "Ir a la copia de seguridad del iPhone",
+    targetTitle: "Qué cuenta del iPhone recibe los chats",
+    leadToAndroid: "Combina el historial de la cuenta del iPhone en una copia de la base de datos de chats de la cuenta de Android. Todavía no cambia nada en ninguno de los teléfonos ni en ninguna de las copias de seguridad: revisa el resultado abajo antes de escribir, y vuelve a convertir con otra opción si no es correcto.",
+    sourceTitle: "De qué cuenta del iPhone se pasan los chats",
+    fromIphoneBackup: (date) => `De la copia de seguridad del iPhone comprobada ${date}.`,
+    mediaFromBackup: "De la copia de seguridad del iPhone",
+    mediaFromBackupNote: "Fotos, vídeos, notas de voz y documentos que tiene el iPhone, sacados de su copia de seguridad. Los más antiguos que WhatsApp ha quitado del iPhone para liberar espacio no se pueden sacar.",
+    androidNotWritableTitle: "No se puede volver a escribir la copia de seguridad de Android",
+    androidNotWritable: "Comprueba en el paso de Android la copia de seguridad cifrada de extremo a extremo de WhatsApp (msgstore.db.crypt15, con su clave de 64 dígitos): es la que restaura WhatsApp.",
+    notYetToAndroid: "Las respuestas, reacciones, encuestas y llamadas aún no se pasan; los mensajes en sí, sí.",
+    versionTitle: (kind) => `No es la versión ${kind} de WhatsApp con la que se comprobó whatferry`,
+    fromBackup: (second, date) =>
+      `De la ${second ? "segunda" : "primera"} copia de seguridad del iPhone, comprobada ${date}.`,
+    mainAccount: (ends) => `Cuenta principal${ends ? `, número que termina en ${ends}` : ""}`,
+    otherAccount: (ends) => `Cuenta añadida${ends ? `, número que termina en ${ends}` : ""}`,
+    suggested: "Sugerida",
+    hasMessages: (n) => `${n} ${n === "1" ? "mensaje" : "mensajes"} ahora`,
+    mergeNote: (n) =>
+      `Esta cuenta ya tiene ${n} ${n === "1" ? "mensaje" : "mensajes"}. Los chats de Android se añaden junto a ellos; los chats con la misma persona o grupo se unen.`,
+    mediaTitle: "Fotos, vídeos y notas de voz",
+    mediaLead: "La carpeta Media de WhatsApp de Android, copiada a este ordenador. Cada carpeta encontrada se compara con los archivos más recientes que nombran los chats de Android.",
+    mediaFound: (found, sampled) =>
+      sampled ? `Tiene ${found} de los ${sampled} archivos más recientes que nombran los chats` : "Los chats no nombran ningún archivo multimedia",
+    mediaOther: "Otra carpeta",
+    mediaPlaceholder: "Ruta a una copia de WhatsApp/Media",
+    mediaNone: "Sin multimedia",
+    mediaNoneNote: "Los mensajes conservan sus pies de foto; las fotos y los vídeos en sí se quedan atrás.",
+    working: "Convirtiendo… un minuto o dos.",
+    run: "Convertir",
+    again: "Convertir de nuevo",
+    doneTitle: (converted, total) => `${converted} de ${total} mensajes convertidos`,
+    doneLine: (at) => `Convertido ${at}.`,
+    checksClean: "La base de datos combinada ha superado todas las comprobaciones de coherencia.",
+    checksFailed: "La base de datos combinada no ha superado una comprobación de coherencia",
+    integrity: (result) => `integridad: ${result}`,
+    skipped: (n) =>
+      n === "1"
+        ? `Se deja fuera ${n} evento que WhatsApp guarda de forma distinta en cada teléfono (avisos del sistema, llamadas, encuestas y similares).`
+        : `Se dejan fuera ${n} eventos que WhatsApp guarda de forma distinta en cada teléfono (avisos del sistema, llamadas, encuestas y similares).`,
+    notYet: (what, n) => `${what}: ${n}, aún no se pasan (los mensajes en sí, sí).`,
+  },
+  preview: {
+    title: "Qué tendrá la cuenta",
+    loading: "Leyendo el resultado…",
+    // Each includes its preposition: the templates below put it straight after "mensajes".
+    android: "de Android",
+    iphone: "del iPhone",
+    totals: (fresh, joined, unchanged, messages, from) =>
+      `${fresh} ${fresh === "1" ? "chat nuevo" : "chats nuevos"} y ${joined} unidos a chats que ya estaban (${messages} ${messages === "1" ? "mensaje" : "mensajes"} ${from}); ${unchanged} ${unchanged === "1" ? "chat sin tocar" : "chats sin tocar"}.`,
+    fromSource: (from) => from.charAt(0).toUpperCase() + from.slice(1),
+    all: "Todos los chats",
+    search: "Buscar por nombre o número",
+    noChats: "Ningún chat coincide.",
+    group: "Grupo",
+    change: { new: "Nuevo", joined: "Unido", unchanged: "Sin tocar" },
+    chatLine: (moved, total, first, last, from) => `${moved} de ${total} mensajes ${from} · del ${first} al ${last}`,
+    showAll: (n) => `Mostrar los ${n}`,
+    newest: (n, from) => `mensajes más recientes de ${n}; los recuadrados son ${from}`,
+    kinds: {
+      image: "Foto",
+      video: "Vídeo",
+      audio: "Mensaje de voz o audio",
+      contact: "Tarjeta de contacto",
+      location: "Ubicación",
+      document: "Documento",
+      gif: "GIF",
+      sticker: "Sticker",
+      deleted: "Se eliminó este mensaje",
+      link: "Enlace",
+      system: "Evento del chat",
+      other: "Otro mensaje",
+    },
+  },
+  write: {
+    title: "Escribe una nueva copia de seguridad",
+    lead: "Copia la copia de seguridad del iPhone y mete en la copia los chats convertidos, encriptados como lo hace iOS. Cada archivo escrito se vuelve a leer y se comprueba.",
+    needConvert: "Convierte los chats primero.",
+    goConvert: "Ir a Convertir",
+    fromTitle: "La copia de seguridad de partida",
+    from: (date) => `La copia de seguridad del iPhone del ${date}, en la que se convirtieron los chats:`,
+    untouched: "Esa copia se queda como está; la nueva va a la carpeta propia de whatferry.",
+    previewFirst: "Lo que se escribe es la conversión tal como la muestra su vista previa.",
+    openPreview: "Revisar la vista previa",
+    passTitle: "Contraseña",
+    leadToAndroid: "Cifra la base de datos convertida como una copia de seguridad propia de WhatsApp, con la clave de 64 dígitos de la copia de Android, y la ordena con las fotos y los vídeos como los guarda WhatsApp. Se vuelve a descifrar y se comprueba.",
+    fromAndroid: "La copia de seguridad de Android en la que se convirtieron los chats:",
+    keyTitle: "La clave de la copia de seguridad de Android",
+    keyLabel: "Clave de 64 dígitos",
+    keyHint: "La clave que mostró WhatsApp al activar la copia de seguridad cifrada de extremo a extremo. Se usa una vez y nunca se guarda.",
+    skipNoteToAndroid: "Normalmente se rechaza: la copia de Android debe ser aquella en la que se convirtieron los chats. Con esto, lo que haya recibido WhatsApp en el teléfono Android después de esa copia se pierde al restaurar.",
+    changedBodyToAndroid: "Vuelve a comprobar la copia de Android más reciente en su paso y vuelve a convertir. Así se conserva todo lo que tiene ahora la cuenta.",
+    addedToAndroid: (bytes, media) =>
+      `msgstore.db.crypt15 (${bytes}), descifrado de nuevo y verificado, y ${media} archivos multimedia, listos para copiar al teléfono.`,
+    noPass: "Esta copia de seguridad no está encriptada: no hace falta contraseña.",
+    skipLabel: "Escribir aunque la copia de seguridad haya cambiado desde la conversión",
+    skipNote: "Normalmente se rechaza: la copia de seguridad debe ser aquella en la que se convirtieron los chats. Con esto, lo que haya recibido la cuenta en el iPhone después de convertir se pierde al restaurar.",
+    changedTitle: "Esta copia de seguridad cambió después de convertir",
+    changedBody: "Vuelve a comprobar la copia del iPhone más reciente en su paso y vuelve a convertir. Así se conserva todo lo que tiene ahora la cuenta.",
+    working: "Escribiendo… unos minutos con una copia grande.",
+    run: "Escribir la nueva copia",
+    again: "Escribir de nuevo",
+    doneTitle: "Nueva copia de seguridad escrita y comprobada",
+    unchecked: "origen sin comprobar",
+    doneLine: (at) => `Escrita ${at}.`,
+    added: (files, bytes, verified) =>
+      `${files} archivos añadidos (${bytes}); ${verified} archivos releídos y verificados.`,
+  },
+  copy: {
+    title: "Copia en el teléfono Android",
+    lead: "Pone la nueva copia de seguridad y sus archivos multimedia en la carpeta de WhatsApp del teléfono por USB. Después WhatsApp la restaura, como cualquier copia propia.",
+    warnTitle: "WhatsApp en el teléfono Android empieza de nuevo desde esta copia",
+    warnBody: "Restaurar sustituye los chats de WhatsApp del teléfono Android por los de la copia: los chats propios de la cuenta tal como estaban en su copia, más los del iPhone. Nada más cambia en el teléfono.",
+    beforeTitle: "Antes de empezar",
+    before: [
+      "Si ha llegado algo a WhatsApp en el teléfono Android desde la copia que comprobaste, vuelve a hacer la copia y repite el paso de Android, Convertir y Escribir.",
+      "Borra los datos de WhatsApp: Ajustes → Aplicaciones → WhatsApp → Almacenamiento → Borrar almacenamiento. WhatsApp cierra la sesión en este teléfono; los chats vuelven desde la copia.",
+      "Conecta el teléfono con un cable, con la depuración por USB activada (como en el paso de Android), y desbloquéalo.",
+    ],
+    phoneTitle: "El teléfono Android",
+    looking: "Buscando el teléfono…",
+    noAdbTitle: "adb no está instalado",
+    noAdb: "Instálalo como explica el paso de Android, o copia la carpeta a mano (abajo).",
+    noPhoneTitle: "No se ha encontrado ningún teléfono",
+    noPhone: "Conecta el teléfono con un cable, activa la depuración por USB, desbloquéalo y vuelve a buscar.",
+    ready: "Listo",
+    whichFolder: "Qué carpeta de WhatsApp del teléfono (una por cuenta):",
+    lookAgain: "Buscar de nuevo",
+    confirmTitle: "Confirmar",
+    cleared: "He borrado el almacenamiento de WhatsApp en el teléfono (paso 1.2).",
+    working: "Copiando… unos minutos si hay muchas fotos.",
+    run: "Copiar en el teléfono",
+    again: "Copiar de nuevo",
+    doneTitle: "Copiado en el teléfono",
+    doneLine: (at, media) => `Copiado ${at}, con ${media} archivos multimedia. Después:`,
+    kept: (path) => `La copia propia del teléfono se conserva como ${path}.`,
+    after: [
+      "Abre WhatsApp, acepta las condiciones y verifica el mismo número.",
+      "Cuando WhatsApp encuentre la copia, toca Restaurar y escribe la clave de 64 dígitos.",
+      "Espera a que termine y revisa los chats.",
+    ],
+    manualTitle: "Sin depuración por USB",
+    manual: "Copia el contenido de esta carpeta:",
+    manualInto: "en esta carpeta del teléfono con la transferencia de archivos por USB, después de renombrar el Databases/msgstore.db.crypt15 propio del teléfono para conservarlo:",
+  },
+  restore: {
+    title: "Restaura en el iPhone",
+    lead: "Pone la nueva copia de seguridad en el iPhone por el cable, como hace Restaurar copia de seguridad en el Finder.",
+    needWrite: "Escribe primero la nueva copia de seguridad.",
+    goWrite: "Ir a Escribir",
+    warnTitle: "Esto sustituye todo lo que hay en el iPhone",
+    warnBody: (date) =>
+      `El iPhone vuelve a como estaba en su copia de seguridad del ${date}, más los chats convertidos. Todo lo que le llegó después (mensajes, fotos, datos de apps) desaparece.`,
+    beforeTitle: "Antes de empezar",
+    before: [
+      "En WhatsApp en el iPhone, haz una copia de seguridad en iCloud de los chats de cada cuenta (Ajustes → Chats → Copia de seguridad → Realizar copia ahora). Es el camino de vuelta si algo sale mal.",
+      "Deja el iPhone en modo avión desde la copia de seguridad hasta que termine la restauración, o haz una copia nueva y repite Convertir.",
+      "Desactiva Buscar. Si está activada la Protección en caso de robo del dispositivo, iOS te la pide primero: Ajustes → Face ID y código → Protección en caso de robo del dispositivo → desactivar (lejos de un lugar habitual, iOS te hace esperar una hora). Después Ajustes → tu nombre → Buscar → Buscar mi iPhone → desactivar.",
+      "Conecta el iPhone con un cable, desbloquéalo y mantenlo desbloqueado. Cierra su ventana del Finder.",
+    ],
+    phoneTitle: "El iPhone",
+    looking: "Buscando el iPhone…",
+    noPhone: "El iPhone del que es esta copia no está conectado",
+    noPhoneBody: (others) =>
+      others
+        ? `${others > 1 ? `Hay ${others} otros iPhone conectados` : "Hay otro iPhone conectado"}, pero no el de esta copia. Conecta el correcto y vuelve a buscar.`
+        : "Conéctalo con un cable, desbloquéalo y vuelve a buscar.",
+    phoneLine: (ios) => `iOS ${ios}, conectado por cable`,
+    matches: "La nueva copia de seguridad es de este iPhone",
+    trusted: "Este ordenador es de confianza",
+    notTrusted: "Aún no es de confianza: desbloquea el iPhone, toca Confiar y vuelve a buscar",
+    findMyOff: "Buscar está desactivado",
+    findMyOn: "Buscar está activado: desactívalo (antes la Protección en caso de robo del dispositivo, si está activada) y vuelve a buscar",
+    findMyUnknown: "Buscar: no se sabe. Desbloquea el iPhone y vuelve a buscar",
+    lookAgain: "Buscar de nuevo",
+    confirmTitle: "Confirmar",
+    typeName: (name) => `Escribe ${name} para confirmar`,
+    working: (percent) => `Restaurando… ${Math.round(percent)}%`,
+    keepConnected: "Mantén el iPhone conectado y desbloqueado hasta que se reinicie.",
+    run: "Restaurar el iPhone",
+    doneTitle: "Restaurado",
+    doneLine: (at) => `Restaurado ${at}. Después:`,
+    after: [
+      "El iPhone se reinicia y termina de restaurarse. Mantenlo conectado hasta que aparezca la pantalla bloqueada y desbloquéalo.",
+      "Las apps se reinstalan desde el App Store en segundo plano: espera a WhatsApp.",
+      "Abre WhatsApp, cambia a la cuenta a la que fueron los chats y revísalos. Si te pide verificar el número, hazlo. Si te ofrece restaurar el historial de chats desde iCloud, omítelo: sustituiría los chats convertidos.",
+      "Vuelve a activar Buscar y después la Protección en caso de robo del dispositivo.",
+    ],
+  },
+  results: {
+    title: "Resultados",
+    lead: "Este resumen contiene cantidades, versiones y ubicaciones de archivos: ningún mensaje, nombre ni número de teléfono. Envíalo si algo necesita revisarse.",
+    summaryLabel: "Resumen",
+    summaryLanguage: "El resumen está en inglés para poder enviarlo al desarrollador.",
+    copy: "Copiar resumen",
+    copied: "Copiado",
+    nextTitle: "Qué pasa ahora",
+    next: "Cuando el iPhone se haya reiniciado, abre WhatsApp y revisa la cuenta a la que fueron los chats. Para pasar otra cuenta de Android, comprueba su copia de seguridad en el paso de Android y repite los pasos.",
+    cleanTitle: "Limpieza",
+    clean: (home) => (
+      <>
+        Las copias descifradas están en <Code>{home}</Code>. Borra esa carpeta cuando quieras; el resumen de arriba no la
+        necesita.
+      </>
+    ),
+    startOver: "Empezar de nuevo",
+    confirmReset: "¿Olvidar todo el progreso? Las copias descifradas se quedan en el disco hasta que las borres.",
+  },
+}
