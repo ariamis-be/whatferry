@@ -319,7 +319,7 @@ def test_unknown_settings_are_refused(server, body):
 
 def test_the_server_accepts_exactly_the_page_languages():
     """A language the page offers but the server refuses fails when chosen; one the page lacks is dead."""
-    page = (Path(__file__).parents[1] / "web" / "src" / "i18n.tsx").read_text()
+    page = (Path(__file__).parents[1] / "web" / "src" / "i18n.tsx").read_text(encoding="utf-8")
     table = page.split("const TABLE = [", 1)[1].split("] as const", 1)[0]
     assert sorted(re.findall(r'\{ id: "([^"]+)"', table)) == sorted(Wizard.LANGS)
     assert len(set(Wizard.LANGS)) == len(Wizard.LANGS)

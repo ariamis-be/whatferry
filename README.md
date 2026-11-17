@@ -441,7 +441,7 @@ the functions in `iphone.py` that talk to it, and the stand-in's backup
 writes one of those folders.
 `tests/test_platforms.py` covers what differs by system: backup and data
 folders, file names Windows refuses, `file:` URIs for paths holding `#`, `?`
-or `%`, and byte-exact writes. CI runs the suite on macOS, Windows and Linux.
+or `%`, and byte-exact writes. CI runs the suite on Linux.
 
 `harness/` runs real round trips on a fixed test kit, nightly after any WhatsApp or iOS update and at least monthly (Android → iPhone →
 Android, each side verified). It isn't part of the package: see

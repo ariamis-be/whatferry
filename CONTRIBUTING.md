@@ -21,7 +21,8 @@ mise exec -- uv run pytest
 
 The tests need no phone: they build real `.crypt15` files and Finder-format
 backups, encrypted the way iOS encrypts them, and stand in for the phones.
-CI runs them on macOS, Windows and Linux.
+CI runs them on Linux; run them yourself on macOS or Windows when a change
+touches what differs by system.
 
 ## The wizard page
 

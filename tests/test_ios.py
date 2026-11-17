@@ -4,6 +4,7 @@ import plistlib
 import shutil
 import sqlite3
 import stat
+import sys
 from contextlib import closing
 from pathlib import Path
 
@@ -181,7 +182,8 @@ def test_an_encrypted_backups_index_is_decrypted_privately(tmp_path, private_hom
     backup = Backup(folder, "pw")
     temporary = Path(backup._encrypted._temporary_folder)
     assert temporary.parent == private_home / "tmp"
-    assert stat.S_IMODE(temporary.parent.stat().st_mode) == 0o700
+    if sys.platform != "win32":  # Windows has no Unix modes; the profile's ACL protects it
+        assert stat.S_IMODE(temporary.parent.stat().st_mode) == 0o700
 
 
 def test_a_damaged_keybag_is_a_backup_error(tmp_path):

@@ -71,6 +71,9 @@ def test_iphone_to_android_end_to_end(wizard, tmp_path, monkeypatch):
     written = wizard.write_backup(KEY)
     assert written["report"]["verified"] and Path(written["folder"]).name == "WhatsApp"
 
+    if sys.platform == "win32":
+        pytest.skip("the fake adb is a script with a shebang")
+
     # The stand-in phone: WhatsApp's folders on disk.
     phone = tmp_path / "phone"
     (phone / "Android/media/com.whatsapp/WhatsApp/Databases").mkdir(parents=True)

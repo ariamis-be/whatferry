@@ -66,6 +66,7 @@ def test_convert_options_list_the_accounts_and_media(wizard, tmp_path, monkeypat
     (media / "account-1001" / "WhatsApp Images" / "Sent").mkdir()
     (media / "account-1001" / "WhatsApp Images" / "Sent" / "IMG-1.jpg").write_bytes(b"\xff\xd8")
     monkeypatch.setenv("HOME", str(tmp_path / "user"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "user"))  # Path.home() on Windows
 
     options = wizard.convert_options()
     assert [t["folder"] for t in options["targets"]] == [None, ACCOUNT]
