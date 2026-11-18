@@ -9,7 +9,8 @@ number's chats can go into:
 - the existing account, when it already uses the Android number, merged with
   the chats it has.
 
-From an iPhone to an Android phone, see [iPhone to Android](#iphone-to-android).
+From an iPhone to an Android phone, see
+[iPhone to Android](https://github.com/ariamis-be/whatferry#iphone-to-android).
 
 So far the second-account move is the one done on a real phone (below). The
 others are covered by the tests and wait for their first real transfer.
@@ -18,13 +19,13 @@ It never changes a backup you made: it writes a new one beside it. The only
 thing it writes to a phone is that new backup, restored over USB when you ask
 and confirm.
 
-> [!IMPORTANT]
-> whatferry is an independent project. It is not made, endorsed or supported
-> by WhatsApp, Meta, Apple or Google, and their names are used only to say
-> what it works with. It reads and writes WhatsApp's private database
-> formats, which can change with any WhatsApp update: it checks them first
-> (see [Compatibility](#compatibility)), but a restore replaces what is on the
-> iPhone with the backup. Keep the backups you made until the moved chats
+> **Important:** whatferry is an independent project. It is not made,
+> endorsed or supported by WhatsApp, Meta, Apple or Google, and their names
+> are used only to say what it works with. It reads and writes WhatsApp's
+> private database formats, which can change with any WhatsApp update: it
+> checks them first (see
+> [Compatibility](https://github.com/ariamis-be/whatferry#compatibility)),
+> but a restore replaces what is on the iPhone with the backup. Keep the backups you made until the moved chats
 > look right, and use it at your own risk. The licence below comes with no
 > warranty.
 
@@ -57,17 +58,6 @@ uv tool install whatferry # or install the `whatferry` command
 `pipx install whatferry` works too. On Linux, talking to an iPhone needs the
 `usbmuxd` package; on macOS and Windows, Finder or the Apple Devices app
 already brings it.
-
-From a checkout, with [mise](https://mise.jdx.dev), which installs the
-pinned Python and uv:
-
-```sh
-mise install
-mise exec -- uv sync
-mise exec -- uv run whatferry --help
-```
-
-The commands below write `whatferry` for either.
 
 ## The wizard
 
@@ -125,10 +115,6 @@ has a light, dark or system theme, system by default. Both choices are kept in `
 not in the browser, which keeps them per port, and the port changes on every
 start. Messages from the server,
 and the summary to send on, stay in English.
-
-The page is React with shadcn/ui, built from `web/` into
-`src/whatferry/ui/static/` and committed, so running whatferry needs only
-Python. To change it, see [`web/README.md`](web/README.md).
 
 ## Converting
 
@@ -257,7 +243,7 @@ the conversion reads or writes; anything missing stops it with the list,
 instead of a failure half-way.
 
 Then the whole layout is compared with the snapshots whatferry was measured
-on, kept in [`src/whatferry/schemas/`](src/whatferry/schemas/): tables,
+on, kept in [`src/whatferry/schemas/`](https://github.com/ariamis-be/whatferry/tree/master/src/whatferry/schemas): tables,
 columns with their types, NOT NULL and defaults, indexes, triggers, views,
 the iPhone's Core Data entities and the database version, and nothing the
 database stores. Today that is WhatsApp for iOS database model 2.12.14 and
@@ -279,18 +265,6 @@ with the value WhatsApp's own rows in that database agree on (at least 90%
 of 10 or more rows); if they don't agree, it keeps its default. The report
 lists every column filled this way. That covers the usual "new flag column"
 release without a code change.
-
-### After a WhatsApp update
-
-The routine is in [`src/whatferry/schemas/CHANGES.md`](src/whatferry/schemas/CHANGES.md):
-make a fresh backup on each phone, then
-
-```sh
-whatferry schema check <ChatStorage.sqlite or msgstore.db>     # what changed, sorted
-whatferry schema capture <db> --app-version <version>           # record it
-```
-
-and note the change in that file.
 
 ## The same steps on the command line
 
@@ -427,33 +401,15 @@ that is where the conversion will write.
   you add `--backups`. Finder's backups and the Android copies in
   `~/whatferry-android` are never touched. Close the wizard first.
 
-## Development
+## Contributing
 
-```sh
-mise exec -- uv run pytest
-```
-
-The tests build a real `.crypt15` with wa-crypt-tools' own encryptor and an
-unencrypted Finder-format backup (Manifest.db, keyed-archiver file plists,
-hashed file names), and encrypted ones the way iOS encrypts them
-(`tests/encrypted_backup.py`). The iPhone itself is a stand-in: tests replace
-the functions in `iphone.py` that talk to it, and the stand-in's backup
-writes one of those folders.
-`tests/test_platforms.py` covers what differs by system: backup and data
-folders, file names Windows refuses, `file:` URIs for paths holding `#`, `?`
-or `%`, and byte-exact writes. CI runs the suite on Linux.
-
-`harness/` runs real round trips on a fixed test kit, nightly after any WhatsApp or iOS update and at least monthly (Android → iPhone →
-Android, each side verified). It isn't part of the package: see
-[`harness/README.md`](harness/README.md).
-
-To help, see [`CONTRIBUTING.md`](CONTRIBUTING.md); to report a security
-problem, see [`SECURITY.md`](SECURITY.md). Changes are listed in
-[`CHANGELOG.md`](CHANGELOG.md).
+To help, see [`CONTRIBUTING.md`](https://github.com/ariamis-be/whatferry/blob/master/CONTRIBUTING.md); to report a security
+problem, see [`SECURITY.md`](https://github.com/ariamis-be/whatferry/blob/master/SECURITY.md). Changes are listed in
+[`CHANGELOG.md`](https://github.com/ariamis-be/whatferry/blob/master/CHANGELOG.md).
 
 ## Licence
 
-[GPL-3.0-or-later](LICENSE). whatferry imports pymobiledevice3 and
+[GPL-3.0-or-later](https://github.com/ariamis-be/whatferry/blob/master/LICENSE). whatferry imports pymobiledevice3 and
 wa-crypt-tools, which are both GPL-3.0-or-later, so it is too.
 
 WhatsApp is a trademark of WhatsApp LLC; iPhone, iOS and Finder are

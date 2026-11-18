@@ -17,17 +17,26 @@ before everything else:
 mise install            # Python, uv, Node and pnpm, at the pinned versions
 mise exec -- uv sync
 mise exec -- uv run pytest
+mise exec -- uv run whatferry --help   # run it from the checkout
 ```
 
-The tests need no phone: they build real `.crypt15` files and Finder-format
-backups, encrypted the way iOS encrypts them, and stand in for the phones.
-CI runs them on Linux; run them yourself on macOS or Windows when a change
-touches what differs by system.
+The tests need no phone. They build a real `.crypt15` with wa-crypt-tools'
+own encryptor, an unencrypted Finder-format backup (Manifest.db,
+keyed-archiver file plists, hashed file names), and encrypted ones the way
+iOS encrypts them (`tests/encrypted_backup.py`). The iPhone is a stand-in:
+tests replace the functions in `iphone.py` that talk to it, and the
+stand-in's backup writes one of those folders.
+
+`tests/test_platforms.py` covers what differs by system: backup and data
+folders, file names Windows refuses, `file:` URIs for paths holding `#`, `?`
+or `%`, and byte-exact writes. CI runs the suite on Linux; run it yourself on
+macOS or Windows when a change touches what differs by system.
 
 ## The wizard page
 
-The page lives in `web/` and is built into `src/whatferry/ui/static/`, which
-is committed. After changing it:
+The page is React with shadcn/ui. It lives in `web/` and is built into
+`src/whatferry/ui/static/`, which is committed, so running whatferry needs
+only Python. After changing it:
 
 ```sh
 cd web
@@ -44,13 +53,22 @@ how to add or fix a translation.
 
 When WhatsApp changes its database, follow
 [`src/whatferry/schemas/CHANGES.md`](src/whatferry/schemas/CHANGES.md):
-`whatferry schema check` sorts the changes, and `whatferry schema capture`
-records the new layout. A pull request with a new snapshot is very welcome.
+make a fresh backup on each phone, then
+
+```sh
+whatferry schema check <ChatStorage.sqlite or msgstore.db>     # what changed, sorted
+whatferry schema capture <db> --app-version <version>           # record it
+```
+
+and note the change in that file. A pull request with a new snapshot is very
+welcome.
 
 ## The test kit
 
 [`harness/`](harness/README.md) runs real transfers both ways on two
-dedicated test phones. It is not in the package and needs its own kit; you
+dedicated test phones (Android → iPhone → Android, each side verified),
+nightly after any WhatsApp or iOS update and at least monthly. It is not in
+the package and needs its own kit; you
 don't need it to contribute.
 
 ## Style
