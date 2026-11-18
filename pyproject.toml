@@ -1,6 +1,6 @@
 [project]
 name = "whatferry"
-version = "0.1.0"
+version = "1.0.0"
 description = "Move WhatsApp chats between Android and iPhone, in either direction, without erasing the iPhone"
 readme = "README.md"
 authors = [
@@ -32,6 +32,12 @@ dependencies = [
     "pymobiledevice3>=11.44.0",
     "wa-crypt-tools>=0.1.0",
 ]
+
+[project.urls]
+Source = "https://github.com/ariamis-be/whatferry"
+Issues = "https://github.com/ariamis-be/whatferry/issues"
+Changelog = "https://github.com/ariamis-be/whatferry/blob/master/CHANGELOG.md"
+Security = "https://github.com/ariamis-be/whatferry/blob/master/SECURITY.md"
 
 [project.scripts]
 whatferry = "whatferry:main"

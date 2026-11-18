@@ -1,6 +1,6 @@
 name: release
 
-# A tag like v0.1.0 builds the package, checks it, and publishes it to PyPI
+# A tag like v1.0.0 builds the package, checks it, and publishes it to PyPI
 # and as a GitHub release. PyPI trusts this workflow through a trusted
 # publisher (project whatferry, workflow release.yml, environment pypi), so
 # no token is stored anywhere.
